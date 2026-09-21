@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\MicroredController;
+use App\Http\Controllers\Api\EstadoAsistenciaController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -10,3 +11,8 @@ Route::get('/user', function (Request $request) {
 
 Route::apiResource('microredes', MicroredController::class)
     ->parameters(['microredes' => 'microred']);
+
+Route::apiResource('estados-asistencia', EstadoAsistenciaController::class)
+    ->parameters([
+        'estados-asistencia' => 'estadoAsistencia'
+    ]);
