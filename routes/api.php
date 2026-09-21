@@ -2,6 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\ConceptoJustificacionController;
 use App\Http\Controllers\Api\MicroredController;
 use App\Http\Controllers\Api\EstadoAsistenciaController;
 
@@ -16,3 +17,7 @@ Route::apiResource('estados-asistencia', EstadoAsistenciaController::class)
     ->parameters([
         'estados-asistencia' => 'estadoAsistencia'
     ]);
+
+Route::apiResource('conceptos-justificacion', ConceptoJustificacionController::class)
+    ->parameters(['conceptos-justificacion' => 'concepto'])
+    ->where(['concepto' => '[0-9]+']);

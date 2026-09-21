@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\MicroredRequest;
-use App\Models\Microred;
+use App\Models\Organizacion\Microred;
 use Illuminate\Http\Request;
 
 class MicroredController extends Controller

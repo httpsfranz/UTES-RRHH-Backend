@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests;
 
-use App\Models\Microred;
+use App\Models\Organizacion\Microred;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
