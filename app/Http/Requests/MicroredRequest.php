@@ -16,19 +16,66 @@ class MicroredRequest extends FormRequest
     public function rules(): array
     {
         $id = $this->route('microred')?->MicroredId;
-        $req = $this->isMethod('post') ? 'required' : 'sometimes|required';
+
+        $required = $this->isMethod('post');
 
         return [
-            'MicroredCodigo' => [$req, 'string', 'max:30',
-                Rule::unique(Microred::class, 'MicroredCodigo')->ignore($id, 'MicroredId')],
-            'MicroredNombre' => [$req, 'string', 'max:150',
-                Rule::unique(Microred::class, 'MicroredNombre')->ignore($id, 'MicroredId')],
-            'MicroredDistrito'    => ['nullable', 'string', 'max:100'],
-            'MicroredUbigeo'      => ['nullable', 'string', 'max:10'],
-            'MicroredDireccion'   => ['nullable', 'string', 'max:300'],
-            'MicroredTelefono'    => ['nullable', 'string', 'max:30'],
-            'MicroredDescripcion' => ['nullable', 'string', 'max:300'],
-            'MicroredEstado'      => ['sometimes', 'boolean'],
+            'MicroredCodigo' => [
+                $required ? 'required' : 'sometimes',
+                'string',
+                'max:30',
+                Rule::unique(Microred::class, 'MicroredCodigo')
+                    ->ignore($id, 'MicroredId'),
+            ],
+
+            'MicroredNombre' => [
+                $required ? 'required' : 'sometimes',
+                'string',
+                'max:150',
+                Rule::unique(Microred::class, 'MicroredNombre')
+                    ->ignore($id, 'MicroredId'),
+            ],
+
+            'MicroredDistrito' => [
+                'sometimes',
+                'nullable',
+                'string',
+                'max:100',
+            ],
+
+            'MicroredUbigeo' => [
+                
+                'sometimes',
+                'nullable',
+                'string',
+                'max:10',
+            ],
+
+            'MicroredDireccion' => [
+                'sometimes',
+                'nullable',
+                'string',
+                'max:300',
+            ],
+
+            'MicroredTelefono' => [
+                'sometimes',
+                'nullable',
+                'string',
+                'max:30',
+            ],
+
+            'MicroredDescripcion' => [
+                'sometimes',
+                'nullable',
+                'string',
+                'max:300',
+            ],
+
+            'MicroredEstado' => [
+                'sometimes',
+                'boolean',
+            ],
         ];
     }
 }
