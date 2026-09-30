@@ -48,7 +48,18 @@ Consecuencia práctica: `CREATE VIEW`, `CREATE SCHEMA` y `CREATE PROCEDURE` debe
 
 ## Qué NO va en estos scripts
 
-- **Datos de prueba.** Trabajadores ficticios, marcaciones de ejemplo → `database/seeders/` con Faker.
+- **Datos de ningún tipo.** Ni trabajadores ficticios ni catálogos. Los scripts son solo estructura (DDL): esquemas, tablas, restricciones, índices, vistas. Todos los `INSERT` viven en `database/seeders/`:
+  - `CatalogosSeeder` — roles, regímenes laborales, tipos de papeleta, estados de asistencia, turnos base, etc. Sin ellos el sistema no arranca. **Idempotente** (inserta solo lo que falta): es el único seeder seguro en producción.
+  - `DatosPruebaSeeder` — datos para probar los módulos de Nivel 0 y sus relaciones.
+  - `DatabaseSeeder` — **seeder maestro**: vacía las 78 tablas (conserva la estructura, reinicia los Id) y vuelve a sembrar catálogos + datos de prueba. Se niega a correr en producción.
 - **Consultas de diagnóstico.** Van en `database/diagnostico/`, para correr en SSMS. Un `SELECT` dentro de una migración deja un cursor abierto y rompe la consulta siguiente.
 
-Los **catálogos** sí van acá (sección 20 de `V001`): roles, regímenes laborales, tipos de papeleta, conceptos de justificación. No son datos de prueba — sin ellos el sistema no arranca.
+## Cómo dejar la base en su estado inicial
+
+```bash
+php artisan db:seed                        # solo datos: vacía y vuelve a sembrar (rápido, conserva estructura)
+php artisan migrate:fresh --seed           # estructura + datos desde cero (tras cambiar un V0XX)
+php artisan db:seed --class=CatalogosSeeder  # solo catálogos, sin borrar nada (producción)
+```
+
+> **Excepción única a la regla 1:** el 2026-09-30 se retiró de `V001` la sección 20 (los `INSERT`) para separar estructura de datos. Por eso el checksum cambió: cada integrante corre `php artisan migrate:fresh --seed` una vez.

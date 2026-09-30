@@ -10,14 +10,19 @@ class DispositivoMarcacionResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'DispositivoMarcacionId' => $this->DispositivoMarcacionId,
-            'EessId' => $this->EessId,
-            'DispositivoMarcacionCodigo' => $this->DispositivoMarcacionCodigo,
-            'DispositivoMarcacionNombre' => $this->DispositivoMarcacionNombre,
-            'DispositivoMarcacionTipo' => $this->DispositivoMarcacionTipo,
-            'DispositivoMarcacionUbicacion' => $this->DispositivoMarcacionUbicacion,
-            'DispositivoMarcacionIp' => $this->DispositivoMarcacionIp,
-            'DispositivoMarcacionEstado' => $this->DispositivoMarcacionEstado,
+            'id' => $this->DispositivoMarcacionId,
+            'eess_id' => $this->EessId,
+            'codigo' => $this->DispositivoMarcacionCodigo,
+            'nombre' => $this->DispositivoMarcacionNombre,
+            'tipo' => $this->DispositivoMarcacionTipo,
+            'ubicacion' => $this->DispositivoMarcacionUbicacion,
+            'ip' => $this->DispositivoMarcacionIp,
+            'activo' => (bool) $this->DispositivoMarcacionEstado,
+            'eess' => $this->whenLoaded('eess', fn () => $this->eess ? [
+                'id' => $this->eess->EessId,
+                'codigo' => $this->eess->EessCodigo,
+                'nombre' => $this->eess->EessNombre,
+            ] : null),
         ];
     }
 }

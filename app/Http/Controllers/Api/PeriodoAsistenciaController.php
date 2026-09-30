@@ -11,16 +11,19 @@ use Illuminate\Http\Request;
 
 class PeriodoAsistenciaController extends Controller
 {
-    // GET /api/periodos-asistencia?anio=2026&mes=9&estado=ABIERTO
+    // GET /api/periodos-asistencia?buscar=2026-09&anio=2026&mes=9&estado=ABIERTO
     public function index(Request $request)
     {
+        $buscar = $request->string('buscar')->toString();
+
         $periodos = PeriodoAsistencia::query()
-            ->when($request->filled('anio'), fn ($q) =>
-                $q->where('PeriodoAsistenciaAnio', $request->integer('anio')))
-            ->when($request->filled('mes'), fn ($q) =>
-                $q->where('PeriodoAsistenciaMes', $request->integer('mes')))
-            ->when($request->filled('estado'), fn ($q) =>
-                $q->where('PeriodoAsistenciaEstado', $request->string('estado')->toString()))
+            // "2026", "2026-09" o el estado ("cerrado"): el periodo se muestra como AAAA-MM.
+            ->when($request->filled('buscar'), fn ($q) => $q->where(fn ($s) => $s
+                ->whereRaw("CONCAT(PeriodoAsistenciaAnio, '-', RIGHT('0' + CAST(PeriodoAsistenciaMes AS varchar(2)), 2)) like ?", ["%{$buscar}%"])
+                ->orWhere('PeriodoAsistenciaEstado', 'like', "%{$buscar}%")))
+            ->when($request->filled('anio'), fn ($q) => $q->where('PeriodoAsistenciaAnio', $request->integer('anio')))
+            ->when($request->filled('mes'), fn ($q) => $q->where('PeriodoAsistenciaMes', $request->integer('mes')))
+            ->when($request->filled('estado'), fn ($q) => $q->where('PeriodoAsistenciaEstado', $request->string('estado')->toString()))
             ->orderByDesc('PeriodoAsistenciaAnio')
             ->orderByDesc('PeriodoAsistenciaMes')
             ->paginate(max(1, min($request->integer('por_pagina', 15), 100)));

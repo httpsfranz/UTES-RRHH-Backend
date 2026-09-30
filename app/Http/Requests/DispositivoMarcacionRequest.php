@@ -2,60 +2,22 @@
 
 namespace App\Http\Requests;
 
-use Illuminate\Foundation\Http\FormRequest;
+use App\Models\Biometria\DispositivoMarcacion;
+use App\Models\Organizacion\EstablecimientoSalud;
 
-class DispositivoMarcacionRequest extends FormRequest
+class DispositivoMarcacionRequest extends CatalogoRequest
 {
-    public function authorize(): bool
-    {
-        return true;
-    }
-
     public function rules(): array
-{
-    return [
-        'EessId' => [
-            'sometimes',
-            'integer',
-        ],
-
-        'DispositivoMarcacionCodigo' => [
-            'sometimes',
-            'string',
-            'max:50',
-        ],
-
-        'DispositivoMarcacionNombre' => [
-            'sometimes',
-            'string',
-            'max:150',
-        ],
-
-        'DispositivoMarcacionTipo' => [
-            'sometimes',
-            'string',
-            'max:50',
-        ],
-
-        'DispositivoMarcacionUbicacion' => [
-            'sometimes',
-            'nullable',
-            'string',
-            'max:200',
-        ],
-
-        'DispositivoMarcacionIp' => [
-            'sometimes',
-            'nullable',
-            'ip',
-        ],
-
-        'DispositivoMarcacionEstado' => [
-            'sometimes',
-            'boolean',
-        ],
-    ];
-}
-    
-    
+    {
+        return [
+            // NULL = dispositivo no asignado a un establecimiento concreto.
+            'EessId' => ['nullable', 'integer', $this->existe(EstablecimientoSalud::class)],
+            'DispositivoMarcacionCodigo' => $this->codigoUnico(DispositivoMarcacion::class, 'DispositivoMarcacionCodigo', 50),
+            'DispositivoMarcacionNombre' => $this->textoObligatorio(100),
+            'DispositivoMarcacionTipo' => $this->textoObligatorio(50),
+            'DispositivoMarcacionUbicacion' => $this->texto(200),
+            'DispositivoMarcacionIp' => ['nullable', 'ip'],
+            'DispositivoMarcacionEstado' => $this->booleano(),
+        ];
+    }
 }

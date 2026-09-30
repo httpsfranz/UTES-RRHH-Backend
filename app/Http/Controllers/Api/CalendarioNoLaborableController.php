@@ -11,18 +11,21 @@ use Illuminate\Http\Request;
 
 class CalendarioNoLaborableController extends Controller
 {
-    // GET /api/calendario-no-laborable?microred_id=1&tipo=FERIADO&desde=2026-01-01&hasta=2026-12-31
+    // GET /api/calendario-no-laborable?buscar=navidad&microred_id=1&tipo=FERIADO&desde=2026-01-01&hasta=2026-12-31
     public function index(Request $request)
     {
+        $buscar = $request->string('buscar')->toString();
+
         $dias = CalendarioNoLaborable::query()
-            ->when($request->filled('microred_id'), fn ($q) =>
-                $q->where('MicroredId', $request->integer('microred_id')))
-            ->when($request->filled('tipo'), fn ($q) =>
-                $q->where('CalendarioNoLaborableTipo', $request->string('tipo')->toString()))
-            ->when($request->filled('desde'), fn ($q) =>
-                $q->whereDate('CalendarioNoLaborableFecha', '>=', $request->date('desde')))
-            ->when($request->filled('hasta'), fn ($q) =>
-                $q->whereDate('CalendarioNoLaborableFecha', '<=', $request->date('hasta')))
+            ->with('microred:MicroredId,MicroredNombre')
+            ->when($request->filled('buscar'), fn ($q) => $q->where(fn ($s) => $s
+                ->where('CalendarioNoLaborableDescripcion', 'like', "%{$buscar}%")
+                ->orWhere('CalendarioNoLaborableNormaSustento', 'like', "%{$buscar}%")
+                ->orWhereRaw('CONVERT(varchar(10), CalendarioNoLaborableFecha, 23) like ?', ["%{$buscar}%"])))
+            ->when($request->filled('microred_id'), fn ($q) => $q->where('MicroredId', $request->integer('microred_id')))
+            ->when($request->filled('tipo'), fn ($q) => $q->where('CalendarioNoLaborableTipo', $request->string('tipo')->toString()))
+            ->when($request->filled('desde'), fn ($q) => $q->whereDate('CalendarioNoLaborableFecha', '>=', $request->date('desde')))
+            ->when($request->filled('hasta'), fn ($q) => $q->whereDate('CalendarioNoLaborableFecha', '<=', $request->date('hasta')))
             ->orderBy('CalendarioNoLaborableFecha')
             ->paginate(max(1, min($request->integer('por_pagina', 15), 100)));
 
@@ -34,7 +37,7 @@ class CalendarioNoLaborableController extends Controller
     {
         $dia = CalendarioNoLaborable::create($request->validated());
 
-        return (new CalendarioNoLaborableResource($dia->fresh()))
+        return (new CalendarioNoLaborableResource($dia->fresh()->load('microred')))
             ->response()
             ->setStatusCode(201);
     }
@@ -42,7 +45,7 @@ class CalendarioNoLaborableController extends Controller
     // GET /api/calendario-no-laborable/{dia}
     public function show(CalendarioNoLaborable $dia)
     {
-        return new CalendarioNoLaborableResource($dia);
+        return new CalendarioNoLaborableResource($dia->load('microred'));
     }
 
     // PUT|PATCH /api/calendario-no-laborable/{dia}
@@ -50,7 +53,7 @@ class CalendarioNoLaborableController extends Controller
     {
         $dia->update($request->validated());
 
-        return new CalendarioNoLaborableResource($dia->fresh());
+        return new CalendarioNoLaborableResource($dia->fresh()->load('microred'));
     }
 
     // DELETE /api/calendario-no-laborable/{dia}

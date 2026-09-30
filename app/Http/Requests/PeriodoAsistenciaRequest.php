@@ -3,28 +3,18 @@
 namespace App\Http\Requests;
 
 use App\Models\Consolidacion\PeriodoAsistencia;
-use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
-class PeriodoAsistenciaRequest extends FormRequest
+class PeriodoAsistenciaRequest extends CatalogoRequest
 {
-    public function authorize(): bool
-    {
-        return true;
-    }
-
     public function rules(): array
     {
-        $esCreacion = $this->isMethod('POST');
-        $id = $this->route('periodo')?->PeriodoAsistenciaId;
-
         return [
-            'PeriodoAsistenciaAnio' => [$esCreacion ? 'required' : 'sometimes', 'integer', 'digits:4'],
-            'PeriodoAsistenciaMes'  => [$esCreacion ? 'required' : 'sometimes', 'integer', 'between:1,12'],
-            'PeriodoAsistenciaFechaInicio' => [$esCreacion ? 'required' : 'sometimes', 'date'],
-            'PeriodoAsistenciaFechaFin'    => [
-                $esCreacion ? 'required' : 'sometimes', 'date', 'after_or_equal:PeriodoAsistenciaFechaInicio',
-            ],
+            'PeriodoAsistenciaAnio' => [$this->obligatorio(), 'integer', 'between:2000,2100'],
+            'PeriodoAsistenciaMes' => [$this->obligatorio(), 'integer', 'between:1,12'],
+            'PeriodoAsistenciaFechaInicio' => [$this->obligatorio(), 'date_format:Y-m-d'],
+            'PeriodoAsistenciaFechaFin' => [$this->obligatorio(), 'date_format:Y-m-d'],
             // El cierre real (transicion de estado) queda para un Service futuro;
             // aqui solo se permite declarar el estado dentro de los tres validos.
             'PeriodoAsistenciaEstado' => ['sometimes', Rule::in(['ABIERTO', 'EN_PROCESO', 'CERRADO'])],
@@ -34,31 +24,38 @@ class PeriodoAsistenciaRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'PeriodoAsistenciaFechaFin.after_or_equal' => 'La fecha fin no puede ser anterior a la fecha inicio.',
+            'PeriodoAsistenciaEstado.in' => 'El estado debe ser ABIERTO, EN_PROCESO o CERRADO.',
         ];
     }
 
-    // Unicidad de (Anio, Mes) validada aqui porque es una combinacion, no una columna sola.
-    public function withValidator($validator): void
+    /**
+     * Validaciones que cruzan columnas (fin >= inicio, UNIQUE año+mes). Usan el valor que
+     * quedara guardado, no solo el enviado: un PATCH parcial tambien debe respetarlas.
+     */
+    public function withValidator(Validator $validator): void
     {
-        $validator->after(function ($validator) {
-            $anio = $this->input('PeriodoAsistenciaAnio');
-            $mes = $this->input('PeriodoAsistenciaMes');
+        $this->despuesDeValidar($validator, function (Validator $validator) {
+            $inicio = $this->fecha($this->valorEfectivo('PeriodoAsistenciaFechaInicio'));
+            $fin = $this->fecha($this->valorEfectivo('PeriodoAsistenciaFechaFin'));
 
-            if (! $anio || ! $mes) {
-                return;
+            if ($inicio && $fin && $fin < $inicio) {
+                $validator->errors()->add('PeriodoAsistenciaFechaFin', 'La fecha fin no puede ser anterior a la fecha inicio.');
             }
 
-            $id = $this->route('periodo')?->PeriodoAsistenciaId;
-
-            $existe = PeriodoAsistencia::where('PeriodoAsistenciaAnio', $anio)
-                ->where('PeriodoAsistenciaMes', $mes)
-                ->when($id, fn ($q) => $q->where('PeriodoAsistenciaId', '!=', $id))
+            $existe = PeriodoAsistencia::query()
+                ->where('PeriodoAsistenciaAnio', $this->valorEfectivo('PeriodoAsistenciaAnio'))
+                ->where('PeriodoAsistenciaMes', $this->valorEfectivo('PeriodoAsistenciaMes'))
+                ->when($this->registroId(), fn ($q, $id) => $q->where('PeriodoAsistenciaId', '!=', $id))
                 ->exists();
 
             if ($existe) {
                 $validator->errors()->add('PeriodoAsistenciaMes', 'Ya existe un período para ese año y mes.');
             }
         });
+    }
+
+    private function fecha(mixed $valor): ?string
+    {
+        return $valor instanceof \DateTimeInterface ? $valor->format('Y-m-d') : $valor;
     }
 }

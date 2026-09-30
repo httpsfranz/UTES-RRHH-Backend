@@ -2,13 +2,19 @@
 
 namespace App\Models\Biometria;
 
+use App\Models\Organizacion\EstablecimientoSalud;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class DispositivoMarcacion extends Model
 {
     protected $table = 'Biometria.DispositivoMarcacion';
 
     protected $primaryKey = 'DispositivoMarcacionId';
+
+    public $incrementing = true;
+
+    protected $keyType = 'int';
 
     public $timestamps = false;
 
@@ -27,4 +33,10 @@ class DispositivoMarcacion extends Model
         'EessId' => 'integer',
         'DispositivoMarcacionEstado' => 'boolean',
     ];
+
+    // EessId es nullable: un dispositivo puede no estar asignado a un establecimiento.
+    public function eess(): BelongsTo
+    {
+        return $this->belongsTo(EstablecimientoSalud::class, 'EessId', 'EessId');
+    }
 }

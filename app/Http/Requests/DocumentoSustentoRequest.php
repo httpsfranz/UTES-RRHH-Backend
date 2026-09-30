@@ -2,26 +2,17 @@
 
 namespace App\Http\Requests;
 
-use Illuminate\Foundation\Http\FormRequest;
-
-class DocumentoSustentoRequest extends FormRequest
+class DocumentoSustentoRequest extends CatalogoRequest
 {
-    public function authorize(): bool
-    {
-        return true;
-    }
-
     public function rules(): array
     {
-        $esCreacion = $this->isMethod('POST');
-
         return [
-            'DocumentoSustentoNombre'      => [$esCreacion ? 'required' : 'sometimes', 'string', 'max:255'],
-            'DocumentoSustentoRuta'        => ['nullable', 'string', 'max:500'],
-            'DocumentoSustentoTipo'        => ['nullable', 'string', 'max:100'],
-            'DocumentoSustentoExtension'   => ['nullable', 'string', 'max:10'],
+            'DocumentoSustentoNombre' => $this->textoObligatorio(255),
+            'DocumentoSustentoRuta' => $this->texto(500),
+            'DocumentoSustentoTipo' => $this->texto(100),
+            'DocumentoSustentoExtension' => $this->texto(10),
             'DocumentoSustentoTamanoBytes' => ['nullable', 'integer', 'min:0'],
-            'DocumentoSustentoHash'        => ['nullable', 'string', 'max:128'],
+            'DocumentoSustentoHash' => $this->texto(128),
         ];
     }
 }

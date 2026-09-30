@@ -4,66 +4,61 @@ namespace App\Http\Requests;
 
 use App\Models\Organizacion\Microred;
 use App\Models\Soporte\CalendarioNoLaborable;
-use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
-class CalendarioNoLaborableRequest extends FormRequest
+class CalendarioNoLaborableRequest extends CatalogoRequest
 {
-    public function authorize(): bool
-    {
-        return true;
-    }
-
     public function rules(): array
     {
-        $esCreacion = $this->isMethod('POST');
-
         return [
             // NULL = feriado de alcance nacional / toda la Red.
-            'MicroredId' => ['nullable', 'integer', Rule::exists(Microred::class, 'MicroredId')],
-            'CalendarioNoLaborableFecha' => [$esCreacion ? 'required' : 'sometimes', 'date'],
-            'CalendarioNoLaborableTipo'  => [
-                $esCreacion ? 'required' : 'sometimes',
+            'MicroredId' => ['nullable', 'integer', $this->existe(Microred::class)],
+            'CalendarioNoLaborableFecha' => [$this->obligatorio(), 'date_format:Y-m-d'],
+            'CalendarioNoLaborableTipo' => [
+                $this->obligatorio(),
                 Rule::in(['FERIADO', 'DIA_NO_LABORABLE', 'ASUETO', 'DUELO']),
             ],
-            'CalendarioNoLaborableDescripcion'   => ['nullable', 'string', 'max:250'],
-            'CalendarioNoLaborableCompensable'   => ['sometimes', 'boolean'],
-            'CalendarioNoLaborableNormaSustento' => ['nullable', 'string', 'max:200'],
+            'CalendarioNoLaborableDescripcion' => $this->texto(250),
+            'CalendarioNoLaborableCompensable' => $this->booleano(),
+            'CalendarioNoLaborableNormaSustento' => $this->texto(200),
         ];
     }
 
     public function messages(): array
     {
         return [
-            'MicroredId.exists'          => 'La microred indicada no existe.',
             'CalendarioNoLaborableTipo.in' => 'El tipo debe ser FERIADO, DIA_NO_LABORABLE, ASUETO o DUELO.',
         ];
     }
 
-    // UNIQUE (Fecha, MicroredId) es una restriccion compuesta: Rule::unique de una sola
-    // columna no la cubre, y MicroredId puede ser NULL (SQL Server permite varias filas
-    // NULL bajo UNIQUE, asi que el duplicado real solo importa cuando MicroredId coincide).
-    public function withValidator($validator): void
+    /**
+     * UNIQUE (Fecha, MicroredId) es compuesto, y SQL Server trata NULL como un valor mas:
+     * dos filas con la misma fecha y MicroredId NULL (toda la Red) tambien chocan.
+     */
+    public function withValidator(Validator $validator): void
     {
-        $validator->after(function ($validator) {
-            $fecha = $this->input('CalendarioNoLaborableFecha');
+        $this->despuesDeValidar($validator, function (Validator $validator) {
+            $fecha = $this->valorEfectivo('CalendarioNoLaborableFecha');
+            $fecha = $fecha instanceof \DateTimeInterface ? $fecha->format('Y-m-d') : $fecha;
+            $microredId = $this->valorEfectivo('MicroredId');
 
-            if (! $fecha) {
-                return;
-            }
-
-            $microredId = $this->input('MicroredId');
-            $id = $this->route('dia')?->CalendarioNoLaborableId;
-
-            $existe = CalendarioNoLaborable::where('CalendarioNoLaborableFecha', $fecha)
-                ->where('MicroredId', $microredId)
-                ->when($id, fn ($q) => $q->where('CalendarioNoLaborableId', '!=', $id))
+            $existe = CalendarioNoLaborable::query()
+                ->whereDate('CalendarioNoLaborableFecha', $fecha)
+                ->when(
+                    $microredId === null,
+                    fn ($q) => $q->whereNull('MicroredId'),
+                    fn ($q) => $q->where('MicroredId', $microredId),
+                )
+                ->when($this->registroId(), fn ($q, $id) => $q->where('CalendarioNoLaborableId', '!=', $id))
                 ->exists();
 
             if ($existe) {
                 $validator->errors()->add(
                     'CalendarioNoLaborableFecha',
-                    'Ya existe un registro para esa fecha y esa microred (o alcance nacional).'
+                    $microredId === null
+                        ? 'Ya existe un día no laborable en esa fecha para toda la Red.'
+                        : 'Ya existe un día no laborable en esa fecha para esa microred.',
                 );
             }
         });

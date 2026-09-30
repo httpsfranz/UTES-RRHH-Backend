@@ -10,16 +10,17 @@ class ColegiaturaTipoResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id'          => $this->ColegiaturaTipoId,
-            'codigo'      => $this->ColegiaturaTipoCodigo,
-            'nombre'      => $this->ColegiaturaTipoNombre,
-            'entidad'     => $this->ColegiaturaTipoEntidad,
+            'id' => $this->ColegiaturaTipoId,
+            'codigo' => $this->ColegiaturaTipoCodigo,
+            'nombre' => $this->ColegiaturaTipoNombre,
+            'profesion_id' => $this->ProfesionId,
+            'entidad' => $this->ColegiaturaTipoEntidad,
             'descripcion' => $this->ColegiaturaTipoDescripcion,
-            'activo'      => (bool) $this->ColegiaturaTipoEstado,
-            'profesion'   => $this->whenLoaded('profesion', fn () => [
-                'id'     => $this->profesion->ProfesionId,
+            'activo' => (bool) $this->ColegiaturaTipoEstado,
+            'profesion' => $this->whenLoaded('profesion', fn () => $this->profesion ? [
+                'id' => $this->profesion->ProfesionId,
                 'nombre' => $this->profesion->ProfesionNombre,
-            ]),
+            ] : null),
         ];
     }
 }

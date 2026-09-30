@@ -1,73 +1,59 @@
 <?php
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
-
+use App\Http\Controllers\Api\AuditoriaController;
+use App\Http\Controllers\Api\CalendarioNoLaborableController;
 // Asistencia
-use App\Http\Controllers\Api\ConceptoJustificacionController;
-use App\Http\Controllers\Api\EstadoAsistenciaController;
-
-// Biometria
-use App\Http\Controllers\Api\MetodoMarcacionController;
-use App\Http\Controllers\Api\DispositivoMarcacionController;
-
-// Compensaciones
+use App\Http\Controllers\Api\ColegiaturaTipoController;
 use App\Http\Controllers\Api\ConceptoDescuentoController;
-use App\Http\Controllers\Api\TipoCompensacionController;
-
+// Biometria
+use App\Http\Controllers\Api\ConceptoJustificacionController;
+use App\Http\Controllers\Api\CondicionLaboralController;
+// Compensaciones
+use App\Http\Controllers\Api\DispositivoMarcacionController;
+use App\Http\Controllers\Api\DocumentoSustentoController;
 // Configuracion
-use App\Http\Controllers\Api\ParametroSistemaController;
-use App\Http\Controllers\Api\TablaToleranciaController;
-use App\Http\Controllers\Api\TipoJornadaController;
-
+use App\Http\Controllers\Api\EstablecimientoSaludController;
+use App\Http\Controllers\Api\EstadoAsistenciaController;
+use App\Http\Controllers\Api\GrupoOcupacionalController;
 // Consolidacion
-use App\Http\Controllers\Api\PeriodoAsistenciaController;
-
+use App\Http\Controllers\Api\LogIntegracionController;
 // Disciplina
-use App\Http\Controllers\Api\TipoFaltaDisciplinariaController;
-
+use App\Http\Controllers\Api\MetodoMarcacionController;
 // Organizacion
 use App\Http\Controllers\Api\MicroredController;
-use App\Http\Controllers\Api\TipoEstablecimientoController;
-use App\Http\Controllers\Api\TipoResponsabilidadController;
-
+use App\Http\Controllers\Api\ParametroSistemaController;
+use App\Http\Controllers\Api\PeriodoAsistenciaController;
+use App\Http\Controllers\Api\PermisoController;
 // Personal
-use App\Http\Controllers\Api\ColegiaturaTipoController;
-use App\Http\Controllers\Api\CondicionLaboralController;
-use App\Http\Controllers\Api\GrupoOcupacionalController;
 use App\Http\Controllers\Api\ProfesionController;
 use App\Http\Controllers\Api\RegimenLaboralController;
-use App\Http\Controllers\Api\TipoDocumentoIdentidadController;
-
-// Programacion
-use App\Http\Controllers\Api\TipoCambioTurnoController;
-use App\Http\Controllers\Api\TipoPeriodoProgramacionController;
-
-// Seguridad
-use App\Http\Controllers\Api\AuditoriaController;
-use App\Http\Controllers\Api\PermisoController;
 use App\Http\Controllers\Api\RolController;
-
-// Solicitudes
+use App\Http\Controllers\Api\TablaToleranciaController;
+use App\Http\Controllers\Api\TipoCambioTurnoController;
+use App\Http\Controllers\Api\TipoCompensacionController;
+// Programacion
+use App\Http\Controllers\Api\TipoDocumentoIdentidadController;
+use App\Http\Controllers\Api\TipoEstablecimientoController;
+// Seguridad
+use App\Http\Controllers\Api\TipoFaltaDisciplinariaController;
+use App\Http\Controllers\Api\TipoJornadaController;
 use App\Http\Controllers\Api\TipoLicenciaController;
+// Solicitudes
 use App\Http\Controllers\Api\TipoPapeletaController;
-
+use App\Http\Controllers\Api\TipoPeriodoProgramacionController;
 // Soporte
-use App\Http\Controllers\Api\CalendarioNoLaborableController;
-use App\Http\Controllers\Api\DocumentoSustentoController;
-use App\Http\Controllers\Api\LogIntegracionController;
+use App\Http\Controllers\Api\TipoResponsabilidadController;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
 /* ---- Asistencia ---- */
-Route::apiResource('microredes', MicroredController::class)
-    ->parameters(['microredes' => 'microred']);
-
 Route::apiResource('estados-asistencia', EstadoAsistenciaController::class)
     ->parameters([
-        'estados-asistencia' => 'estadoAsistencia'
+        'estados-asistencia' => 'estadoAsistencia',
     ]);
 
 Route::apiResource('conceptos-justificacion', ConceptoJustificacionController::class)
@@ -109,6 +95,14 @@ Route::apiResource('tipos-falta-disciplinaria', TipoFaltaDisciplinariaController
     ->parameters(['tipos-falta-disciplinaria' => 'tipo']);
 
 /* ---- Organizacion ---- */
+// Solo lectura (catalogo de consulta para selects); el CRUD completo es el modulo M01.
+Route::apiResource('microredes', MicroredController::class)
+    ->parameters(['microredes' => 'microred']);
+
+Route::apiResource('establecimientos', EstablecimientoSaludController::class)
+    ->parameters(['establecimientos' => 'establecimiento'])
+    ->only(['index', 'show']);
+
 Route::apiResource('tipos-establecimiento', TipoEstablecimientoController::class)
     ->parameters(['tipos-establecimiento' => 'tipo']);
 

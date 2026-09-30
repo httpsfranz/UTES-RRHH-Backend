@@ -11,92 +11,54 @@ use Illuminate\Http\Request;
 
 class DispositivoMarcacionController extends Controller
 {
-    /**
-     * GET /api/dispositivos
-     * Listar dispositivos
-     */
+    // GET /api/dispositivos-marcacion?buscar=lector&eess_id=1&estado=1&por_pagina=15
     public function index(Request $request)
     {
-        $registros = DispositivoMarcacion::query()
-            ->when(
-                $request->filled('buscar'),
-                fn ($q) =>
-                    $q->where(
-                        'DispositivoMarcacionNombre',
-                        'like',
-                        '%' . $request->string('buscar') . '%'
-                    )
-            )
-            ->when(
-                $request->filled('estado'),
-                fn ($q) =>
-                    $q->where(
-                        'DispositivoMarcacionEstado',
-                        $request->boolean('estado')
-                    )
-            )
-            ->orderBy('DispositivoMarcacionNombre')
-            ->paginate(
-                $request->integer('por_pagina', 15)
-            );
+        $buscar = $request->string('buscar')->toString();
 
-        return DispositivoMarcacionResource::collection($registros);
+        $dispositivos = DispositivoMarcacion::query()
+            ->with('eess:EessId,EessCodigo,EessNombre')
+            ->when($request->filled('buscar'), fn ($q) => $q->where(fn ($s) => $s
+                ->where('DispositivoMarcacionNombre', 'like', "%{$buscar}%")
+                ->orWhere('DispositivoMarcacionCodigo', 'like', "%{$buscar}%")))
+            ->when($request->filled('eess_id'), fn ($q) => $q->where('EessId', $request->integer('eess_id')))
+            ->when($request->filled('estado'), fn ($q) => $q->where('DispositivoMarcacionEstado', $request->boolean('estado')))
+            ->orderBy('DispositivoMarcacionNombre')
+            ->paginate(max(1, min($request->integer('por_pagina', 15), 100)));
+
+        return DispositivoMarcacionResource::collection($dispositivos);
     }
 
-    /**
-     * POST /api/dispositivos
-     * Crear dispositivo
-     */
+    // POST /api/dispositivos-marcacion
     public function store(DispositivoMarcacionRequest $request): JsonResponse
     {
-        $registro = DispositivoMarcacion::create(
-            $request->validated()
-        );
+        $dispositivo = DispositivoMarcacion::create($request->validated());
 
-        return (new DispositivoMarcacionResource($registro))
+        return (new DispositivoMarcacionResource($dispositivo->fresh()->load('eess')))
             ->response()
             ->setStatusCode(201);
     }
 
-    /**
-     * GET /api/dispositivos/{dispositivo}
-     * Mostrar dispositivo
-     */
+    // GET /api/dispositivos-marcacion/{dispositivo}
     public function show(DispositivoMarcacion $dispositivo)
     {
-        return new DispositivoMarcacionResource($dispositivo);
+        return new DispositivoMarcacionResource($dispositivo->load('eess'));
     }
 
-    /**
-     * PUT/PATCH /api/dispositivos/{dispositivo}
-     * Actualizar dispositivo
-     */
-    public function update(
-        DispositivoMarcacionRequest $request,
-        DispositivoMarcacion $dispositivo
-    ) {
-        $dispositivo->update(
-            $request->validated()
-        );
+    // PUT|PATCH /api/dispositivos-marcacion/{dispositivo}
+    public function update(DispositivoMarcacionRequest $request, DispositivoMarcacion $dispositivo)
+    {
+        $dispositivo->update($request->validated());
 
-        return new DispositivoMarcacionResource(
-            $dispositivo->fresh()
-        );
+        return new DispositivoMarcacionResource($dispositivo->fresh()->load('eess'));
     }
 
-    /**
-     * DELETE /api/dispositivos/{dispositivo}
-     * Baja lógica
-     */
-    public function destroy(
-        DispositivoMarcacion $dispositivo
-    ): JsonResponse {
-        $dispositivo->update([
-            'DispositivoMarcacionEstado' => false
-        ]);
+    // DELETE /api/dispositivos-marcacion/{dispositivo}
+    public function destroy(DispositivoMarcacion $dispositivo): JsonResponse
+    {
+        // BAJA LOGICA, no DELETE fisico: Asistencia.Marcacion referencia el dispositivo.
+        $dispositivo->update(['DispositivoMarcacionEstado' => false]);
 
-        return response()->json([
-            'mensaje' => 'Registro desactivado correctamente.'
-        ], 200);
+        return response()->json(['mensaje' => 'Dispositivo de marcación desactivado.'], 200);
     }
 }
