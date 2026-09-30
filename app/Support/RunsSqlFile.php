@@ -157,7 +157,7 @@ trait RunsSqlFile
 
         foreach (preg_split('/\r?\n/', (string) $limpio) as $linea) {
             if (trim($linea) !== '') {
-                return mb_strimwidth(trim($linea), 0, 120, '...');
+               return (strlen(trim($linea)) > 120) ? substr(trim($linea), 0, 117) . '...' : trim($linea);
             }
         }
 
