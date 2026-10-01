@@ -11,7 +11,7 @@ class DispositivoMarcacionRequest extends CatalogoRequest
     {
         return [
             // NULL = dispositivo no asignado a un establecimiento concreto.
-            'EessId' => ['nullable', 'integer', $this->existe(EstablecimientoSalud::class)],
+            'EessId' => ['nullable', 'integer', $this->existeActivo(EstablecimientoSalud::class, 'EessEstado', 'EessId')],
             'DispositivoMarcacionCodigo' => $this->codigoUnico(DispositivoMarcacion::class, 'DispositivoMarcacionCodigo', 50),
             'DispositivoMarcacionNombre' => $this->textoObligatorio(100),
             'DispositivoMarcacionTipo' => $this->textoObligatorio(50),

@@ -17,6 +17,10 @@ class EstablecimientoSaludResource extends JsonResource
             'renipres' => $this->EessCodigoRenipres,
             'nombre' => $this->EessNombre,
             'categoria' => $this->EessCategoria,
+            'ubigeo' => $this->EessUbigeo,
+            'direccion' => $this->EessDireccion,
+            'telefono' => $this->EessTelefono,
+            'descripcion' => $this->EessDescripcion,
             'activo' => (bool) $this->EessEstado,
             'microred' => $this->whenLoaded('microred', fn () => [
                 'id' => $this->microred->MicroredId,

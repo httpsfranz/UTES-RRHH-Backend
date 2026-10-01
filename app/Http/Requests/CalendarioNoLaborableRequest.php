@@ -13,7 +13,7 @@ class CalendarioNoLaborableRequest extends CatalogoRequest
     {
         return [
             // NULL = feriado de alcance nacional / toda la Red.
-            'MicroredId' => ['nullable', 'integer', $this->existe(Microred::class)],
+            'MicroredId' => ['nullable', 'integer', $this->existeActivo(Microred::class, 'MicroredEstado', 'MicroredId')],
             'CalendarioNoLaborableFecha' => [$this->obligatorio(), 'date_format:Y-m-d'],
             'CalendarioNoLaborableTipo' => [
                 $this->obligatorio(),

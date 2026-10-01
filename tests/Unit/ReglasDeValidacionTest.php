@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Rules\Codigo;
 use App\Rules\DocumentoIdentidad;
+use App\Rules\NombrePersona;
 use App\Rules\TelefonoPeruano;
 use App\Rules\Ubigeo;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -63,6 +64,21 @@ class ReglasDeValidacionTest extends TestCase
             'pasaporte alfanumerico' => [new DocumentoIdentidad('PAS', 12), 'AB123456', true],
             'pasaporte demasiado largo' => [new DocumentoIdentidad('PAS', 12), 'AB1234567890123', false],
             'pasaporte con simbolos' => [new DocumentoIdentidad('PAS', 12), 'AB-1234', false],
+            'pasaporte muy corto' => [new DocumentoIdentidad('PAS', 12), 'AB12', false],
+            'CE de 12 digitos' => [new DocumentoIdentidad('CE', 12), '123456789012', true],
+            'CE de 13 digitos' => [new DocumentoIdentidad('CE', 12), '1234567890123', false],
+            'CE sin longitud declarada' => [new DocumentoIdentidad('CE'), '123456789', true],
+            'tipo desconocido alfanumerico' => [new DocumentoIdentidad('XYZ'), 'ABC12345', true],
+
+            'nombre simple' => [new NombrePersona, 'Ana', true],
+            'nombre con tilde y enie' => [new NombrePersona, 'Muñoz Núñez', true],
+            'nombre con apostrofe' => [new NombrePersona, "D'Angelo", true],
+            'apellido con guion' => [new NombrePersona, 'Pérez-Castro', true],
+            'nombre con abreviatura' => [new NombrePersona, 'Ma. Elena', true],
+            'nombre con digito' => [new NombrePersona, 'Juan2', false],
+            'nombre con etiqueta' => [new NombrePersona, '<script>', false],
+            'nombre que empieza con espacio' => [new NombrePersona, ' Ana', false],
+            'nombre vacio' => [new NombrePersona, '', false],
         ];
     }
 

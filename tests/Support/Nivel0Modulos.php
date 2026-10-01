@@ -243,13 +243,16 @@ final class Nivel0Modulos
                 ],
                 'keys' => ['id', 'nombre', 'ruta', 'tipo', 'extension', 'tamano_bytes', 'hash', 'fecha_registro'],
                 'required' => ['DocumentoSustentoNombre'],
-                'unique' => [],
+                'unique' => ['DocumentoSustentoHash'],
                 'maxlen' => ['DocumentoSustentoNombre' => 255, 'DocumentoSustentoRuta' => 500, 'DocumentoSustentoTipo' => 100,
-                    'DocumentoSustentoExtension' => 10, 'DocumentoSustentoHash' => 128],
+                    'DocumentoSustentoExtension' => 10],
                 'patch' => ['DocumentoSustentoNombre' => 'otro.pdf'], 'patchKey' => 'nombre',
                 'invalid' => [
                     [['DocumentoSustentoTamanoBytes' => -5], 'DocumentoSustentoTamanoBytes'],
                     [['DocumentoSustentoTamanoBytes' => 'grande'], 'DocumentoSustentoTamanoBytes'],
+                    [['DocumentoSustentoHash' => 'no-es-sha256'], 'DocumentoSustentoHash'],
+                    [['DocumentoSustentoHash' => str_repeat('z', 64)], 'DocumentoSustentoHash'],
+                    [['DocumentoSustentoHash' => str_repeat('a', 65)], 'DocumentoSustentoHash'],
                 ],
             ],
         ];

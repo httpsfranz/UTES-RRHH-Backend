@@ -16,9 +16,15 @@ use Illuminate\Support\Facades\DB;
  * asi que es seguro en cualquier ambiente, produccion incluida:
  *     php artisan db:seed --class=CatalogosSeeder
  *
- * ATENCION (pendiente con el area usuaria): los tramos de Configuracion.TramoTolerancia
- * son valores PROVISIONALES. El Art. 22 del RIT tiene la escala real (turno tarde y
- * guardias salieron truncados del escaneo); transcribirla antes de calcular descuentos.
+ * Escala de tolerancia, turnos y horarios segun el Reglamento Interno de Trabajo (RIT):
+ *   - Art. 16: sede administrativa de lunes a viernes 07:30-15:30 (refrigerio de 45 min fuera de la
+ *     jornada); establecimientos de salud en turnos de 6 h: manana 07:30-13:30 y tarde 13:30-19:30;
+ *     guardias de 12 h: diurna 07:30-19:30 y nocturna 19:30-07:30.
+ *   - Art. 20: no se programan guardias de 24 horas continuas (por eso no hay turno G24).
+ *   - Art. 22: 5 min de tolerancia; tardanza de 6-10 min descuenta 10, de 11-20 descuenta 20, de 21-30
+ *     descuenta 30; desde el minuto 31 es inasistencia injustificada. Rige igual para la sede, los
+ *     turnos manana y tarde y las guardias. Art. 23 b): salir antes de la hora sin autorizacion es
+ *     inasistencia.
  */
 class CatalogosSeeder extends Seeder
 {
@@ -196,51 +202,58 @@ class CatalogosSeeder extends Seeder
         ]);
 
         $tablaId = (int) DB::table('Configuracion.TablaTolerancia')->where('TablaToleranciaCodigo', 'RIT_GENERAL')->value('TablaToleranciaId');
+
+        // [tipo, desde, hasta, minutos de descuento, es inasistencia, descripcion]. Minutos medidos desde la hora de ingreso del turno.
         $tramos = [
-            [1, 5, 0.00, 'Dentro de la tolerancia'],
-            [6, 20, 1.00, 'Tardanza leve: descuento proporcional'],
-            [21, 60, 1.50, 'Tardanza grave'],
-            [61, null, 2.00, 'Tardanza muy grave / se evalua como inasistencia'],
+            ['TARDANZA', 1, 5, 0, 0, 'Tolerancia: sin descuento'],
+            ['TARDANZA', 6, 10, 10, 0, 'Tardanza: descuento equivalente a 10 minutos'],
+            ['TARDANZA', 11, 20, 20, 0, 'Tardanza: descuento equivalente a 20 minutos'],
+            ['TARDANZA', 21, 30, 30, 0, 'Tardanza: descuento equivalente a 30 minutos'],
+            ['TARDANZA', 31, null, null, 1, 'Inasistencia injustificada (a partir del minuto 31)'],
+            ['SALIDA_ANTICIPADA', 1, null, null, 1, 'Salir antes de la hora sin autorizacion es inasistencia (Art. 23 b)'],
         ];
-        foreach ($tramos as [$desde, $hasta, $factor, $descripcion]) {
+        foreach ($tramos as [$tipo, $desde, $hasta, $descuento, $esInasistencia, $descripcion]) {
             $existe = DB::table('Configuracion.TramoTolerancia')
                 ->where('TablaToleranciaId', $tablaId)
-                ->where('TramoToleranciaTipo', 'TARDANZA')
+                ->where('TramoToleranciaTipo', $tipo)
                 ->where('TramoToleranciaMinutosDesde', $desde)
                 ->exists();
             if (! $existe) {
                 DB::table('Configuracion.TramoTolerancia')->insert([
                     'TablaToleranciaId' => $tablaId,
-                    'TramoToleranciaTipo' => 'TARDANZA',
+                    'TramoToleranciaTipo' => $tipo,
                     'TramoToleranciaMinutosDesde' => $desde,
                     'TramoToleranciaMinutosHasta' => $hasta,
-                    'TramoToleranciaFactorDescuento' => $factor,
+                    'TramoToleranciaMinutosDescuento' => $descuento,
+                    'TramoToleranciaEsInasistencia' => $esInasistencia,
                     'TramoToleranciaDescripcion' => $descripcion,
                 ]);
             }
         }
 
+        // [jornada, codigo, nombre, entrada, salida, refrigerio, es guardia]
         $turnos = [
-            ['ADMIN', 'ADM-D', 'Administrativo diurno 07:45-15:45', '07:45', '15:45', 0],
-            ['ASISTENC', 'M', 'Manana 07:00-13:00', '07:00', '13:00', 0],
-            ['ASISTENC', 'T', 'Tarde 13:00-19:00', '13:00', '19:00', 0],
-            ['GUARDIA', 'N', 'Noche 19:00-07:00', '19:00', '07:00', 1],
-            ['GUARDIA', 'G12-D', 'Guardia diurna 12h 07:00-19:00', '07:00', '19:00', 1],
-            ['GUARDIA', 'G24', 'Guardia 24 horas', '08:00', '08:00', 1],
+            ['ADMIN', 'ADM-D', 'Administrativo sede 07:30-15:30', '07:30', '15:30', 45, 0],
+            ['ASISTENC', 'M', 'Mañana 07:30-13:30', '07:30', '13:30', 0, 0],
+            ['ASISTENC', 'T', 'Tarde 13:30-19:30', '13:30', '19:30', 0, 0],
+            ['GUARDIA', 'N', 'Guardia nocturna 19:30-07:30', '19:30', '07:30', 0, 1],
+            ['GUARDIA', 'G12-D', 'Guardia diurna 07:30-19:30', '07:30', '19:30', 0, 1],
         ];
         $this->sembrar('Configuracion.Turno', 'TurnoCodigo', array_map(fn (array $t) => [
             'TipoJornadaId' => $jornadas[$t[0]],
+            'TablaToleranciaId' => $tablaId,
             'TurnoCodigo' => $t[1],
             'TurnoNombre' => $t[2],
             'TurnoHoraEntrada' => $t[3],
             'TurnoHoraSalida' => $t[4],
             'TurnoToleranciaEntradaMinutos' => 5,
-            'TurnoEsGuardia' => $t[5],
+            'TurnoRefrigerioMinutos' => $t[5],
+            'TurnoEsGuardia' => $t[6],
         ], $turnos));
 
-        // Horario administrativo base (plantilla de ejemplo): 07:45-15:45 de lunes a viernes.
+        // Horario administrativo de la sede (RIT Art. 16.1): 07:30-15:30 de lunes a viernes.
         $this->sembrar('Configuracion.Horario', 'HorarioCodigo', [
-            ['TipoJornadaId' => $jornadas['ADMIN'], 'HorarioCodigo' => 'HOR-ADM-LV', 'HorarioNombre' => 'Administrativo Lunes a Viernes', 'HorarioDescripcion' => '07:45 a 15:45 de lunes a viernes'],
+            ['TipoJornadaId' => $jornadas['ADMIN'], 'HorarioCodigo' => 'HOR-ADM-LV', 'HorarioNombre' => 'Administrativo Lunes a Viernes', 'HorarioDescripcion' => '07:30 a 15:30 de lunes a viernes'],
         ]);
 
         $horarioId = (int) DB::table('Configuracion.Horario')->where('HorarioCodigo', 'HOR-ADM-LV')->value('HorarioId');

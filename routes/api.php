@@ -3,46 +3,54 @@
 use App\Http\Controllers\Api\AuditoriaController;
 use App\Http\Controllers\Api\CalendarioNoLaborableController;
 // Asistencia
+use App\Http\Controllers\Api\CargoController;
 use App\Http\Controllers\Api\ColegiaturaTipoController;
-use App\Http\Controllers\Api\ConceptoDescuentoController;
 // Biometria
+use App\Http\Controllers\Api\ConceptoDescuentoController;
 use App\Http\Controllers\Api\ConceptoJustificacionController;
-use App\Http\Controllers\Api\CondicionLaboralController;
 // Compensaciones
+use App\Http\Controllers\Api\CondicionLaboralController;
 use App\Http\Controllers\Api\DispositivoMarcacionController;
-use App\Http\Controllers\Api\DocumentoSustentoController;
 // Configuracion
+use App\Http\Controllers\Api\DocumentoSustentoController;
 use App\Http\Controllers\Api\EstablecimientoSaludController;
 use App\Http\Controllers\Api\EstadoAsistenciaController;
 use App\Http\Controllers\Api\GrupoOcupacionalController;
-// Consolidacion
+use App\Http\Controllers\Api\HorarioController;
 use App\Http\Controllers\Api\LogIntegracionController;
-// Disciplina
 use App\Http\Controllers\Api\MetodoMarcacionController;
-// Organizacion
 use App\Http\Controllers\Api\MicroredController;
+use App\Http\Controllers\Api\MotivoPapeletaController;
+use App\Http\Controllers\Api\ParametroJornadaController;
 use App\Http\Controllers\Api\ParametroSistemaController;
+// Consolidacion
 use App\Http\Controllers\Api\PeriodoAsistenciaController;
+// Disciplina
 use App\Http\Controllers\Api\PermisoController;
-// Personal
+// Organizacion
 use App\Http\Controllers\Api\ProfesionController;
 use App\Http\Controllers\Api\RegimenLaboralController;
 use App\Http\Controllers\Api\RolController;
+use App\Http\Controllers\Api\RolPermisoController;
+// Personal
 use App\Http\Controllers\Api\TablaToleranciaController;
 use App\Http\Controllers\Api\TipoCambioTurnoController;
 use App\Http\Controllers\Api\TipoCompensacionController;
-// Programacion
 use App\Http\Controllers\Api\TipoDocumentoIdentidadController;
 use App\Http\Controllers\Api\TipoEstablecimientoController;
-// Seguridad
 use App\Http\Controllers\Api\TipoFaltaDisciplinariaController;
+// Programacion
 use App\Http\Controllers\Api\TipoJornadaController;
 use App\Http\Controllers\Api\TipoLicenciaController;
-// Solicitudes
+// Seguridad
 use App\Http\Controllers\Api\TipoPapeletaController;
 use App\Http\Controllers\Api\TipoPeriodoProgramacionController;
-// Soporte
 use App\Http\Controllers\Api\TipoResponsabilidadController;
+// Solicitudes
+use App\Http\Controllers\Api\TrabajadorController;
+use App\Http\Controllers\Api\TramoToleranciaController;
+// Soporte
+use App\Http\Controllers\Api\TurnoController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -75,6 +83,19 @@ Route::apiResource('tipos-compensacion', TipoCompensacionController::class)
     ->parameters(['tipos-compensacion' => 'tipo']);
 
 /* ---- Configuracion ---- */
+Route::apiResource('turnos', TurnoController::class)
+    ->parameters(['turnos' => 'turno']);
+
+Route::apiResource('horarios', HorarioController::class)
+    ->parameters(['horarios' => 'horario']);
+
+Route::apiResource('parametros-jornada', ParametroJornadaController::class)
+    ->parameters(['parametros-jornada' => 'parametro']);
+
+// Sin baja logica (la tabla no tiene Estado): DELETE elimina el tramo.
+Route::apiResource('tramos-tolerancia', TramoToleranciaController::class)
+    ->parameters(['tramos-tolerancia' => 'tramo']);
+
 Route::apiResource('parametros-sistema', ParametroSistemaController::class)
     ->parameters(['parametros-sistema' => 'parametro']);
 
@@ -95,13 +116,11 @@ Route::apiResource('tipos-falta-disciplinaria', TipoFaltaDisciplinariaController
     ->parameters(['tipos-falta-disciplinaria' => 'tipo']);
 
 /* ---- Organizacion ---- */
-// Solo lectura (catalogo de consulta para selects); el CRUD completo es el modulo M01.
 Route::apiResource('microredes', MicroredController::class)
     ->parameters(['microredes' => 'microred']);
 
 Route::apiResource('establecimientos', EstablecimientoSaludController::class)
-    ->parameters(['establecimientos' => 'establecimiento'])
-    ->only(['index', 'show']);
+    ->parameters(['establecimientos' => 'establecimiento']);
 
 Route::apiResource('tipos-establecimiento', TipoEstablecimientoController::class)
     ->parameters(['tipos-establecimiento' => 'tipo']);
@@ -110,6 +129,12 @@ Route::apiResource('tipos-responsabilidad', TipoResponsabilidadController::class
     ->parameters(['tipos-responsabilidad' => 'tipo']);
 
 /* ---- Personal ---- */
+Route::apiResource('trabajadores', TrabajadorController::class)
+    ->parameters(['trabajadores' => 'trabajador']);
+
+Route::apiResource('cargos', CargoController::class)
+    ->parameters(['cargos' => 'cargo']);
+
 Route::apiResource('profesiones', ProfesionController::class)
     ->parameters(['profesiones' => 'profesion']);
 
@@ -144,10 +169,21 @@ Route::apiResource('auditoria', AuditoriaController::class)
 Route::apiResource('permisos', PermisoController::class)
     ->parameters(['permisos' => 'permiso']);
 
+// Asignacion de permisos de un rol. Las rutas extra van ANTES del apiResource para que no se confundan con {rol}.
+Route::get('roles/{rol}/permisos', [RolPermisoController::class, 'delRol'])->whereNumber('rol');
+Route::put('roles/{rol}/permisos', [RolPermisoController::class, 'sincronizar'])->whereNumber('rol');
+
+// Tabla puente: DELETE quita la fila (el permiso deja de estar asignado al rol).
+Route::apiResource('roles-permisos', RolPermisoController::class)
+    ->parameters(['roles-permisos' => 'asignacion']);
+
 Route::apiResource('roles', RolController::class)
     ->parameters(['roles' => 'rol']);
 
 /* ---- Solicitudes ---- */
+Route::apiResource('motivos-papeleta', MotivoPapeletaController::class)
+    ->parameters(['motivos-papeleta' => 'motivo']);
+
 Route::apiResource('tipos-licencia', TipoLicenciaController::class)
     ->parameters(['tipos-licencia' => 'tipo']);
 

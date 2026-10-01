@@ -13,6 +13,13 @@ R001__rollback_esquema_base.sql         ← su reversa, para migrate:rollback
 
 `V` de *version*, número de tres dígitos correlativo, doble guión bajo, descripción en `snake_case`. El número define el orden de aplicación.
 
+## Historial de scripts
+
+| Script | Qué hace |
+|---|---|
+| `V001__esquema_base.sql` | Estructura completa: 13 esquemas, 78 tablas, restricciones, índices y vistas (sin datos). |
+| `V002__tramo_tolerancia_segun_rit.sql` | `Configuracion.TramoTolerancia`: agrega `TramoToleranciaMinutosDescuento` y `TramoToleranciaEsInasistencia` para representar la escala real del Art. 22 del RIT (descuento fijo por tramo; desde el minuto 31, inasistencia). |
+
 ## Las dos reglas
 
 **1. Un script aplicado no se edita nunca.** El trait `App\Support\RunsSqlFile` guarda un SHA-256 de cada archivo en `dbo.SqlScriptAplicado`. Si editas uno ya aplicado, la próxima migración aborta. Está hecho a propósito: tú verías tu cambio, el resto del equipo nunca, y nadie se enteraría hasta que algo falle en producción.

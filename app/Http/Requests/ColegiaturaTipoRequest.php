@@ -14,7 +14,7 @@ class ColegiaturaTipoRequest extends CatalogoRequest
             'ColegiaturaTipoNombre' => $this->nombreUnico(ColegiaturaTipo::class, 'ColegiaturaTipoNombre', 150),
             'ColegiaturaTipoDescripcion' => $this->texto(300),
             'ColegiaturaTipoEntidad' => $this->texto(200),
-            'ProfesionId' => ['nullable', 'integer', $this->existe(Profesion::class)],
+            'ProfesionId' => ['nullable', 'integer', $this->existeActivo(Profesion::class, 'ProfesionEstado', 'ProfesionId')],
             'ColegiaturaTipoEstado' => $this->booleano(),
         ];
     }

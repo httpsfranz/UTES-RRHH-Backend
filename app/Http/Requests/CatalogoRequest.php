@@ -27,7 +27,12 @@ abstract class CatalogoRequest extends FormRequest
         'codigo' => 'código', 'nombre' => 'nombre', 'descripcion' => 'descripción', 'telefono' => 'teléfono',
         'direccion' => 'dirección', 'ubicacion' => 'ubicación', 'maximo' => 'máximo', 'dias' => 'días',
         'anio' => 'año', 'ip' => 'IP', 'eess' => 'establecimiento', 'id' => '', 'estado' => 'estado',
-        'ubigeo' => 'ubigeo', 'legal' => 'legal', 'base' => 'base',
+        'ubigeo' => 'ubigeo', 'legal' => 'legal', 'base' => 'base', 'correo' => 'correo electrónico',
+        'numero' => 'número', 'categoria' => 'categoría', 'jornada' => 'jornada', 'tolerancia' => 'tolerancia',
+        'minutos' => 'minutos', 'descuento' => 'descuento', 'vigencia' => 'vigencia', 'horas' => 'horas',
+        'diarias' => 'diarias', 'semanales' => 'semanales', 'mensuales' => 'mensuales', 'foto' => 'foto',
+        'nacimiento' => 'nacimiento', 'apellido' => 'apellido', 'medianoche' => 'medianoche', 'duracion' => 'duración',
+        'inasistencia' => 'inasistencia', 'refrigerio' => 'refrigerio', 'tipo' => 'tipo', 'es' => '',
     ];
 
     public function authorize(): bool
@@ -91,6 +96,23 @@ abstract class CatalogoRequest extends FormRequest
     protected function existe(string $modelo): Exists
     {
         return Rule::exists($modelo, (new $modelo)->getKeyName());
+    }
+
+    /**
+     * FOREIGN KEY a un registro ACTIVO: no se puede asignar algo dado de baja. Si el registro que se
+     * edita ya apunta a uno inactivo, ese valor se sigue aceptando (un PATCH que reenvia el formulario
+     * completo no debe fallar por un dato que el usuario no toco).
+     *
+     * @param  class-string<Model>  $modelo
+     */
+    protected function existeActivo(string $modelo, string $columnaEstado, string $campo): Exists
+    {
+        $pk = (new $modelo)->getKeyName();
+        $actual = $this->registro()?->getAttribute($campo);
+
+        return Rule::exists($modelo, $pk)->where(fn ($q) => $q->where(
+            fn ($w) => $w->where($columnaEstado, 1)->when($actual !== null, fn ($w) => $w->orWhere($pk, $actual))
+        ));
     }
 
     /**
@@ -177,6 +199,12 @@ abstract class CatalogoRequest extends FormRequest
             ))) ?: strtolower($campo);
         }
 
-        return ['EessId' => 'establecimiento', 'MicroredId' => 'microred', 'ProfesionId' => 'profesión'] + $atributos;
+        return [
+            'EessId' => 'establecimiento', 'MicroredId' => 'microred', 'ProfesionId' => 'profesión',
+            'TipoDocumentoIdentidadId' => 'tipo de documento', 'GrupoOcupacionalId' => 'grupo ocupacional',
+            'TipoJornadaId' => 'tipo de jornada', 'TablaToleranciaId' => 'tabla de tolerancia',
+            'TipoPapeletaId' => 'tipo de papeleta', 'RolId' => 'rol', 'PermisoId' => 'permiso',
+            'TipoEstablecimientoId' => 'tipo de establecimiento',
+        ] + $atributos;
     }
 }

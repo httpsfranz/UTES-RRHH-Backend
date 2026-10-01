@@ -16,7 +16,7 @@ return [
     'date' => 'El campo :attribute debe ser una fecha válida.',
     'date_format' => 'El campo :attribute debe tener el formato :format (por ejemplo 2026-07-28).',
     'digits' => 'El campo :attribute debe tener exactamente :digits dígitos.',
-    'exists' => 'El :attribute seleccionado no existe.',
+    'exists' => 'El :attribute seleccionado no existe o está inactivo.',
     'in' => 'El :attribute seleccionado no es válido.',
     'unique' => 'Ya existe un registro con ese :attribute.',
     'after_or_equal' => 'El campo :attribute debe ser una fecha posterior o igual a :date.',

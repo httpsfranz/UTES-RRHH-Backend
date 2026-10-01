@@ -83,6 +83,29 @@ class SeedersTest extends TestCase
         $this->assertLessThanOrEqual(8, $conteos['Configuracion.TipoJornada']);
     }
 
+    public function test_todos_los_modulos_de_nivel_1_tienen_datos_para_probar(): void
+    {
+        $conteos = $this->conteos();
+        $nivel1 = [
+            'Organizacion.EstablecimientoSalud', 'Personal.Trabajador', 'Personal.Cargo', 'Configuracion.Turno',
+            'Configuracion.Horario', 'Configuracion.ParametroJornada', 'Configuracion.TramoTolerancia',
+            'Solicitudes.MotivoPapeleta', 'Seguridad.RolPermiso',
+        ];
+
+        foreach ($nivel1 as $tabla) {
+            $this->assertGreaterThanOrEqual(1, $conteos[$tabla], "{$tabla} quedo sin datos iniciales.");
+        }
+        foreach (['Organizacion.EstablecimientoSalud', 'Personal.Trabajador', 'Personal.Cargo', 'Solicitudes.MotivoPapeleta', 'Seguridad.RolPermiso'] as $tabla) {
+            $this->assertGreaterThan(8, $conteos[$tabla], "{$tabla} deberia tener mas de 8 filas.");
+        }
+        $this->assertLessThanOrEqual(8, $conteos['Configuracion.Turno']);
+        $this->assertLessThanOrEqual(8, $conteos['Configuracion.Horario']);
+
+        // Todos los horarios con detalle apuntan a turnos y los trabajadores a un tipo de documento valido (FK reales).
+        $this->assertGreaterThan(0, DB::table('Configuracion.HorarioDetalle')->count());
+        $this->assertSame(0, DB::table('Personal.Trabajador')->whereNotIn('TipoDocumentoIdentidadId', DB::table('Personal.TipoDocumentoIdentidad')->select('TipoDocumentoIdentidadId'))->count());
+    }
+
     public function test_hay_registros_activos_e_inactivos_y_relaciones_validas(): void
     {
         foreach (['Organizacion.Microred' => 'MicroredEstado', 'Biometria.DispositivoMarcacion' => 'DispositivoMarcacionEstado', 'Seguridad.Permiso' => 'PermisoEstado'] as $tabla => $columna) {

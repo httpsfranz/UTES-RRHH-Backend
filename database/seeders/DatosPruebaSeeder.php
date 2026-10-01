@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Datos de prueba para recorrer TODOS los modulos de Nivel 0 y sus relaciones
- * (Microred -> EESS -> Dispositivo, Rol <-> Permiso, etc.). Se suma a lo que siembra
+ * (Microred -> EESS -> Dispositivo, Trabajador, Cargo, Horario -> Turno, Rol <-> Permiso, etc.). Se suma a lo que siembra
  * CatalogosSeeder; nunca debe correr en produccion (DatabaseSeeder ya lo impide).
  *
  * Los volumenes son deliberados: hay modulos con MUCHOS registros (microredes, permisos,
@@ -27,8 +27,13 @@ class DatosPruebaSeeder extends Seeder
     {
         $this->microredes();
         $this->establecimientos();
-        $this->tablasDeTolerancia();
+        $this->escalaDeEjemplo();
         $this->dispositivos();
+        $this->cargos();
+        $this->trabajadores();
+        $this->horarios();
+        $this->parametrosDeJornada();
+        $this->motivosDePapeleta();
         $this->calendarioNoLaborable();
         $this->periodosDeAsistencia();
         $this->permisosYRoles();
@@ -93,11 +98,12 @@ class DatosPruebaSeeder extends Seeder
         ], $eess));
     }
 
-    private function tablasDeTolerancia(): void
+    private function escalaDeEjemplo(): void
     {
+        // La escala real del RIT es una sola (RIT_GENERAL, en CatalogosSeeder). Esta queda VACIA a proposito:
+        // sirve para probar el alta de tramos desde cero sin chocar con los de la escala oficial.
         $this->sembrar('Configuracion.TablaTolerancia', 'TablaToleranciaCodigo', [
-            ['TablaToleranciaCodigo' => 'RIT_TARDE', 'TablaToleranciaNombre' => 'Escala turno tarde (provisional)', 'TablaToleranciaDescripcion' => 'PROVISIONAL: pendiente de transcribir el Art. 22 del RIT para turno tarde'],
-            ['TablaToleranciaCodigo' => 'RIT_GUARDIA', 'TablaToleranciaNombre' => 'Escala de guardias (provisional)', 'TablaToleranciaDescripcion' => 'PROVISIONAL: pendiente de transcribir el Art. 22 del RIT para guardias', 'TablaToleranciaEstado' => 0],
+            ['TablaToleranciaCodigo' => 'ESCALA_PRUEBA', 'TablaToleranciaNombre' => 'Escala de ejemplo (prueba)', 'TablaToleranciaDescripcion' => 'Sin tramos: para probar el alta de tramos'],
         ]);
     }
 
@@ -124,6 +130,184 @@ class DatosPruebaSeeder extends Seeder
             'DispositivoMarcacionIp' => $d[5],
             'DispositivoMarcacionEstado' => $d[6],
         ], $dispositivos));
+    }
+
+    private function cargos(): void
+    {
+        $grupos = $this->ids('Personal.GrupoOcupacional', 'GrupoOcupacionalCodigo', 'GrupoOcupacionalId');
+
+        // [grupo, codigo|null, nombre, es jefatura, estado]
+        $cargos = [
+            ['FUNCIONARIO', 'CG-001', 'Director(a) Ejecutivo(a) de Red', 1, 1],
+            ['FUNCIONARIO', 'CG-002', 'Jefe(a) de Microred', 1, 1],
+            ['FUNCIONARIO', 'CG-003', 'Jefe(a) de Establecimiento de Salud', 1, 1],
+            ['PROFESIONAL', 'CG-010', 'Médico(a) Cirujano(a)', 0, 1],
+            ['PROFESIONAL', 'CG-011', 'Enfermero(a)', 0, 1],
+            ['PROFESIONAL', 'CG-012', 'Obstetra', 0, 1],
+            ['PROFESIONAL', 'CG-013', 'Odontólogo(a)', 0, 1],
+            ['PROFESIONAL', 'CG-014', 'Psicólogo(a)', 0, 1],
+            ['PROFESIONAL', 'CG-015', 'Nutricionista', 0, 1],
+            ['PROFESIONAL', 'CG-016', 'Químico(a) Farmacéutico(a)', 0, 1],
+            ['PROFESIONAL', 'CG-017', 'Tecnólogo(a) Médico(a)', 0, 1],
+            ['PROF_ADM', 'CG-020', 'Contador(a)', 0, 1],
+            ['PROF_ADM', 'CG-021', 'Abogado(a)', 0, 1],
+            ['PROF_ADM', 'CG-022', 'Analista de Recursos Humanos', 0, 1],
+            ['PROF_ADM', 'CG-023', 'Responsable de Control de Asistencia y Permanencia', 1, 1],
+            ['TECNICO', 'CG-030', 'Técnico(a) en Enfermería', 0, 1],
+            ['TECNICO', 'CG-031', 'Técnico(a) Administrativo(a)', 0, 1],
+            ['TECNICO', 'CG-032', 'Técnico(a) de Laboratorio', 0, 1],
+            ['AUXILIAR', 'CG-040', 'Auxiliar Administrativo(a)', 0, 1],
+            ['AUXILIAR', null, 'Vigilante de Portería', 0, 1],
+            ['ASISTENCIAL', null, 'Personal asistencial de apoyo', 0, 1],
+            ['TECNICO', 'CG-099', 'Cargo en desuso (prueba)', 0, 0],
+        ];
+        $this->sembrar('Personal.Cargo', 'CargoNombre', array_map(fn (array $c) => [
+            'GrupoOcupacionalId' => $grupos[$c[0]],
+            'CargoCodigo' => $c[1],
+            'CargoNombre' => $c[2],
+            'CargoEsJefatura' => $c[3],
+            'CargoEstado' => $c[4],
+        ], $cargos));
+    }
+
+    private function trabajadores(): void
+    {
+        $tipos = $this->ids('Personal.TipoDocumentoIdentidad', 'TipoDocumentoIdentidadCodigo', 'TipoDocumentoIdentidadId');
+        $profesiones = $this->ids('Personal.Profesion', 'ProfesionCodigo', 'ProfesionId');
+
+        // Personas FICTICIAS. Los documentos 700000NN no corresponden a nadie.
+        // [tipo, numero, nombres, ap. paterno, ap. materno, sexo, nacimiento, profesion|null, correo|null, telefono|null, estado]
+        $personas = [
+            ['DNI', '70000001', 'María Elena', 'Quispe', 'Huamán', 'F', '1985-03-14', 'ENFERMERIA', 'maria.quispe@ejemplo.pe', '991000001', 1],
+            ['DNI', '70000002', 'Carlos Alberto', 'Rojas', 'Vásquez', 'M', '1979-11-02', 'MEDICO', 'carlos.rojas@ejemplo.pe', '991000002', 1],
+            ['DNI', '70000003', 'Lucía Fernanda', 'Castillo', 'Díaz', 'F', '1990-07-21', 'OBSTETRICIA', 'lucia.castillo@ejemplo.pe', '991000003', 1],
+            ['DNI', '70000004', 'José Luis', 'Paredes', null, 'M', '1982-01-30', 'ODONTOLOGIA', null, '991000004', 1],
+            ['DNI', '70000005', 'Rosa Amelia', 'Vargas', 'Salazar', 'F', '1975-09-09', 'PSICOLOGIA', 'rosa.vargas@ejemplo.pe', null, 1],
+            ['DNI', '70000006', 'Miguel Ángel', 'Torres', 'León', 'M', '1988-05-17', 'TEC_ENF', null, '991000006', 1],
+            ['DNI', '70000007', 'Ana Patricia', 'Mendoza', 'Ruiz', 'F', '1993-12-25', 'NUTRICION', 'ana.mendoza@ejemplo.pe', '991000007', 1],
+            ['DNI', '70000008', 'Pedro Pablo', 'Gutiérrez', 'Arce', 'M', '1970-04-03', 'CONTABILIDAD', 'pedro.gutierrez@ejemplo.pe', '991000008', 1],
+            ['DNI', '70000009', 'Jenny Karina', 'Alva', 'Chávez', 'F', '1995-08-12', 'FARMACIA', 'jenny.alva@ejemplo.pe', '991000009', 1],
+            ['DNI', '70000010', 'Víctor Hugo', 'Sánchez', 'Mori', 'M', '1968-06-28', 'SIN_PROF', null, null, 1],
+            ['DNI', '70000011', 'Gloria Isabel', "D'Angelo", 'Pérez', 'F', '1984-10-05', 'TRABSOCIAL', 'gloria.dangelo@ejemplo.pe', '991000011', 1],
+            ['DNI', '70000012', 'Luis Fernando', 'Cruz', 'Neyra', 'M', '1991-02-19', 'TEC_LAB', null, '991000012', 1],
+            ['CE', '001234567', 'Andrés Felipe', 'Moreno', 'Castro', 'M', '1987-03-08', 'MEDICO', 'andres.moreno@ejemplo.pe', '991000013', 1],
+            ['PAS', 'AB123456', 'Elena', 'Petrova', null, 'F', '1989-09-30', 'ENFERMERIA', null, null, 1],
+            // Dado de baja: permite probar el filtro de estado y la reactivacion.
+            ['DNI', '70000099', 'Juan Carlos', 'Retirado', 'Prueba', 'M', '1972-12-12', null, null, null, 0],
+        ];
+
+        foreach ($personas as [$tipo, $numero, $nombres, $paterno, $materno, $sexo, $nacimiento, $profesion, $correo, $telefono, $estado]) {
+            if (DB::table('Personal.Trabajador')->where(['TipoDocumentoIdentidadId' => $tipos[$tipo], 'TrabajadorNumeroDocumento' => $numero])->exists()) {
+                continue;
+            }
+            DB::table('Personal.Trabajador')->insert([
+                'TipoDocumentoIdentidadId' => $tipos[$tipo],
+                'ProfesionId' => $profesion === null ? null : $profesiones[$profesion],
+                'TrabajadorNumeroDocumento' => $numero,
+                'TrabajadorNombres' => $nombres,
+                'TrabajadorApellidoPaterno' => $paterno,
+                'TrabajadorApellidoMaterno' => $materno,
+                'TrabajadorSexo' => $sexo,
+                'TrabajadorFechaNacimiento' => $nacimiento,
+                'TrabajadorCorreo' => $correo,
+                'TrabajadorTelefono' => $telefono,
+                'TrabajadorDireccion' => 'Av. Prueba '.substr($numero, -2).', Trujillo',
+                'TrabajadorFechaRegistro' => '2026-09-01 08:00:00',
+                'TrabajadorEstado' => $estado,
+            ]);
+        }
+    }
+
+    private function horarios(): void
+    {
+        $jornadas = $this->ids('Configuracion.TipoJornada', 'TipoJornadaCodigo', 'TipoJornadaId');
+        $eess = $this->ids('Organizacion.EstablecimientoSalud', 'EessCodigo', 'EessId');
+
+        // [jornada, eess|null, codigo, nombre, descripcion, rotativo, estado]
+        $horarios = [
+            ['ASISTENC', null, 'HOR-ESS-M', 'Establecimientos - turno mañana (lun-sáb)', '07:30 a 13:30 de lunes a sábado (RIT Art. 16.2)', 0, 1],
+            ['ASISTENC', null, 'HOR-ESS-T', 'Establecimientos - turno tarde (lun-sáb)', '13:30 a 19:30 de lunes a sábado (RIT Art. 16.2)', 0, 1],
+            ['ASISTENC', 'EESS-LE-01', 'HOR-LE-ROT', 'C.S. La Esperanza - mañana y tarde alternados', 'Mañana lunes, miércoles y viernes; tarde martes, jueves y sábado', 1, 1],
+            ['ADMIN', 'SEDE-CSMC', 'HOR-CSMC-ADM', 'Salud Mental Comunitaria - administrativo', '07:30 a 15:30 de lunes a viernes', 0, 1],
+            ['ASISTENC', 'EESS-FM-01', 'HOR-FM-OLD', 'C.S. Florencia de Mora - horario anterior', 'Retirado (prueba de baja lógica)', 0, 0],
+        ];
+        $this->sembrar('Configuracion.Horario', 'HorarioCodigo', array_map(fn (array $h) => [
+            'TipoJornadaId' => $jornadas[$h[0]],
+            'EessId' => $h[1] === null ? null : $eess[$h[1]],
+            'HorarioCodigo' => $h[2],
+            'HorarioNombre' => $h[3],
+            'HorarioDescripcion' => $h[4],
+            'HorarioEsRotativo' => $h[5],
+            'HorarioEstado' => $h[6],
+        ], $horarios));
+
+        $horarioIds = $this->ids('Configuracion.Horario', 'HorarioCodigo', 'HorarioId');
+        $turnoIds = $this->ids('Configuracion.Turno', 'TurnoCodigo', 'TurnoId');
+
+        // [horario, turno, dias ISO 1=lunes ... 7=domingo]
+        $detalle = [
+            ['HOR-ESS-M', 'M', [1, 2, 3, 4, 5, 6]],
+            ['HOR-ESS-T', 'T', [1, 2, 3, 4, 5, 6]],
+            ['HOR-LE-ROT', 'M', [1, 3, 5]],
+            ['HOR-LE-ROT', 'T', [2, 4, 6]],
+            ['HOR-CSMC-ADM', 'ADM-D', [1, 2, 3, 4, 5]],
+        ];
+        foreach ($detalle as [$horario, $turno, $dias]) {
+            foreach ($dias as $dia) {
+                $fila = ['HorarioId' => $horarioIds[$horario], 'TurnoId' => $turnoIds[$turno], 'HorarioDetalleDia' => $dia];
+                if (! DB::table('Configuracion.HorarioDetalle')->where($fila)->exists()) {
+                    DB::table('Configuracion.HorarioDetalle')->insert($fila);
+                }
+            }
+        }
+    }
+
+    private function parametrosDeJornada(): void
+    {
+        $jornadas = $this->ids('Configuracion.TipoJornada', 'TipoJornadaCodigo', 'TipoJornadaId');
+
+        // [jornada, desde, hasta|null, diarias, semanales, mensuales, estado]
+        $parametros = [
+            // Vigencia anterior de las guardias (cerrada antes de la vigente de CatalogosSeeder, que arranca en 2020).
+            ['GUARDIA', '2015-01-01', '2019-12-31', 12, 36, 150, 1],
+            // Propuesta futura sin aprobar: queda inactiva, asi que no se superpone con la vigente.
+            ['ASISTENC', '2027-01-01', null, 6, 36, 150, 0],
+        ];
+        foreach ($parametros as [$jornada, $desde, $hasta, $diarias, $semanales, $mensuales, $estado]) {
+            if (DB::table('Configuracion.ParametroJornada')->where(['TipoJornadaId' => $jornadas[$jornada], 'ParametroJornadaVigenciaDesde' => $desde])->exists()) {
+                continue;
+            }
+            DB::table('Configuracion.ParametroJornada')->insert([
+                'TipoJornadaId' => $jornadas[$jornada],
+                'ParametroJornadaVigenciaDesde' => $desde,
+                'ParametroJornadaVigenciaHasta' => $hasta,
+                'ParametroJornadaHorasDiarias' => $diarias,
+                'ParametroJornadaHorasSemanales' => $semanales,
+                'ParametroJornadaHorasMensuales' => $mensuales,
+                'ParametroJornadaEstado' => $estado,
+            ]);
+        }
+    }
+
+    private function motivosDePapeleta(): void
+    {
+        $tipos = $this->ids('Solicitudes.TipoPapeleta', 'TipoPapeletaCodigo', 'TipoPapeletaId');
+
+        // [tipo, codigo, nombre, estado]
+        $motivos = [
+            ['COMISION', 'COM_SUPERVISION', 'Supervisión o monitoreo de establecimientos', 1],
+            ['PERM_OFICIAL', 'OFI_REUNION', 'Reunión convocada por la Dirección', 1],
+            ['PERM_SALUD', 'SAL_VACUNA', 'Vacunación del trabajador', 1],
+            ['ESTUDIOS', 'EST_EXAMEN', 'Examen académico', 1],
+            ['ESTUDIOS', 'EST_CLASE', 'Clases programadas', 1],
+            ['LACTANCIA', 'LAC_ANTIGUO', 'Registro anterior de lactancia (retirado)', 0],
+        ];
+        $this->sembrar('Solicitudes.MotivoPapeleta', 'MotivoPapeletaCodigo', array_map(fn (array $m) => [
+            'TipoPapeletaId' => $tipos[$m[0]],
+            'MotivoPapeletaCodigo' => $m[1],
+            'MotivoPapeletaNombre' => $m[2],
+            'MotivoPapeletaEstado' => $m[3],
+        ], $motivos));
     }
 
     private function calendarioNoLaborable(): void

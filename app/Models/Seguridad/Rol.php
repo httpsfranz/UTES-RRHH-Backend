@@ -3,6 +3,7 @@
 namespace App\Models\Seguridad;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Rol extends Model
 {
@@ -36,6 +37,11 @@ class Rol extends Model
         return $query->where('RolEstado', 1);
     }
 
-    // NOTA: Seguridad.RolPermiso y Seguridad.UsuarioRol dependen de esta tabla,
-    // pero sus modulos aun no existen (nivel 1+). No se declaran relaciones todavia.
+    // Permisos asignados (tabla puente Seguridad.RolPermiso).
+    public function rolPermisos(): HasMany
+    {
+        return $this->hasMany(RolPermiso::class, 'RolId', 'RolId');
+    }
+
+    // NOTA: Seguridad.UsuarioRol depende de esta tabla, pero su modulo aun no existe (nivel 3).
 }
