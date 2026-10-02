@@ -33,6 +33,10 @@ abstract class CatalogoRequest extends FormRequest
         'diarias' => 'diarias', 'semanales' => 'semanales', 'mensuales' => 'mensuales', 'foto' => 'foto',
         'nacimiento' => 'nacimiento', 'apellido' => 'apellido', 'medianoche' => 'medianoche', 'duracion' => 'duración',
         'inasistencia' => 'inasistencia', 'refrigerio' => 'refrigerio', 'tipo' => 'tipo', 'es' => '',
+        'password' => 'contraseña', 'airhsp' => 'código AIRHSP', 'plaza' => 'plaza', 'cese' => 'cese', 'motivo' => 'motivo',
+        'colegiatura' => 'colegiatura', 'habilitacion' => 'habilitación', 'vencimiento' => 'vencimiento', 'observacion' => 'observación',
+        'dedo' => 'dedo', 'referencia' => 'referencia', 'aceptado' => 'consentimiento', 'version' => 'versión', 'orden' => 'orden',
+        'dia' => 'día', 'hora' => 'hora', 'fecha' => 'fecha', 'inicio' => 'inicio', 'fin' => 'fin',
     ];
 
     public function authorize(): bool
@@ -65,6 +69,20 @@ abstract class CatalogoRequest extends FormRequest
     protected function valorEfectivo(string $campo): mixed
     {
         return $this->exists($campo) ? $this->input($campo) : $this->registro()?->getAttribute($campo);
+    }
+
+    /** valorEfectivo() de una columna DATE, normalizado a "Y-m-d" (o null). */
+    protected function fechaEfectiva(string $campo): ?string
+    {
+        $valor = $this->valorEfectivo($campo);
+
+        return $valor instanceof \DateTimeInterface ? $valor->format('Y-m-d') : ($valor === null || $valor === '' ? null : (string) $valor);
+    }
+
+    /** valorEfectivo() de una columna BIT como booleano (null = el DEFAULT de la base, que es 1 en los *Estado). */
+    protected function booleanoEfectivo(string $campo, bool $porDefecto = true): bool
+    {
+        return filter_var($this->valorEfectivo($campo) ?? $porDefecto, FILTER_VALIDATE_BOOLEAN);
     }
 
     protected function esCreacion(): bool
@@ -204,7 +222,11 @@ abstract class CatalogoRequest extends FormRequest
             'TipoDocumentoIdentidadId' => 'tipo de documento', 'GrupoOcupacionalId' => 'grupo ocupacional',
             'TipoJornadaId' => 'tipo de jornada', 'TablaToleranciaId' => 'tabla de tolerancia',
             'TipoPapeletaId' => 'tipo de papeleta', 'RolId' => 'rol', 'PermisoId' => 'permiso',
-            'TipoEstablecimientoId' => 'tipo de establecimiento',
+            'TipoEstablecimientoId' => 'tipo de establecimiento', 'RegimenLaboralId' => 'régimen laboral',
+            'CondicionLaboralId' => 'condición laboral', 'CargoId' => 'cargo', 'TrabajadorId' => 'trabajador',
+            'ColegiaturaTipoId' => 'tipo de colegiatura', 'DocumentoSustentoId' => 'documento de sustento',
+            'MetodoMarcacionId' => 'método de marcación', 'HorarioId' => 'horario', 'TurnoId' => 'turno',
+            'VinculoLaboralId' => 'vínculo laboral', 'UsuarioId' => 'usuario',
         ] + $atributos;
     }
 }

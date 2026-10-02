@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Datos de prueba para recorrer TODOS los modulos de Nivel 0 y sus relaciones
- * (Microred -> EESS -> Dispositivo, Trabajador, Cargo, Horario -> Turno, Rol <-> Permiso, etc.). Se suma a lo que siembra
+ * (Microred -> EESS -> Dispositivo, Trabajador -> Vinculo laboral / Usuario / Colegiatura / Biometria, Horario -> Turno, Rol <-> Permiso, etc.). Se suma a lo que siembra
  * CatalogosSeeder; nunca debe correr en produccion (DatabaseSeeder ya lo impide).
  *
  * Los volumenes son deliberados: hay modulos con MUCHOS registros (microredes, permisos,
@@ -39,6 +39,14 @@ class DatosPruebaSeeder extends Seeder
         $this->permisosYRoles();
         $this->parámetrosDelSistema();
         $this->documentosLogsYAuditoria();
+
+        // Nivel 2 (necesitan trabajadores, EESS, cargos, documentos de sustento y usuarios ya sembrados).
+        $this->vinculosLaborales();
+        $this->usuarios();
+        $this->descansosDeHorario();
+        $this->colegiaturas();
+        $this->biometria();
+        $this->ocurrenciasDePorteria();
     }
 
     private function microredes(): void
@@ -510,6 +518,244 @@ class DatosPruebaSeeder extends Seeder
             'AuditoriaFechaHora' => $a[6],
             'AuditoriaDireccionIp' => '192.168.10.50',
         ], $auditoría));
+    }
+
+    /** @return array<string,int> numero de documento => TrabajadorId */
+    private function trabajadoresPorDocumento(): array
+    {
+        return DB::table('Personal.Trabajador')->pluck('TrabajadorId', 'TrabajadorNumeroDocumento')->map(fn ($id) => (int) $id)->all();
+    }
+
+    private function vinculosLaborales(): void
+    {
+        $trabajadores = $this->trabajadoresPorDocumento();
+        $eess = $this->ids('Organizacion.EstablecimientoSalud', 'EessCodigo', 'EessId');
+        $cargos = $this->ids('Personal.Cargo', 'CargoNombre', 'CargoId');
+        $condiciones = $this->ids('Personal.CondicionLaboral', 'CondicionLaboralCodigo', 'CondicionLaboralId');
+        $regimenes = $this->ids('Personal.RegimenLaboral', 'RegimenLaboralCodigo', 'RegimenLaboralId');
+
+        // [documento, eess, cargo, condicion, regimen, codigo, airhsp|null, plaza|null, inicio, fin|null, motivo de cese|null]
+        // Las condiciones que exigen AIRHSP (nombrado, contratado, CAS, SERUMS remunerado) lo traen; el resto no.
+        $vinculos = [
+            ['70000001', 'EESS-LE-01', 'Enfermero(a)', 'NOMBRADO', 'DL276', 'VL-0001', '100001', 'P-0101', '2012-03-01', null, null],
+            ['70000002', 'EESS-EP-01', 'Médico(a) Cirujano(a)', 'NOMBRADO', 'DL1153', 'VL-0002', '100002', 'P-0102', '2010-06-15', null, null],
+            // Historial: contrato anterior ya concluido y vinculo CAS vigente, sin superponerse.
+            ['70000003', 'EESS-FM-01', 'Obstetra', 'CONTRATADO', 'DL276', 'VL-0003A', '100013', null, '2018-01-01', '2020-07-31', 'Término de contrato'],
+            ['70000003', 'EESS-FM-01', 'Obstetra', 'CAS', 'DL1057', 'VL-0003', '100003', null, '2020-08-01', null, null],
+            ['70000004', 'EESS-EP-02', 'Odontólogo(a)', 'CONTRATADO', 'DL276', 'VL-0004', '100004', 'P-0104', '2019-04-01', null, null],
+            ['70000005', 'SEDE-CSMC', 'Psicólogo(a)', 'CAS', 'DL1057', 'VL-0005', '100005', null, '2021-02-01', null, null],
+            ['70000006', 'EESS-LE-02', 'Técnico(a) en Enfermería', 'NOMBRADO', 'DL276', 'VL-0006', '100006', 'P-0106', '2008-09-01', null, null],
+            ['70000007', 'EESS-HU-01', 'Nutricionista', 'SERUMS_REM', 'DL1153', 'VL-0007', '100007', null, '2026-03-01', null, null],
+            ['70000008', 'SEDE-RRHH', 'Contador(a)', 'NOMBRADO', 'DL276', 'VL-0008', '100008', 'P-0108', '2005-01-10', null, null],
+            ['70000009', 'EESS-VL-01', 'Químico(a) Farmacéutico(a)', 'CAS', 'DL1057', 'VL-0009', '100009', null, '2022-05-02', null, null],
+            ['70000010', 'SEDE-RRHH', 'Vigilante de Portería', 'TERCEROS', 'OTRO', 'VL-0010', null, null, '2023-01-02', null, null],
+            ['70000011', 'SEDE-RRHH', 'Analista de Recursos Humanos', 'CAS', 'DL1057', 'VL-0011', '100011', null, '2020-10-01', null, null],
+            ['70000012', 'EESS-MO-01', 'Técnico(a) de Laboratorio', 'CONTRATADO', 'DL276', 'VL-0012', '100012', null, '2024-02-01', null, null],
+            ['001234567', 'EESS-LA-01', 'Médico(a) Cirujano(a)', 'DESTACADO', 'OTRO', 'VL-0013', null, null, '2026-01-15', null, null],
+            ['AB123456', 'EESS-SA-01', 'Enfermero(a)', 'SERUMS_EQUIV', 'DL1153', 'VL-0014', null, null, '2026-04-01', null, null],
+            ['70000099', 'EESS-LE-01', 'Técnico(a) Administrativo(a)', 'CONTRATADO', 'DL276', 'VL-0099', '100099', null, '2022-01-03', '2024-06-30', 'Renuncia voluntaria'],
+        ];
+
+        $this->sembrar('Personal.VinculoLaboral', 'VinculoLaboralCodigo', array_map(fn (array $v) => [
+            'TrabajadorId' => $trabajadores[$v[0]],
+            'EessId' => $eess[$v[1]],
+            'CargoId' => $cargos[$v[2]],
+            'CondicionLaboralId' => $condiciones[$v[3]],
+            'RegimenLaboralId' => $regimenes[$v[4]],
+            'VinculoLaboralCodigo' => $v[5],
+            'VinculoLaboralCodigoAirhsp' => $v[6],
+            'VinculoLaboralNumeroPlaza' => $v[7],
+            'VinculoLaboralFechaInicio' => $v[8],
+            'VinculoLaboralFechaFin' => $v[9],
+            'VinculoLaboralMotivoCese' => $v[10],
+        ], $vinculos));
+    }
+
+    private function usuarios(): void
+    {
+        $trabajadores = $this->trabajadoresPorDocumento();
+        // Hash bcrypt FIJO de la contrasena de prueba "Prueba2026*" (con Hash::make cada corrida daria otro y el
+        // estado inicial dejaria de ser reproducible).
+        $hash = '$2y$10$.IbfgeF.ziFNknf4iEwjO.KjBum5k.mLUNc22ZfSK5tfYmY.IYVb.';
+
+        // [documento, usuario, correo institucional|null, estado]
+        $usuarios = [
+            ['70000008', 'pgutierrez', 'pgutierrez@ejemplo.pe', 1],
+            ['70000001', 'mquispe', 'mquispe@ejemplo.pe', 1],
+            ['70000002', 'crojas', 'crojas@ejemplo.pe', 1],
+            ['70000003', 'lcastillo', 'lcastillo@ejemplo.pe', 1],
+            ['70000005', 'rvargas', null, 1],
+            ['70000010', 'vsanchez', null, 1],
+            ['70000011', 'gdangelo', 'gdangelo@ejemplo.pe', 1],
+            ['70000099', 'jretirado', null, 0],
+        ];
+        $this->sembrar('Seguridad.Usuario', 'UsuarioNombre', array_map(fn (array $u) => [
+            'TrabajadorId' => $trabajadores[$u[0]],
+            'UsuarioNombre' => $u[1],
+            'UsuarioPasswordHash' => $hash,
+            'UsuarioCorreo' => $u[2],
+            'UsuarioFechaCreacion' => '2026-09-02 09:00:00',
+            'UsuarioEstado' => $u[3],
+        ], $usuarios));
+    }
+
+    private function descansosDeHorario(): void
+    {
+        $horario = (int) DB::table('Configuracion.Horario')->where('HorarioCodigo', 'HOR-LE-ROT')->value('HorarioId');
+        $turno = (int) DB::table('Configuracion.Turno')->where('TurnoCodigo', 'T')->value('TurnoId');
+        $fila = ['HorarioId' => $horario, 'TurnoId' => $turno, 'HorarioDetalleDia' => 7];
+
+        // Domingo marcado como descanso del turno tarde (ejemplo de fila con HorarioDetalleEsDescanso = 1).
+        if (! DB::table('Configuracion.HorarioDetalle')->where($fila)->exists()) {
+            DB::table('Configuracion.HorarioDetalle')->insert($fila + ['HorarioDetalleEsDescanso' => 1]);
+        }
+    }
+
+    private function colegiaturas(): void
+    {
+        $trabajadores = $this->trabajadoresPorDocumento();
+        $tipos = $this->ids('Personal.ColegiaturaTipo', 'ColegiaturaTipoCodigo', 'ColegiaturaTipoId');
+        $documento = DB::table('Soporte.DocumentoSustento')->where('DocumentoSustentoNombre', 'constancia-capacitacion-0004.pdf')->value('DocumentoSustentoId');
+
+        // [documento, colegio, numero, colegiado, habilitado, vence|null, habilitado?, observacion|null]
+        $colegiaturas = [
+            ['70000001', 'CEP', '45123', '2010-05-10', '2026-01-01', '2026-12-31', 1, null],
+            ['70000002', 'CMP', '056789', '2009-03-20', '2026-01-01', '2026-12-31', 1, null],
+            ['70000003', 'COP', '23456', '2016-08-15', '2026-01-01', '2026-12-31', 1, null],
+            ['70000004', 'COD', '34567', '2014-02-02', '2026-01-01', '2026-12-31', 1, null],
+            // No renovo su habilitacion: el colegio ya no la reporta como habilitada (RIT, obligacion 37).
+            ['70000005', 'CPSP', '12987', '2005-11-30', '2025-01-01', '2025-12-31', 0, 'No renovó la habilitación 2026'],
+            ['70000007', 'CNP', '3456', '2018-06-01', '2026-02-01', '2027-01-31', 1, null],
+            // Habilitada pero con la fecha de vencimiento ya pasada: aparece como "vencida".
+            ['70000008', 'CCPP', '7654', '1998-09-09', '2025-07-01', '2026-06-30', 1, 'Pendiente de renovar'],
+            ['70000009', 'CQFP', '23123', '2019-10-10', '2026-01-01', null, 1, null],
+            ['70000011', 'CTSP', '4521', '2007-04-04', '2026-01-01', '2026-12-31', 1, null],
+            ['001234567', 'CMP', '098765', '2012-12-12', '2026-01-15', '2027-01-14', 1, null],
+            ['AB123456', 'CEP', '12349', '2015-05-05', '2026-04-01', '2027-03-31', 1, null],
+        ];
+
+        foreach ($colegiaturas as [$doc, $colegio, $numero, $colegiado, $habilitado, $vence, $esHabilitado, $observacion]) {
+            $fila = ['TrabajadorId' => $trabajadores[$doc], 'ColegiaturaTipoId' => $tipos[$colegio]];
+            if (DB::table('Personal.Colegiatura')->where($fila)->exists()) {
+                continue;
+            }
+            DB::table('Personal.Colegiatura')->insert($fila + [
+                'DocumentoSustentoId' => $doc === '70000007' ? $documento : null,
+                'ColegiaturaNumero' => $numero,
+                'ColegiaturaFechaColegiatura' => $colegiado,
+                'ColegiaturaFechaHabilitacion' => $habilitado,
+                'ColegiaturaFechaVencimiento' => $vence,
+                'ColegiaturaEsHabilitado' => $esHabilitado,
+                'ColegiaturaEsPrincipal' => 1,
+                'ColegiaturaObservacion' => $observacion,
+            ]);
+        }
+    }
+
+    private function biometria(): void
+    {
+        $trabajadores = $this->trabajadoresPorDocumento();
+        $metodos = $this->ids('Biometria.MetodoMarcacion', 'MetodoMarcacionCodigo', 'MetodoMarcacionId');
+
+        // Consentimientos: historial de eventos. Se insertan en orden cronologico (el vigente es el ultimo de cada trabajador).
+        // [documento, fecha, acepta?, version]
+        $consentimientos = [
+            ['70000001', '2026-03-02 10:00:00', 1, 'v1.0'], ['70000002', '2026-03-02 10:10:00', 1, 'v1.0'],
+            ['70000003', '2026-03-02 10:20:00', 1, 'v1.0'], ['70000004', '2026-03-02 10:30:00', 1, 'v1.0'],
+            ['70000005', '2026-03-03 09:00:00', 1, 'v1.0'], ['70000007', '2026-03-03 09:10:00', 1, 'v1.0'],
+            ['70000009', '2026-03-03 09:20:00', 1, 'v1.0'], ['001234567', '2026-03-04 11:00:00', 1, 'v1.0'],
+            // Acepto y luego REVOCO: su plantilla quedo inactiva.
+            ['70000012', '2026-03-05 09:00:00', 1, 'v1.0'], ['70000012', '2026-08-20 11:30:00', 0, 'v1.0'],
+            // No acepto nunca: no puede tener plantilla.
+            ['AB123456', '2026-04-10 15:00:00', 0, 'v1.0'],
+        ];
+        if (! DB::table('Biometria.ConsentimientoBiometrico')->exists()) {
+            foreach ($consentimientos as [$doc, $fecha, $acepta, $version]) {
+                DB::table('Biometria.ConsentimientoBiometrico')->insert([
+                    'TrabajadorId' => $trabajadores[$doc],
+                    'ConsentimientoBiometricoFecha' => $fecha,
+                    'ConsentimientoBiometricoAceptado' => $acepta,
+                    'ConsentimientoBiometricoVersion' => $version,
+                ]);
+            }
+        }
+
+        // Autorizaciones de metodo (el RIT fija el reconocimiento facial como unica forma de marcar; el resto se autoriza).
+        // [documento, metodo, inicio, fin|null, estado]
+        $autorizaciones = [
+            ['70000002', 'HUELLA', '2026-01-01', null, 1],
+            ['70000005', 'MANUAL', '2026-02-01', '2026-12-31', 1],
+            ['70000010', 'MANUAL', '2026-01-02', null, 1],
+            ['70000006', 'TARJETA', '2025-01-01', '2025-12-31', 1],   // vencida
+            ['001234567', 'CLAVE', '2026-02-01', null, 0],             // revocada
+        ];
+        foreach ($autorizaciones as [$doc, $metodo, $inicio, $fin, $estado]) {
+            $fila = ['TrabajadorId' => $trabajadores[$doc], 'MetodoMarcacionId' => $metodos[$metodo]];
+            if (! DB::table('Biometria.AutorizacionMetodo')->where($fila)->exists()) {
+                DB::table('Biometria.AutorizacionMetodo')->insert($fila + [
+                    'AutorizacionMetodoFechaInicio' => $inicio, 'AutorizacionMetodoFechaFin' => $fin, 'AutorizacionMetodoEstado' => $estado,
+                ]);
+            }
+        }
+
+        // Plantillas: solo de quienes consintieron. La referencia es un vector FICTICIO de 32 bytes (SHA-256 de un texto fijo).
+        // [documento, tipo, dedo|null, con referencia?, estado]
+        $plantillas = [
+            ['70000001', 'ROSTRO', null, true, 1], ['70000002', 'ROSTRO', null, true, 1], ['70000003', 'ROSTRO', null, true, 1],
+            ['70000004', 'ROSTRO', null, true, 1], ['70000005', 'ROSTRO', null, true, 1], ['70000007', 'ROSTRO', null, true, 1],
+            ['70000009', 'ROSTRO', null, true, 1], ['70000002', 'HUELLA', 'INDICE_DERECHO', true, 1],
+            ['70000012', 'ROSTRO', null, true, 0],        // desactivada al revocar el consentimiento
+            ['001234567', 'ROSTRO', null, false, 1],      // pendiente de enrolamiento: aun sin referencia
+        ];
+        if (! DB::table('Biometria.PlantillaBiometrica')->exists()) {
+            foreach ($plantillas as [$doc, $tipo, $dedo, $conReferencia, $estado]) {
+                $fila = [
+                    'TrabajadorId' => $trabajadores[$doc],
+                    'PlantillaBiometricaTipo' => $tipo,
+                    'PlantillaBiometricaDedo' => $dedo,
+                    'PlantillaBiometricaFechaRegistro' => '2026-03-10 10:00:00',
+                    'PlantillaBiometricaEstado' => $estado,
+                ];
+                if ($conReferencia) {
+                    $hex = bin2hex(hash('sha256', "plantilla-{$doc}-{$tipo}-{$dedo}", true));
+                    $fila['PlantillaBiometricaReferencia'] = DB::raw("CONVERT(VARBINARY(MAX), '{$hex}', 2)");
+                }
+                DB::table('Biometria.PlantillaBiometrica')->insert($fila);
+            }
+        }
+    }
+
+    private function ocurrenciasDePorteria(): void
+    {
+        $eess = $this->ids('Organizacion.EstablecimientoSalud', 'EessCodigo', 'EessId');
+        $vinculos = $this->ids('Personal.VinculoLaboral', 'VinculoLaboralCodigo', 'VinculoLaboralId');
+        $usuarios = $this->ids('Seguridad.Usuario', 'UsuarioNombre', 'UsuarioId');
+
+        // [eess, vinculo|null, usuario|null, fecha y hora, tipo, descripcion|null, estado]
+        $ocurrencias = [
+            ['EESS-LE-01', 'VL-0001', 'vsanchez', '2026-09-28 10:15:00', 'SALIDA_CON_PAPELETA', 'Salida por comisión de servicio con papeleta N.º 0123', 'ATENDIDO'],
+            ['EESS-LE-01', 'VL-0001', 'vsanchez', '2026-09-28 12:40:00', 'RETORNO_DE_PAPELETA', null, 'ATENDIDO'],
+            ['SEDE-RRHH', 'VL-0008', 'vsanchez', '2026-09-29 11:00:00', 'SALIDA_SIN_AUTORIZACION', 'Se retiró sin presentar papeleta de salida', 'REGISTRADO'],
+            ['SEDE-RRHH', 'VL-0011', 'vsanchez', '2026-09-29 15:50:00', 'EXCESO_DE_PAPELETA', 'Retornó 40 minutos después de las 3 horas de la papeleta', 'REGISTRADO'],
+            ['SEDE-RRHH', 'VL-0005', 'vsanchez', '2026-09-26 09:30:00', 'INGRESO_FUERA_DE_HORARIO', 'Ingreso en sábado con autorización escrita de la jefatura', 'REGISTRADO'],
+            ['EESS-EP-01', 'VL-0002', null, '2026-09-30 08:10:00', 'SALIDA_SIN_AUTORIZACION', 'Registro duplicado por error', 'ANULADO'],
+            ['SEDE-RRHH', null, 'vsanchez', '2026-09-30 07:55:00', 'OTRO', 'Corte de energía en el acceso principal; se usó el registro manual', 'ATENDIDO'],
+            ['EESS-LE-02', 'VL-0006', null, '2026-09-27 14:20:00', 'SALIDA_CON_PAPELETA', 'Permiso por salud', 'REGISTRADO'],
+        ];
+        if (DB::table('Solicitudes.OcurrenciaPorteria')->exists()) {
+            return;
+        }
+        foreach ($ocurrencias as [$sede, $vinculo, $usuario, $fecha, $tipo, $descripcion, $estado]) {
+            DB::table('Solicitudes.OcurrenciaPorteria')->insert([
+                'EessId' => $eess[$sede],
+                'VinculoLaboralId' => $vinculo === null ? null : $vinculos[$vinculo],
+                'UsuarioId' => $usuario === null ? null : $usuarios[$usuario],
+                'OcurrenciaPorteriaFechaHora' => $fecha,
+                'OcurrenciaPorteriaTipo' => $tipo,
+                'OcurrenciaPorteriaDescripcion' => $descripcion,
+                'OcurrenciaPorteriaEstado' => $estado,
+            ]);
+        }
     }
 
     /**

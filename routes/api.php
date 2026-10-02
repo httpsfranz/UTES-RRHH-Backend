@@ -1,56 +1,64 @@
 <?php
 
 use App\Http\Controllers\Api\AuditoriaController;
-use App\Http\Controllers\Api\CalendarioNoLaborableController;
+use App\Http\Controllers\Api\AutorizacionMetodoController;
 // Asistencia
+use App\Http\Controllers\Api\CalendarioNoLaborableController;
 use App\Http\Controllers\Api\CargoController;
-use App\Http\Controllers\Api\ColegiaturaTipoController;
 // Biometria
+use App\Http\Controllers\Api\ColegiaturaController;
+use App\Http\Controllers\Api\ColegiaturaTipoController;
+// Compensaciones
 use App\Http\Controllers\Api\ConceptoDescuentoController;
 use App\Http\Controllers\Api\ConceptoJustificacionController;
-// Compensaciones
-use App\Http\Controllers\Api\CondicionLaboralController;
-use App\Http\Controllers\Api\DispositivoMarcacionController;
 // Configuracion
+use App\Http\Controllers\Api\CondicionLaboralController;
+use App\Http\Controllers\Api\ConsentimientoBiometricoController;
+use App\Http\Controllers\Api\DispositivoMarcacionController;
 use App\Http\Controllers\Api\DocumentoSustentoController;
 use App\Http\Controllers\Api\EstablecimientoSaludController;
 use App\Http\Controllers\Api\EstadoAsistenciaController;
 use App\Http\Controllers\Api\GrupoOcupacionalController;
 use App\Http\Controllers\Api\HorarioController;
+use App\Http\Controllers\Api\HorarioDetalleController;
 use App\Http\Controllers\Api\LogIntegracionController;
 use App\Http\Controllers\Api\MetodoMarcacionController;
 use App\Http\Controllers\Api\MicroredController;
 use App\Http\Controllers\Api\MotivoPapeletaController;
+use App\Http\Controllers\Api\OcurrenciaPorteriaController;
 use App\Http\Controllers\Api\ParametroJornadaController;
 use App\Http\Controllers\Api\ParametroSistemaController;
-// Consolidacion
 use App\Http\Controllers\Api\PeriodoAsistenciaController;
-// Disciplina
 use App\Http\Controllers\Api\PermisoController;
-// Organizacion
+use App\Http\Controllers\Api\PlantillaBiometricaController;
+// Consolidacion
 use App\Http\Controllers\Api\ProfesionController;
+// Disciplina
 use App\Http\Controllers\Api\RegimenLaboralController;
+// Organizacion
 use App\Http\Controllers\Api\RolController;
 use App\Http\Controllers\Api\RolPermisoController;
-// Personal
 use App\Http\Controllers\Api\TablaToleranciaController;
 use App\Http\Controllers\Api\TipoCambioTurnoController;
+// Personal
 use App\Http\Controllers\Api\TipoCompensacionController;
 use App\Http\Controllers\Api\TipoDocumentoIdentidadController;
 use App\Http\Controllers\Api\TipoEstablecimientoController;
 use App\Http\Controllers\Api\TipoFaltaDisciplinariaController;
-// Programacion
 use App\Http\Controllers\Api\TipoJornadaController;
 use App\Http\Controllers\Api\TipoLicenciaController;
-// Seguridad
+// Programacion
 use App\Http\Controllers\Api\TipoPapeletaController;
 use App\Http\Controllers\Api\TipoPeriodoProgramacionController;
+// Seguridad
 use App\Http\Controllers\Api\TipoResponsabilidadController;
-// Solicitudes
 use App\Http\Controllers\Api\TrabajadorController;
 use App\Http\Controllers\Api\TramoToleranciaController;
-// Soporte
+// Solicitudes
 use App\Http\Controllers\Api\TurnoController;
+use App\Http\Controllers\Api\UsuarioController;
+// Soporte
+use App\Http\Controllers\Api\VinculoLaboralController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -69,6 +77,17 @@ Route::apiResource('conceptos-justificacion', ConceptoJustificacionController::c
     ->where(['concepto' => '[0-9]+']);
 
 /* ---- Biometria ---- */
+Route::apiResource('plantillas-biometricas', PlantillaBiometricaController::class)
+    ->parameters(['plantillas-biometricas' => 'plantilla']);
+
+// Historial inmutable de consentimientos: solo se consulta y se registran eventos nuevos (acepta/revoca).
+Route::apiResource('consentimientos-biometricos', ConsentimientoBiometricoController::class)
+    ->parameters(['consentimientos-biometricos' => 'consentimiento'])
+    ->only(['index', 'show', 'store']);
+
+Route::apiResource('autorizaciones-metodo', AutorizacionMetodoController::class)
+    ->parameters(['autorizaciones-metodo' => 'autorizacion']);
+
 Route::apiResource('metodos-marcacion', MetodoMarcacionController::class)
     ->parameters(['metodos-marcacion' => 'metodo']);
 
@@ -85,6 +104,14 @@ Route::apiResource('tipos-compensacion', TipoCompensacionController::class)
 /* ---- Configuracion ---- */
 Route::apiResource('turnos', TurnoController::class)
     ->parameters(['turnos' => 'turno']);
+
+// Grilla semanal de un horario. Las rutas extra van ANTES del apiResource para que no se confundan con {horario}.
+Route::get('horarios/{horario}/detalle', [HorarioDetalleController::class, 'delHorario'])->whereNumber('horario');
+Route::put('horarios/{horario}/detalle', [HorarioDetalleController::class, 'sincronizar'])->whereNumber('horario');
+
+// Detalle de horario: sin Estado, DELETE elimina la fila.
+Route::apiResource('horarios-detalle', HorarioDetalleController::class)
+    ->parameters(['horarios-detalle' => 'detalle']);
 
 Route::apiResource('horarios', HorarioController::class)
     ->parameters(['horarios' => 'horario']);
@@ -129,6 +156,12 @@ Route::apiResource('tipos-responsabilidad', TipoResponsabilidadController::class
     ->parameters(['tipos-responsabilidad' => 'tipo']);
 
 /* ---- Personal ---- */
+Route::apiResource('vinculos-laborales', VinculoLaboralController::class)
+    ->parameters(['vinculos-laborales' => 'vinculo']);
+
+Route::apiResource('colegiaturas', ColegiaturaController::class)
+    ->parameters(['colegiaturas' => 'colegiatura']);
+
 Route::apiResource('trabajadores', TrabajadorController::class)
     ->parameters(['trabajadores' => 'trabajador']);
 
@@ -169,6 +202,9 @@ Route::apiResource('auditoria', AuditoriaController::class)
 Route::apiResource('permisos', PermisoController::class)
     ->parameters(['permisos' => 'permiso']);
 
+Route::apiResource('usuarios', UsuarioController::class)
+    ->parameters(['usuarios' => 'usuario']);
+
 // Asignacion de permisos de un rol. Las rutas extra van ANTES del apiResource para que no se confundan con {rol}.
 Route::get('roles/{rol}/permisos', [RolPermisoController::class, 'delRol'])->whereNumber('rol');
 Route::put('roles/{rol}/permisos', [RolPermisoController::class, 'sincronizar'])->whereNumber('rol');
@@ -181,6 +217,10 @@ Route::apiResource('roles', RolController::class)
     ->parameters(['roles' => 'rol']);
 
 /* ---- Solicitudes ---- */
+// El estado es un ciclo de vida (REGISTRADO/ATENDIDO/ANULADO): DELETE anula la ocurrencia.
+Route::apiResource('ocurrencias-porteria', OcurrenciaPorteriaController::class)
+    ->parameters(['ocurrencias-porteria' => 'ocurrencia']);
+
 Route::apiResource('motivos-papeleta', MotivoPapeletaController::class)
     ->parameters(['motivos-papeleta' => 'motivo']);
 

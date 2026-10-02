@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use Closure;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -19,7 +20,8 @@ use Tests\TestCase;
  * Claves de cada especificacion:
  *   endpoint  ruta base                      table/pk/estado   tabla, PK y columna BIT (null = DELETE fisico, false = sin DELETE)
  *   create    payload valido (PascalCase)    keys              claves que devuelve el Resource
- *   fk        columna FK => [tabla, pk, filtro]  ids de filas sembradas que el payload necesita
+ *   fk        columna FK => [tabla, pk, filtro] (fila sembrada) o fn (CrudModulosTestCase $t): int (la crea el test)
+ *   anula     true = DELETE no desactiva un BIT sino que pasa el estado a ANULADO (ocurrencias)
  *   required  columnas NOT NULL              unique            columnas UNIQUE
  *   maxlen    largo maximo por columna       patch/patchKey    cambio parcial y clave del Resource que debe reflejarlo
  *   uniqueComposite  columna que reporta el error cuando el UNIQUE es compuesto (opcional)
@@ -28,6 +30,9 @@ use Tests\TestCase;
 abstract class CrudModulosTestCase extends TestCase
 {
     use DatabaseTransactions;
+
+    /** @var array<string,int> ids de FK ya resueltos en este test (una FK dinamica se crea una sola vez por test). */
+    private array $fkResueltas = [];
 
     /**
      * @return array<string,array<string,mixed>>
@@ -62,13 +67,51 @@ abstract class CrudModulosTestCase extends TestCase
     protected function payload(array $spec, array $override = []): array
     {
         $ids = [];
-        foreach ($spec['fk'] ?? [] as $columna => [$tabla, $pk, $filtro]) {
-            $id = DB::table($tabla)->where($filtro)->value($pk);
-            $this->assertNotNull($id, "Falta la fila sembrada {$tabla} ".json_encode($filtro).' (php artisan migrate:fresh --seed).');
-            $ids[$columna] = (int) $id;
+        foreach ($spec['fk'] ?? [] as $columna => $definicion) {
+            $ids[$columna] = $this->fkResueltas[$columna] ??= $definicion instanceof Closure
+                ? (int) $definicion($this)
+                : $this->idSembrado(...$definicion);
         }
 
         return $override + $spec['create'] + $ids;
+    }
+
+    private function idSembrado(string $tabla, string $pk, array $filtro): int
+    {
+        $id = DB::table($tabla)->where($filtro)->value($pk);
+        $this->assertNotNull($id, "Falta la fila sembrada {$tabla} ".json_encode($filtro).' (php artisan migrate:fresh --seed).');
+
+        return (int) $id;
+    }
+
+    /**
+     * Crea un trabajador activo SIN vinculo, usuario, colegiatura ni biometria: sirve de base para probar los
+     * modulos de Nivel 2 sin chocar con los trabajadores sembrados.
+     *
+     * @param  array<string,mixed>  $extra  columnas de Personal.Trabajador a pisar (p. ej. ProfesionId)
+     */
+    public function nuevoTrabajador(array $extra = []): int
+    {
+        return (int) DB::table('Personal.Trabajador')->insertGetId($extra + [
+            'TipoDocumentoIdentidadId' => $this->idSembrado('Personal.TipoDocumentoIdentidad', 'TipoDocumentoIdentidadId', ['TipoDocumentoIdentidadCodigo' => 'DNI']),
+            'TrabajadorNumeroDocumento' => (string) random_int(71000000, 78999999),
+            'TrabajadorNombres' => 'Prueba',
+            'TrabajadorApellidoPaterno' => 'Nivel',
+            'TrabajadorApellidoMaterno' => 'Dos',
+            'TrabajadorEstado' => 1,
+        ], 'TrabajadorId');
+    }
+
+    /** Registra un consentimiento biometrico del trabajador (aceptado o revocado) directamente en la base. */
+    public function conConsentimiento(int $trabajadorId, bool $acepta = true): int
+    {
+        DB::table('Biometria.ConsentimientoBiometrico')->insert([
+            'TrabajadorId' => $trabajadorId,
+            'ConsentimientoBiometricoAceptado' => $acepta ? 1 : 0,
+            'ConsentimientoBiometricoVersion' => 'v1.0',
+        ]);
+
+        return $trabajadorId;
     }
 
     /**
@@ -236,7 +279,10 @@ abstract class CrudModulosTestCase extends TestCase
         $this->deleteJson("{$spec['endpoint']}/{$id}")->assertOk()->assertJsonStructure(['mensaje']);
 
         $fila = DB::table($spec['table'])->where($spec['pk'], $id)->first();
-        if ($spec['estado'] === null) {
+        if ($spec['anula'] ?? false) {
+            $this->assertSame('ANULADO', $fila->{$spec['estado']});
+            $this->getJson("{$spec['endpoint']}/{$id}")->assertOk()->assertJsonPath('data.activo', false);
+        } elseif ($spec['estado'] === null) {
             $this->assertNull($fila, 'La tabla se elimina fisicamente.');
         } else {
             $this->assertNotNull($fila, 'La baja debe ser logica.');

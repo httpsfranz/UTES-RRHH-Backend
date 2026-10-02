@@ -33,5 +33,15 @@ return [
         'numeric' => 'El campo :attribute no debe ser mayor que :max.',
         'string' => 'El campo :attribute no debe superar los :max caracteres.',
     ],
+    'same' => 'Los campos :attribute y :other deben coincidir.',
+    'array' => 'El campo :attribute debe ser una lista.',
+    'present' => 'El campo :attribute debe estar presente.',
+    'distinct' => 'El campo :attribute tiene un valor repetido.',
+    'password' => [
+        'letters' => 'La :attribute debe contener al menos una letra.',
+        'mixed' => 'La :attribute debe contener mayúsculas y minúsculas.',
+        'numbers' => 'La :attribute debe contener al menos un número.',
+        'symbols' => 'La :attribute debe contener al menos un símbolo.',
+    ],
     'attributes' => [],
 ];

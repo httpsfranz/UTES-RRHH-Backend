@@ -106,6 +106,24 @@ class SeedersTest extends TestCase
         $this->assertSame(0, DB::table('Personal.Trabajador')->whereNotIn('TipoDocumentoIdentidadId', DB::table('Personal.TipoDocumentoIdentidad')->select('TipoDocumentoIdentidadId'))->count());
     }
 
+    public function test_todos_los_modulos_de_nivel_2_tienen_datos_para_probar(): void
+    {
+        $conteos = $this->conteos();
+        $nivel2 = [
+            'Personal.VinculoLaboral', 'Seguridad.Usuario', 'Configuracion.HorarioDetalle', 'Personal.Colegiatura',
+            'Biometria.PlantillaBiometrica', 'Biometria.ConsentimientoBiometrico', 'Biometria.AutorizacionMetodo',
+            'Solicitudes.OcurrenciaPorteria',
+        ];
+
+        foreach ($nivel2 as $tabla) {
+            $this->assertGreaterThanOrEqual(1, $conteos[$tabla], "{$tabla} quedo sin datos iniciales.");
+        }
+        foreach (['Personal.VinculoLaboral', 'Seguridad.Usuario', 'Personal.Colegiatura', 'Biometria.PlantillaBiometrica', 'Solicitudes.OcurrenciaPorteria'] as $tabla) {
+            $this->assertGreaterThanOrEqual(8, $conteos[$tabla], "{$tabla} deberia tener al menos 8 filas.");
+        }
+        $this->assertSame(0, DB::table('Seguridad.Usuario')->whereNull('UsuarioPasswordHash')->count());
+    }
+
     public function test_hay_registros_activos_e_inactivos_y_relaciones_validas(): void
     {
         foreach (['Organizacion.Microred' => 'MicroredEstado', 'Biometria.DispositivoMarcacion' => 'DispositivoMarcacionEstado', 'Seguridad.Permiso' => 'PermisoEstado'] as $tabla => $columna) {
