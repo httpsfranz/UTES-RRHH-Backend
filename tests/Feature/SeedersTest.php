@@ -124,6 +124,106 @@ class SeedersTest extends TestCase
         $this->assertSame(0, DB::table('Seguridad.Usuario')->whereNull('UsuarioPasswordHash')->count());
     }
 
+    public function test_todos_los_modulos_de_nivel_3_lote_a_tienen_datos_para_probar(): void
+    {
+        $conteos = $this->conteos();
+        foreach (['Asistencia.CargaAsistenciaManual', 'Asistencia.Marcacion', 'Asistencia.AsistenciaDiaria', 'Asistencia.JustificacionFalta', 'Soporte.Notificacion'] as $tabla) {
+            $this->assertGreaterThanOrEqual(4, $conteos[$tabla], "{$tabla} deberia tener al menos 4 filas.");
+        }
+        // Las justificaciones aprobadas dejan sus faltas enlazadas y ninguna marcacion apunta a una carga inexistente.
+        $this->assertSame(0, DB::table('Asistencia.AsistenciaDiaria')->whereNotNull('JustificacionFaltaId')
+            ->whereNotIn('JustificacionFaltaId', DB::table('Asistencia.JustificacionFalta')->where('JustificacionFaltaEstado', 'APROBADO')->select('JustificacionFaltaId'))->count());
+        $this->assertSame(0, DB::table('Asistencia.Marcacion')->whereNotNull('CargaAsistenciaManualId')
+            ->whereNotIn('CargaAsistenciaManualId', DB::table('Asistencia.CargaAsistenciaManual')->select('CargaAsistenciaManualId'))->count());
+    }
+
+    public function test_todos_los_modulos_de_nivel_3_lote_b_tienen_datos_para_probar(): void
+    {
+        $conteos = $this->conteos();
+        foreach (['Solicitudes.Papeleta', 'Solicitudes.Licencia', 'Solicitudes.DescansoMedico', 'Solicitudes.ConstatacionDomiciliaria'] as $tabla) {
+            $this->assertGreaterThanOrEqual(4, $conteos[$tabla], "{$tabla} deberia tener al menos 4 filas.");
+        }
+        // Cada estado del ciclo de aprobacion aparece al menos una vez, y toda solicitud resuelta por una persona la nombra.
+        foreach (['PENDIENTE', 'APROBADO', 'RECHAZADO', 'ANULADO'] as $estado) {
+            $this->assertGreaterThan(0, DB::table('Solicitudes.Papeleta')->where('PapeletaEstado', $estado)->count(), "Sin papeletas {$estado}");
+        }
+        $this->assertSame(0, DB::table('Solicitudes.Papeleta')->where('PapeletaEstado', 'APROBADO')->whereNull('UsuarioAutorizacionId')->count());
+    }
+
+    public function test_todos_los_modulos_de_nivel_3_lote_c_tienen_datos_para_probar(): void
+    {
+        $conteos = $this->conteos();
+        $tablas = [
+            'Programacion.ProgramacionPeriodo', 'Programacion.CargaProgramacion', 'Programacion.InformeGuardiaComunitaria', 'Personal.AsignacionHorario',
+            'Organizacion.ResponsableEess', 'Seguridad.UsuarioRol', 'Seguridad.UsuarioAmbito', 'Seguridad.SesionAcceso',
+        ];
+        foreach ($tablas as $tabla) {
+            $this->assertGreaterThanOrEqual(5, $conteos[$tabla], "{$tabla} deberia tener al menos 5 filas.");
+        }
+        // Una programacion publicada o cerrada tiene fecha de publicacion; un ambito nunca mezcla microred y EESS.
+        $this->assertSame(0, DB::table('Programacion.ProgramacionPeriodo')->whereIn('ProgramacionPeriodoEstado', ['PUBLICADA', 'CERRADA'])->whereNull('ProgramacionPeriodoFechaPublicacion')->count());
+        $this->assertSame(0, DB::table('Seguridad.UsuarioAmbito')->whereNotNull('MicroredId')->whereNotNull('EessId')->count());
+        // Cada tipo de ambito (Red, Microred, EESS) esta representado.
+        $this->assertGreaterThan(0, DB::table('Seguridad.UsuarioAmbito')->whereNull('MicroredId')->whereNull('EessId')->count());
+        $this->assertGreaterThan(0, DB::table('Seguridad.UsuarioAmbito')->whereNotNull('MicroredId')->count());
+        $this->assertGreaterThan(0, DB::table('Seguridad.UsuarioAmbito')->whereNotNull('EessId')->count());
+    }
+
+    public function test_todos_los_modulos_de_nivel_3_lote_d_tienen_datos_para_probar(): void
+    {
+        $conteos = $this->conteos();
+        $tablas = [
+            'Consolidacion.ConsolidadoAsistencia', 'Compensaciones.CompensacionHoraria', 'Vacaciones.PeriodoVacacional',
+            'Disciplina.ExpedientePad', 'Disciplina.SupervisionInopinada',
+        ];
+        foreach ($tablas as $tabla) {
+            $this->assertGreaterThanOrEqual(5, $conteos[$tabla], "{$tabla} deberia tener al menos 5 filas.");
+        }
+        // Reglas del RIT en los datos: sancion solo en expedientes resueltos, compensacion consumida sin horas pendientes,
+        // y los consolidados de un periodo cerrado estan cerrados.
+        $this->assertSame(0, DB::table('Disciplina.ExpedientePad')->where('ExpedientePadEstado', '<>', 'RESUELTO')->whereNotNull('ExpedientePadSancion')->count());
+        $this->assertSame(0, DB::table('Compensaciones.CompensacionHoraria')->where('CompensacionHorariaEstado', 'CONSUMIDO')->whereRaw('CompensacionHorariaHorasDevueltas < CompensacionHorariaHorasGeneradas')->count());
+        $this->assertSame(0, DB::table('Consolidacion.ConsolidadoAsistencia as c')->join('Consolidacion.PeriodoAsistencia as p', 'p.PeriodoAsistenciaId', '=', 'c.PeriodoAsistenciaId')
+            ->where('p.PeriodoAsistenciaEstado', 'CERRADO')->where('c.ConsolidadoAsistenciaEstado', '<>', 'CERRADO')->count());
+    }
+
+    public function test_todos_los_modulos_de_los_niveles_4_a_6_tienen_datos_para_probar(): void
+    {
+        $conteos = $this->conteos();
+        $tablas = [
+            'Programacion.ProgramacionTrabajador', 'Asistencia.AjusteMarcacion', 'Consolidacion.DetalleConsolidado', 'Compensaciones.LiquidacionDescuento',
+            'Vacaciones.RolVacacional', 'Programacion.TurnoProgramado', 'Compensaciones.DetalleLiquidacion', 'Vacaciones.GoceVacacional', 'Programacion.CambioTurno',
+        ];
+        foreach ($tablas as $tabla) {
+            $this->assertGreaterThanOrEqual(3, $conteos[$tabla], "{$tabla} deberia tener al menos 3 filas.");
+        }
+
+        // Cada estado del ciclo de vida esta representado, y el detalle sigue a su cabecera.
+        foreach ([
+            ['Programacion.ProgramacionTrabajador', 'ProgramacionTrabajadorEstado', ['BORRADOR', 'PUBLICADA', 'CERRADA', 'ANULADA']],
+            ['Programacion.TurnoProgramado', 'TurnoProgramadoEstado', ['PROGRAMADO', 'REPROGRAMADO', 'CUMPLIDO', 'ANULADO']],
+            ['Programacion.CambioTurno', 'CambioTurnoEstado', ['PENDIENTE', 'APROBADO', 'RECHAZADO', 'ANULADO']],
+            ['Asistencia.AjusteMarcacion', 'AjusteMarcacionEstado', ['PENDIENTE', 'APROBADO', 'RECHAZADO', 'ANULADO']],
+            ['Compensaciones.LiquidacionDescuento', 'LiquidacionDescuentoEstado', ['GENERADO', 'APROBADO', 'REMITIDO']],
+            ['Vacaciones.RolVacacional', 'RolVacacionalEstado', ['PROGRAMADO', 'GOZADO', 'REPROGRAMADO', 'ANULADO']],
+            ['Vacaciones.GoceVacacional', 'GoceVacacionalEstado', ['PENDIENTE', 'APROBADO', 'RECHAZADO', 'ANULADO']],
+        ] as [$tabla, $columna, $estados]) {
+            foreach ($estados as $estado) {
+                $this->assertGreaterThan(0, DB::table($tabla)->where($columna, $estado)->count(), "{$tabla} sin filas en {$estado}");
+            }
+        }
+        // Reglas del RIT en los datos: la programacion de un trabajador tiene el estado de su periodo, los turnos de una programacion
+        // anulada estan anulados y un trabajador solo se programa en su establecimiento.
+        $this->assertSame(0, DB::table('Programacion.ProgramacionTrabajador as t')->join('Programacion.ProgramacionPeriodo as p', 'p.ProgramacionPeriodoId', '=', 't.ProgramacionPeriodoId')
+            ->whereRaw("t.ProgramacionTrabajadorEstado <> CASE p.ProgramacionPeriodoEstado WHEN 'CERRADA' THEN 'CERRADA' WHEN 'ANULADA' THEN 'ANULADA' WHEN 'PUBLICADA' THEN 'PUBLICADA' ELSE 'BORRADOR' END")->count());
+        $this->assertSame(0, DB::table('Programacion.TurnoProgramado as u')->join('Programacion.ProgramacionTrabajador as t', 't.ProgramacionTrabajadorId', '=', 'u.ProgramacionTrabajadorId')
+            ->where('t.ProgramacionTrabajadorEstado', 'ANULADA')->where('u.TurnoProgramadoEstado', '<>', 'ANULADO')->count());
+        $this->assertSame(0, DB::table('Programacion.ProgramacionTrabajador as t')->join('Programacion.ProgramacionPeriodo as p', 'p.ProgramacionPeriodoId', '=', 't.ProgramacionPeriodoId')
+            ->join('Personal.VinculoLaboral as v', 'v.VinculoLaboralId', '=', 't.VinculoLaboralId')->whereColumn('v.EessId', '<>', 'p.EessId')->count());
+        // El detalle de una liquidacion suma su importe total, y el rol vacacional no pasa de los dias ganados del periodo.
+        $this->assertSame(0, DB::table('Vacaciones.PeriodoVacacional as p')->whereRaw("(SELECT COALESCE(SUM(r.RolVacacionalDias), 0) FROM Vacaciones.RolVacacional r WHERE r.PeriodoVacacionalId = p.PeriodoVacacionalId AND r.RolVacacionalEstado IN ('PROGRAMADO', 'GOZADO')) > p.PeriodoVacacionalDiasGanados")->count());
+    }
+
     public function test_hay_registros_activos_e_inactivos_y_relaciones_validas(): void
     {
         foreach (['Organizacion.Microred' => 'MicroredEstado', 'Biometria.DispositivoMarcacion' => 'DispositivoMarcacionEstado', 'Seguridad.Permiso' => 'PermisoEstado'] as $tabla => $columna) {

@@ -47,6 +47,10 @@ class DatosPruebaSeeder extends Seeder
         $this->colegiaturas();
         $this->biometria();
         $this->ocurrenciasDePorteria();
+
+        // Nivel 3 (asistencia, solicitudes, programacion, seguridad...) y niveles 4 a 6: necesitan todo lo anterior.
+        $this->call(DatosPruebaNivel3Seeder::class);
+        $this->call(DatosPruebaNivel4Seeder::class);
     }
 
     private function microredes(): void
@@ -737,7 +741,7 @@ class DatosPruebaSeeder extends Seeder
             ['EESS-LE-01', 'VL-0001', 'vsanchez', '2026-09-28 12:40:00', 'RETORNO_DE_PAPELETA', null, 'ATENDIDO'],
             ['SEDE-RRHH', 'VL-0008', 'vsanchez', '2026-09-29 11:00:00', 'SALIDA_SIN_AUTORIZACION', 'Se retiró sin presentar papeleta de salida', 'REGISTRADO'],
             ['SEDE-RRHH', 'VL-0011', 'vsanchez', '2026-09-29 15:50:00', 'EXCESO_DE_PAPELETA', 'Retornó 40 minutos después de las 3 horas de la papeleta', 'REGISTRADO'],
-            ['SEDE-RRHH', 'VL-0005', 'vsanchez', '2026-09-26 09:30:00', 'INGRESO_FUERA_DE_HORARIO', 'Ingreso en sábado con autorización escrita de la jefatura', 'REGISTRADO'],
+            ['SEDE-RRHH', 'VL-0005', 'vsanchez', '2026-09-26 09:30:00', 'OTRO', 'Ingreso en sábado con autorización escrita de la jefatura', 'REGISTRADO'],
             ['EESS-EP-01', 'VL-0002', null, '2026-09-30 08:10:00', 'SALIDA_SIN_AUTORIZACION', 'Registro duplicado por error', 'ANULADO'],
             ['SEDE-RRHH', null, 'vsanchez', '2026-09-30 07:55:00', 'OTRO', 'Corte de energía en el acceso principal; se usó el registro manual', 'ATENDIDO'],
             ['EESS-LE-02', 'VL-0006', null, '2026-09-27 14:20:00', 'SALIDA_CON_PAPELETA', 'Permiso por salud', 'REGISTRADO'],

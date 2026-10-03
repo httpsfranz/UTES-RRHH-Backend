@@ -35,6 +35,13 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         });
 
+        // Reglas de negocio que un Service rechaza (p. ej. "solo se pueden aprobar solicitudes pendientes").
+        $exceptions->render(function (DomainException $e, Request $request) {
+            if ($request->is('api/*')) {
+                return response()->json(['message' => $e->getMessage()], 422);
+            }
+        });
+
         $exceptions->render(function (QueryException $e, Request $request) {
             if ($request->is('api/*')) {
                 return ErroresDeBaseDeDatos::aRespuesta($e);

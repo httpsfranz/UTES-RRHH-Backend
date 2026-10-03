@@ -19,6 +19,7 @@ R001__rollback_esquema_base.sql         ← su reversa, para migrate:rollback
 |---|---|
 | `V001__esquema_base.sql` | Estructura completa: 13 esquemas, 78 tablas, restricciones, índices y vistas (sin datos). |
 | `V002__tramo_tolerancia_segun_rit.sql` | `Configuracion.TramoTolerancia`: agrega `TramoToleranciaMinutosDescuento` y `TramoToleranciaEsInasistencia` para representar la escala real del Art. 22 del RIT (descuento fijo por tramo; desde el minuto 31, inasistencia). |
+| `V003__vinculo_vigente_segundo_vinculo_medico.sql` | Elimina `UX_VinculoLaboral_Vigente`: el Art. 86 del RIT exceptúa al personal médico de la regla de un solo vínculo. La regla general la sigue aplicando `VinculoLaboralRequest`. |
 
 ## Las dos reglas
 

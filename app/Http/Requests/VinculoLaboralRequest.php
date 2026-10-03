@@ -70,6 +70,13 @@ class VinculoLaboralRequest extends CatalogoRequest
                 return;
             }
 
+            // RIT Art. 86: el personal medico (con o sin especialidad) puede tener un segundo vinculo, de forma
+            // excepcional y previa autorizacion de la Direccion General de Personal. La autorizacion aun no se
+            // modela en la base: aqui solo se exceptua al medico de la regla de no superposicion.
+            if ($this->esPersonalMedico()) {
+                return;
+            }
+
             $solapa = VinculoLaboral::query()
                 ->where('TrabajadorId', $this->valorEfectivo('TrabajadorId'))
                 ->where('VinculoLaboralEstado', 1)
@@ -82,5 +89,13 @@ class VinculoLaboralRequest extends CatalogoRequest
                 $validator->errors()->add('TrabajadorId', 'El trabajador ya tiene un vínculo laboral activo en esas fechas (RIT, Art. 86: no se admite doble percepción).');
             }
         });
+    }
+
+    private function esPersonalMedico(): bool
+    {
+        return Trabajador::query()
+            ->whereKey($this->valorEfectivo('TrabajadorId'))
+            ->whereHas('profesion', fn ($q) => $q->where('ProfesionCodigo', 'MEDICO'))
+            ->exists();
     }
 }

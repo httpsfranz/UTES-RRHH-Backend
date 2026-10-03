@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Support\HoraLocal;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Tests\Support\Nivel2Modulos;
@@ -71,6 +72,20 @@ class Nivel2CrudTest extends CrudModulosTestCase
         // Cerrar el primero con una fecha que invade al segundo tambien se rechaza.
         $this->patchJson("{$spec['endpoint']}/{$primero}", ['VinculoLaboralFechaFin' => '2026-07-15'])->assertStatus(422);
         $this->assertNotNull($segundo);
+    }
+
+    public function test_el_personal_medico_puede_tener_un_segundo_vinculo_superpuesto(): void
+    {
+        // RIT Art. 86: excepcion explicita para el personal medico (doble empleo o cargo publico remunerado).
+        $spec = $this->spec('vinculos-laborales');
+        $medico = $this->nuevoTrabajador(['ProfesionId' => $this->id('Personal.Profesion', 'ProfesionId', ['ProfesionCodigo' => 'MEDICO'])]);
+        $base = fn (string $codigo) => $this->payload($spec, [
+            'TrabajadorId' => $medico, 'VinculoLaboralCodigo' => $codigo, 'VinculoLaboralCodigoAirhsp' => null,
+            'VinculoLaboralFechaInicio' => '2026-01-01', 'VinculoLaboralFechaFin' => null,
+        ]);
+
+        $this->postJson($spec['endpoint'], $base('ZZ-M1'))->assertCreated();
+        $this->postJson($spec['endpoint'], $base('ZZ-M2'))->assertCreated();
     }
 
     public function test_el_vinculo_calcula_si_esta_vigente_y_se_filtra(): void
@@ -441,7 +456,7 @@ class Nivel2CrudTest extends CrudModulosTestCase
 
         // La fecha del evento la pone el servidor: lo que mande el cliente se ignora.
         $manipulada = $this->postJson('/api/consentimientos-biometricos', $payload + ['ConsentimientoBiometricoFecha' => '2000-01-01 00:00:00'])->assertCreated();
-        $this->assertStringStartsWith(now()->format('Y-m-d'), $manipulada->json('data.fecha'));
+        $this->assertStringStartsWith(HoraLocal::hoy()->format('Y-m-d'), $manipulada->json('data.fecha'));
 
         // Historial: no se edita ni se borra.
         $this->putJson("/api/consentimientos-biometricos/{$id}", $payload)->assertStatus(405);
@@ -558,7 +573,7 @@ class Nivel2CrudTest extends CrudModulosTestCase
         // Sin fecha: la base pone la actual.
         $sinFecha = $this->payload($spec);
         unset($sinFecha['OcurrenciaPorteriaFechaHora']);
-        $this->assertStringStartsWith(now()->format('Y-m-d'), $this->postJson($spec['endpoint'], $sinFecha)->assertCreated()->json('data.fecha_hora'));
+        $this->assertStringStartsWith(HoraLocal::hoy()->format('Y-m-d'), $this->postJson($spec['endpoint'], $sinFecha)->assertCreated()->json('data.fecha_hora'));
     }
 
     public function test_una_ocurrencia_de_tipo_otro_puede_no_tener_persona_pero_exige_descripcion(): void

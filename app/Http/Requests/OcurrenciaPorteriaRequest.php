@@ -12,12 +12,12 @@ use Illuminate\Validation\Validator;
 class OcurrenciaPorteriaRequest extends CatalogoRequest
 {
     /**
-     * Tipos que registra el servicio de vigilancia segun el RIT (Art. 21): salidas con papeleta, retornos,
-     * excesos de las 3 horas de la papeleta, abandono sin autorizacion e ingresos fuera del horario.
+     * Tipos que registra el servicio de vigilancia segun el RIT (Art. 21): salidas con papeleta, su retorno,
+     * el exceso de las 3 horas de la papeleta y el abandono sin autorizacion; OTRO queda abierto.
      */
     public const TIPOS = [
         'SALIDA_CON_PAPELETA', 'RETORNO_DE_PAPELETA', 'EXCESO_DE_PAPELETA',
-        'SALIDA_SIN_AUTORIZACION', 'INGRESO_FUERA_DE_HORARIO', 'OTRO',
+        'SALIDA_SIN_AUTORIZACION', 'OTRO',
     ];
 
     /** El datetime-local del navegador envia "2026-09-28T06:30": se acepta igual que "2026-09-28 06:30". */

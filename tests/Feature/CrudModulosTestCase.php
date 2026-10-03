@@ -6,6 +6,7 @@ use Closure;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Tests\Support\ArmaEscenarios;
 use Tests\TestCase;
 
 /**
@@ -29,6 +30,7 @@ use Tests\TestCase;
  */
 abstract class CrudModulosTestCase extends TestCase
 {
+    use ArmaEscenarios;
     use DatabaseTransactions;
 
     /** @var array<string,int> ids de FK ya resueltos en este test (una FK dinamica se crea una sola vez por test). */
@@ -100,6 +102,24 @@ abstract class CrudModulosTestCase extends TestCase
             'TrabajadorApellidoMaterno' => 'Dos',
             'TrabajadorEstado' => 1,
         ], 'TrabajadorId');
+    }
+
+    /**
+     * Crea un vinculo laboral vigente (desde 2026-01-01, sin fin) de un trabajador nuevo en EESS-LE-01, sin AIRHSP
+     * (condicion DESTACADO). Sirve de base para los modulos de Nivel 3 sin chocar con los vinculos sembrados.
+     *
+     * @param  array<string,mixed>  $extra  columnas de Personal.VinculoLaboral a pisar (p. ej. EessId, fechas)
+     */
+    public function nuevoVinculo(array $extra = [], ?int $trabajadorId = null): int
+    {
+        return (int) DB::table('Personal.VinculoLaboral')->insertGetId($extra + [
+            'TrabajadorId' => $trabajadorId ?? $this->nuevoTrabajador(),
+            'EessId' => $this->idSembrado('Organizacion.EstablecimientoSalud', 'EessId', ['EessCodigo' => 'EESS-LE-01']),
+            'RegimenLaboralId' => $this->idSembrado('Personal.RegimenLaboral', 'RegimenLaboralId', ['RegimenLaboralCodigo' => 'OTRO']),
+            'CondicionLaboralId' => $this->idSembrado('Personal.CondicionLaboral', 'CondicionLaboralId', ['CondicionLaboralCodigo' => 'DESTACADO']),
+            'CargoId' => $this->idSembrado('Personal.Cargo', 'CargoId', ['CargoNombre' => 'Contador(a)']),
+            'VinculoLaboralFechaInicio' => '2026-01-01',
+        ], 'VinculoLaboralId');
     }
 
     /** Registra un consentimiento biometrico del trabajador (aceptado o revocado) directamente en la base. */
@@ -280,7 +300,8 @@ abstract class CrudModulosTestCase extends TestCase
 
         $fila = DB::table($spec['table'])->where($spec['pk'], $id)->first();
         if ($spec['anula'] ?? false) {
-            $this->assertSame('ANULADO', $fila->{$spec['estado']});
+            // `anula` = true -> ANULADO; un texto (p. ej. ANULADA) indica otro valor terminal.
+            $this->assertSame(is_string($spec['anula']) ? $spec['anula'] : 'ANULADO', $fila->{$spec['estado']});
             $this->getJson("{$spec['endpoint']}/{$id}")->assertOk()->assertJsonPath('data.activo', false);
         } elseif ($spec['estado'] === null) {
             $this->assertNull($fila, 'La tabla se elimina fisicamente.');

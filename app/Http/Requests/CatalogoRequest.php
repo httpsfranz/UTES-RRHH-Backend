@@ -37,6 +37,18 @@ abstract class CatalogoRequest extends FormRequest
         'colegiatura' => 'colegiatura', 'habilitacion' => 'habilitación', 'vencimiento' => 'vencimiento', 'observacion' => 'observación',
         'dedo' => 'dedo', 'referencia' => 'referencia', 'aceptado' => 'consentimiento', 'version' => 'versión', 'orden' => 'orden',
         'dia' => 'día', 'hora' => 'hora', 'fecha' => 'fecha', 'inicio' => 'inicio', 'fin' => 'fin',
+        'marcacion' => 'marcación', 'geolocalizacion' => 'geolocalización', 'origen' => 'origen', 'valida' => 'válida',
+        'justificacion' => 'justificación', 'falta' => 'falta', 'tardanza' => 'tardanza', 'extra' => 'extra',
+        'trabajados' => 'trabajados', 'proceso' => 'proceso', 'resolucion' => 'resolución', 'rechazo' => 'rechazo',
+        'registro' => 'registro', 'autorizacion' => 'autorización', 'diagnostico' => 'diagnóstico', 'citt' => 'CITT',
+        'resultado' => 'resultado', 'titulo' => 'título', 'mensaje' => 'mensaje', 'enlace' => 'enlace', 'leida' => 'leída',
+        'archivo' => 'archivo', 'registros' => 'registros', 'salida' => 'salida', 'retorno' => 'retorno',
+        'utilizados' => 'utilizados', 'completo' => 'completo', 'programacion' => 'programación', 'periodo' => 'período',
+        'documento' => 'documento', 'sancion' => 'sanción', 'ambito' => 'ámbito', 'sesion' => 'sesión',
+        'generacion' => 'generación', 'devueltas' => 'devueltas', 'generadas' => 'generadas', 'limite' => 'límite',
+        'previamente' => 'previamente', 'ganados' => 'ganados', 'disponibles' => 'disponibles', 'supervision' => 'supervisión',
+        'informe' => 'informe', 'guardia' => 'guardia', 'responsable' => 'responsable', 'direccion' => 'dirección',
+        'constatacion' => 'constatación', 'comunitaria' => 'comunitaria', 'quincena' => 'quincena', 'remision' => 'remisión',
     ];
 
     public function authorize(): bool
@@ -83,6 +95,17 @@ abstract class CatalogoRequest extends FormRequest
     protected function booleanoEfectivo(string $campo, bool $porDefecto = true): bool
     {
         return filter_var($this->valorEfectivo($campo) ?? $porDefecto, FILTER_VALIDATE_BOOLEAN);
+    }
+
+    /**
+     * Datos que se guardan. Por defecto, lo validado; un Request que deba completar o derivar valores
+     * (p. ej. el codigo de una carga, los minutos trabajados) lo sobrescribe.
+     *
+     * @return array<string,mixed>
+     */
+    public function datos(): array
+    {
+        return $this->validated();
     }
 
     protected function esCreacion(): bool
@@ -227,6 +250,15 @@ abstract class CatalogoRequest extends FormRequest
             'ColegiaturaTipoId' => 'tipo de colegiatura', 'DocumentoSustentoId' => 'documento de sustento',
             'MetodoMarcacionId' => 'método de marcación', 'HorarioId' => 'horario', 'TurnoId' => 'turno',
             'VinculoLaboralId' => 'vínculo laboral', 'UsuarioId' => 'usuario',
+            'EstadoAsistenciaId' => 'estado de asistencia', 'ConceptoJustificacionId' => 'concepto de justificación',
+            'DispositivoMarcacionId' => 'dispositivo de marcación', 'PlantillaBiometricaId' => 'plantilla biométrica',
+            'CargaAsistenciaManualId' => 'carga de asistencia manual', 'JustificacionFaltaId' => 'justificación de falta',
+            'UsuarioRegistroId' => 'usuario que registra', 'TurnoProgramadoId' => 'turno programado',
+            'MotivoPapeletaId' => 'motivo de papeleta', 'TipoLicenciaId' => 'tipo de licencia', 'DescansoMedicoId' => 'descanso médico',
+            'TipoPeriodoProgramacionId' => 'tipo de período', 'ProgramacionPeriodoId' => 'programación por período',
+            'TipoResponsabilidadId' => 'tipo de responsabilidad', 'PeriodoAsistenciaId' => 'período de asistencia',
+            'TipoCompensacionId' => 'tipo de compensación', 'AsistenciaDiariaId' => 'asistencia diaria',
+            'TipoFaltaDisciplinariaId' => 'tipo de falta disciplinaria',
         ] + $atributos;
     }
 }
