@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\MarcacionRequest;
 use App\Http\Resources\MarcacionResource;
 use App\Models\Asistencia\Marcacion;
+use App\Support\AlcanceDeEess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -31,14 +32,14 @@ class MarcacionController extends Controller
                 ->orWhereHas('vinculoLaboral.trabajador', fn ($t) => $t
                     ->where('TrabajadorNombreCompleto', 'like', "%{$buscar}%")
                     ->orWhere('TrabajadorNumeroDocumento', 'like', "%{$buscar}%"))))
-            ->when($request->filled('vinculo_laboral_id'), fn ($q) => $q->where('VinculoLaboralId', $request->integer('vinculo_laboral_id')))
+            ->when(AlcanceDeEess::restringeVinculos($request), fn ($q) => $q->whereIn('VinculoLaboralId', AlcanceDeEess::vinculos($request)))
             ->when($request->filled('metodo_marcacion_id'), fn ($q) => $q->where('MetodoMarcacionId', $request->integer('metodo_marcacion_id')))
             ->when($request->filled('dispositivo_marcacion_id'), fn ($q) => $q->where('DispositivoMarcacionId', $request->integer('dispositivo_marcacion_id')))
             ->when($request->filled('carga_asistencia_manual_id'), fn ($q) => $q->where('CargaAsistenciaManualId', $request->integer('carga_asistencia_manual_id')))
             ->when($request->filled('tipo'), fn ($q) => $q->where('MarcacionTipo', $request->string('tipo')->toString()))
             ->when($request->filled('estado'), fn ($q) => $q->where('MarcacionEsValida', $request->boolean('estado')))
             ->when($request->filled('valida'), fn ($q) => $q->where('MarcacionEsValida', $request->boolean('valida')))
-            ->when($request->filled('eess_id'), fn ($q) => $q->whereHas('vinculoLaboral', fn ($v) => $v->where('EessId', $request->integer('eess_id'))))
+            ->when(AlcanceDeEess::restringe($request), fn ($q) => $q->whereHas('vinculoLaboral', fn ($v) => $v->whereIn('EessId', AlcanceDeEess::ids($request))))
             ->when($request->filled('desde'), fn ($q) => $q->whereDate('MarcacionFechaHora', '>=', $request->date('desde')))
             ->when($request->filled('hasta'), fn ($q) => $q->whereDate('MarcacionFechaHora', '<=', $request->date('hasta')))
             ->orderByDesc('MarcacionFechaHora')

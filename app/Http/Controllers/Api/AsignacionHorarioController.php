@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\AsignacionHorarioRequest;
 use App\Http\Resources\AsignacionHorarioResource;
 use App\Models\Personal\AsignacionHorario;
+use App\Support\AlcanceDeEess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -30,10 +31,10 @@ class AsignacionHorarioController extends Controller
                 ->orWhereHas('vinculoLaboral.trabajador', fn ($t) => $t
                     ->where('TrabajadorNombreCompleto', 'like', "%{$buscar}%")
                     ->orWhere('TrabajadorNumeroDocumento', 'like', "%{$buscar}%"))))
-            ->when($request->filled('vinculo_laboral_id'), fn ($q) => $q->where('VinculoLaboralId', $request->integer('vinculo_laboral_id')))
+            ->when(AlcanceDeEess::restringeVinculos($request), fn ($q) => $q->whereIn('VinculoLaboralId', AlcanceDeEess::vinculos($request)))
             ->when($request->filled('horario_id'), fn ($q) => $q->where('HorarioId', $request->integer('horario_id')))
             ->when($request->filled('estado'), fn ($q) => $q->where('AsignacionHorarioEstado', $request->boolean('estado')))
-            ->when($request->filled('eess_id'), fn ($q) => $q->whereHas('vinculoLaboral', fn ($v) => $v->where('EessId', $request->integer('eess_id'))))
+            ->when(AlcanceDeEess::restringe($request), fn ($q) => $q->whereHas('vinculoLaboral', fn ($v) => $v->whereIn('EessId', AlcanceDeEess::ids($request))))
             ->when($request->filled('vigente'), fn ($q) => $request->boolean('vigente')
                 ? $q->where('AsignacionHorarioEstado', 1)->whereDate('AsignacionHorarioFechaInicio', '<=', now()->toDateString())->where(fn ($s) => $s->whereNull('AsignacionHorarioFechaFin')->orWhereDate('AsignacionHorarioFechaFin', '>=', now()->toDateString()))
                 : $q->where(fn ($s) => $s->where('AsignacionHorarioEstado', 0)->orWhereDate('AsignacionHorarioFechaInicio', '>', now()->toDateString())->orWhereDate('AsignacionHorarioFechaFin', '<', now()->toDateString())))

@@ -23,6 +23,7 @@ class AsistenciaDiariaResource extends JsonResource
             'minutos_extra' => $this->AsistenciaDiariaMinutosExtra,
             'minutos_trabajados' => $this->AsistenciaDiariaMinutosTrabajados,
             'observacion' => $this->AsistenciaDiariaObservacion,
+            'origen' => $this->AsistenciaDiariaOrigen,
             'fecha_proceso' => optional($this->AsistenciaDiariaFechaProceso)->format('Y-m-d H:i:s'),
             'trabajador' => $this->whenLoaded('vinculoLaboral', fn () => $this->vinculoLaboral?->relationLoaded('trabajador') && $this->vinculoLaboral->trabajador ? [
                 'id' => $this->vinculoLaboral->trabajador->TrabajadorId,

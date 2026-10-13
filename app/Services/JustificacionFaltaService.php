@@ -16,6 +16,9 @@ use Illuminate\Support\Facades\DB;
  */
 class JustificacionFaltaService
 {
+    /** Estados de falta injustificada: la inasistencia, la omision de marcacion y la guardia no realizada. */
+    public const FALTAS_JUSTIFICABLES = ['FALTA', 'OMISION_MARCA', 'FALTA_GUARDIA'];
+
     public function __construct(private readonly NotificacionService $notificaciones) {}
 
     /** @return array{justificacion: JustificacionFalta, asistencias_actualizadas: int} */
@@ -31,12 +34,12 @@ class JustificacionFaltaService
                 'JustificacionFaltaObservacion' => $observacion ?: $justificacion->JustificacionFaltaObservacion,
             ]);
 
-            $injustificada = EstadoAsistencia::query()->where('EstadoAsistenciaCodigo', 'FALTA')->firstOrFail();
+            $injustificadas = EstadoAsistencia::query()->whereIn('EstadoAsistenciaCodigo', self::FALTAS_JUSTIFICABLES)->pluck('EstadoAsistenciaId');
             $justificada = EstadoAsistencia::query()->where('EstadoAsistenciaCodigo', 'FALTA_JUST')->firstOrFail();
 
             // Solo las faltas injustificadas de esos dias: lo demas (asistio, descanso, licencia...) no se toca.
             $actualizadas = $this->faltasDelRango($justificacion)
-                ->where('EstadoAsistenciaId', $injustificada->EstadoAsistenciaId)
+                ->whereIn('EstadoAsistenciaId', $injustificadas)
                 ->whereNull('JustificacionFaltaId')
                 ->update([
                     'EstadoAsistenciaId' => $justificada->EstadoAsistenciaId,

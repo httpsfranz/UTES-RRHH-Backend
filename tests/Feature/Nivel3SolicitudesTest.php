@@ -130,7 +130,7 @@ class Nivel3SolicitudesTest extends CrudModulosTestCase
     public function test_aprobar_una_papeleta_registra_quien_autoriza_y_avisa(): void
     {
         $vinculo = $this->nuevoVinculo();
-        $registrante = $this->usuario('rvargas');
+        $registrante = $this->usuario('pgutierrez');   // quien registra es el usuario de la sesion
         $id = $this->postJson('/api/papeletas', $this->papeleta($vinculo, ['UsuarioRegistroId' => $registrante, 'DocumentoSustentoId' => $this->documento()]))
             ->assertCreated()->assertJsonPath('data.estado', 'PENDIENTE')->json('data.id');
 
@@ -166,7 +166,6 @@ class Nivel3SolicitudesTest extends CrudModulosTestCase
         $id = $this->postJson('/api/papeletas', $this->papeleta($vinculo))->assertCreated()->json('data.id');
 
         $this->postJson("/api/papeletas/{$id}/rechazar", ['UsuarioId' => $this->usuario()])->assertStatus(422)->assertJsonValidationErrors(['Motivo']);
-        $this->postJson("/api/papeletas/{$id}/rechazar", ['Motivo' => 'Sin anticipación'])->assertStatus(422)->assertJsonValidationErrors(['UsuarioId']);
         $this->postJson("/api/papeletas/{$id}/rechazar", ['UsuarioId' => $this->usuario(), 'Motivo' => 'Sin anticipación'])
             ->assertOk()->assertJsonPath('data.estado', 'RECHAZADO');
         $this->assertStringContainsString('Rechazo: Sin anticipación', $this->getJson("/api/papeletas/{$id}")->json('data.observacion'));
@@ -240,7 +239,7 @@ class Nivel3SolicitudesTest extends CrudModulosTestCase
     public function test_aprobar_y_rechazar_licencias(): void
     {
         $vinculo = $this->nuevoVinculo();
-        $registrante = $this->usuario('rvargas');
+        $registrante = $this->usuario('pgutierrez');   // quien registra es el usuario de la sesion
         $id = $this->postJson('/api/licencias', $this->licencia($vinculo, ['UsuarioRegistroId' => $registrante]))->assertCreated()->assertJsonPath('data.estado', 'PENDIENTE')->json('data.id');
 
         $this->postJson("/api/licencias/{$id}/aprobar", ['UsuarioId' => $this->usuario()])->assertOk()->assertJsonPath('data.estado', 'APROBADO');

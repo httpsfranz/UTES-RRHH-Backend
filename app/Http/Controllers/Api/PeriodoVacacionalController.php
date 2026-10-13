@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\PeriodoVacacionalRequest;
 use App\Http\Resources\PeriodoVacacionalResource;
 use App\Models\Vacaciones\PeriodoVacacional;
+use App\Support\AlcanceDeEess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -28,10 +29,10 @@ class PeriodoVacacionalController extends Controller
                 ->whereHas('vinculoLaboral.trabajador', fn ($t) => $t
                     ->where('TrabajadorNombreCompleto', 'like', "%{$buscar}%")
                     ->orWhere('TrabajadorNumeroDocumento', 'like', "%{$buscar}%"))))
-            ->when($request->filled('vinculo_laboral_id'), fn ($q) => $q->where('VinculoLaboralId', $request->integer('vinculo_laboral_id')))
+            ->when(AlcanceDeEess::restringeVinculos($request), fn ($q) => $q->whereIn('VinculoLaboralId', AlcanceDeEess::vinculos($request)))
             ->when($request->filled('anio'), fn ($q) => $q->where('PeriodoVacacionalAnio', $request->integer('anio')))
             ->when($request->filled('estado'), fn ($q) => $q->where('PeriodoVacacionalEstado', $request->string('estado')->toString()))
-            ->when($request->filled('eess_id'), fn ($q) => $q->whereHas('vinculoLaboral', fn ($v) => $v->where('EessId', $request->integer('eess_id'))))
+            ->when(AlcanceDeEess::restringe($request), fn ($q) => $q->whereHas('vinculoLaboral', fn ($v) => $v->whereIn('EessId', AlcanceDeEess::ids($request))))
 
             ->orderByDesc('PeriodoVacacionalAnio')
             ->orderByDesc('PeriodoVacacionalId')

@@ -9,6 +9,7 @@ use App\Http\Resources\ConsolidadoAsistenciaResource;
 use App\Models\Consolidacion\ConsolidadoAsistencia;
 use App\Models\Consolidacion\PeriodoAsistencia;
 use App\Services\ConsolidadoAsistenciaService;
+use App\Support\AlcanceDeEess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -33,9 +34,9 @@ class ConsolidadoAsistenciaController extends Controller
                     ->where('TrabajadorNombreCompleto', 'like', "%{$buscar}%")
                     ->orWhere('TrabajadorNumeroDocumento', 'like', "%{$buscar}%"))))
             ->when($request->filled('periodo_asistencia_id'), fn ($q) => $q->where('PeriodoAsistenciaId', $request->integer('periodo_asistencia_id')))
-            ->when($request->filled('vinculo_laboral_id'), fn ($q) => $q->where('VinculoLaboralId', $request->integer('vinculo_laboral_id')))
+            ->when(AlcanceDeEess::restringeVinculos($request), fn ($q) => $q->whereIn('VinculoLaboralId', AlcanceDeEess::vinculos($request)))
             ->when($request->filled('estado'), fn ($q) => $q->where('ConsolidadoAsistenciaEstado', $request->string('estado')->toString()))
-            ->when($request->filled('eess_id'), fn ($q) => $q->whereHas('vinculoLaboral', fn ($v) => $v->where('EessId', $request->integer('eess_id'))))
+            ->when(AlcanceDeEess::restringe($request), fn ($q) => $q->whereHas('vinculoLaboral', fn ($v) => $v->whereIn('EessId', AlcanceDeEess::ids($request))))
 
             ->orderByDesc('PeriodoAsistenciaId')
             ->orderBy('VinculoLaboralId')

@@ -148,10 +148,12 @@ class Nivel4Test extends CrudModulosTestCase
         $marcacion = $this->marcacion($vinculo);
         $usuario = $this->usuarioId('rvargas');
 
+        $this->actuarComo('rvargas');   // quien registra es el usuario de la sesion
         $id = $this->postJson('/api/ajustes-marcacion', [
-            'MarcacionId' => $marcacion, 'UsuarioId' => $usuario, 'AjusteMarcacionFechaHoraNueva' => '2026-09-22T07:20', 'AjusteMarcacionMotivo' => 'Reloj atrasado',
+            'MarcacionId' => $marcacion, 'AjusteMarcacionFechaHoraNueva' => '2026-09-22T07:20', 'AjusteMarcacionMotivo' => 'Reloj atrasado',
         ])->assertCreated()->assertJsonPath('data.estado', 'PENDIENTE')->assertJsonPath('data.fecha_hora_anterior', '2026-09-22 07:30:00')
             ->assertJsonPath('data.fecha_hora_nueva', '2026-09-22 07:20:00')->json('data.id');
+        $this->actuarComo('pgutierrez');
 
         $this->postJson("/api/ajustes-marcacion/{$id}/aprobar", ['UsuarioId' => $this->usuarioId('pgutierrez'), 'Motivo' => 'Constatado'])
             ->assertOk()->assertJsonPath('data.estado', 'APROBADO');

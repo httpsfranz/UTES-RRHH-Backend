@@ -146,6 +146,8 @@ class AsistenciaDiariaRequest extends CatalogoRequest
             $datos['AsistenciaDiariaMinutosTrabajados'] = (int) round((strtotime($salida) - strtotime($entrada)) / 60);
         }
         $datos['AsistenciaDiariaFechaProceso'] = now()->format('Y-m-d H:i:s');
+        // Lo registrado o corregido por la API es manual: el motor de calculo (CalculoAsistenciaService) no lo sobrescribe.
+        $datos['AsistenciaDiariaOrigen'] = 'MANUAL';
 
         return $datos;
     }

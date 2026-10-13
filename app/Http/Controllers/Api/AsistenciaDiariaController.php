@@ -3,9 +3,12 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\AsistenciaCalcularRequest;
 use App\Http\Requests\AsistenciaDiariaRequest;
 use App\Http\Resources\AsistenciaDiariaResource;
 use App\Models\Asistencia\AsistenciaDiaria;
+use App\Services\CalculoAsistenciaService;
+use App\Support\AlcanceDeEess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -30,10 +33,10 @@ class AsistenciaDiariaController extends Controller
                 ->orWhereHas('vinculoLaboral.trabajador', fn ($t) => $t
                     ->where('TrabajadorNombreCompleto', 'like', "%{$buscar}%")
                     ->orWhere('TrabajadorNumeroDocumento', 'like', "%{$buscar}%"))))
-            ->when($request->filled('vinculo_laboral_id'), fn ($q) => $q->where('VinculoLaboralId', $request->integer('vinculo_laboral_id')))
+            ->when(AlcanceDeEess::restringeVinculos($request), fn ($q) => $q->whereIn('VinculoLaboralId', AlcanceDeEess::vinculos($request)))
             ->when($request->filled('estado_asistencia_id'), fn ($q) => $q->where('EstadoAsistenciaId', $request->integer('estado_asistencia_id')))
             ->when($request->filled('justificacion_falta_id'), fn ($q) => $q->where('JustificacionFaltaId', $request->integer('justificacion_falta_id')))
-            ->when($request->filled('eess_id'), fn ($q) => $q->whereHas('vinculoLaboral', fn ($v) => $v->where('EessId', $request->integer('eess_id'))))
+            ->when(AlcanceDeEess::restringe($request), fn ($q) => $q->whereHas('vinculoLaboral', fn ($v) => $v->whereIn('EessId', AlcanceDeEess::ids($request))))
             ->when($request->filled('sin_justificar'), fn ($q) => $request->boolean('sin_justificar')
                 ? $q->whereNull('JustificacionFaltaId')->whereHas('estado', fn ($e) => $e->where('EstadoAsistenciaEsFalta', 1))
                 : $q)
@@ -77,5 +80,20 @@ class AsistenciaDiariaController extends Controller
         $asistencia->delete();
 
         return response()->json(['mensaje' => 'Asistencia diaria eliminada.'], 200);
+    }
+
+    // POST /api/asistencia-diaria/calcular   { FechaInicio, FechaFin, VinculoLaboralId?, EessId?, SobrescribirManuales? }
+    // Calcula la asistencia diaria desde las marcaciones y la programacion (RIT, Art. 16 y 22); no toca periodos cerrados.
+    public function calcular(AsistenciaCalcularRequest $request, CalculoAsistenciaService $servicio): JsonResponse
+    {
+        $resumen = $servicio->calcular(
+            $request->input('FechaInicio'),
+            $request->input('FechaFin'),
+            $request->filled('VinculoLaboralId') ? $request->integer('VinculoLaboralId') : null,
+            $request->filled('EessId') ? $request->integer('EessId') : null,
+            $request->boolean('SobrescribirManuales'),
+        );
+
+        return response()->json(['mensaje' => 'Asistencia calculada.'] + $resumen, 200);
     }
 }

@@ -334,9 +334,9 @@ class Nivel3ProgramacionTest extends CrudModulosTestCase
         // Usuario inactivo: no recibe roles.
         $this->postJson('/api/usuarios-roles', ['UsuarioId' => $this->usuario('jretirado'), 'RolId' => $rol])->assertStatus(422)->assertJsonValidationErrors(['UsuarioId']);
 
-        $this->getJson('/api/usuarios-roles?por_pagina=100')->assertOk()->assertJsonCount(12, 'data');
+        $this->getJson('/api/usuarios-roles?por_pagina=100')->assertOk()->assertJsonCount(19, 'data');
         $this->getJson('/api/usuarios-roles?buscar=pgutierrez')->assertOk()->assertJsonCount(2, 'data');
-        $this->getJson('/api/usuarios-roles?rol_id='.$this->id('Seguridad.Rol', 'RolId', ['RolCodigo' => 'TRABAJADOR']).'&por_pagina=100')->assertOk()->assertJsonCount(4, 'data');
+        $this->getJson('/api/usuarios-roles?rol_id='.$this->id('Seguridad.Rol', 'RolId', ['RolCodigo' => 'TRABAJADOR']).'&por_pagina=100')->assertOk()->assertJsonCount(5, 'data');
         $this->getJson('/api/usuarios-roles?estado=0')->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.fecha_fin', '2024-06-30');
     }
 
@@ -356,7 +356,7 @@ class Nivel3ProgramacionTest extends CrudModulosTestCase
         $this->postJson('/api/usuarios-ambitos', ['UsuarioId' => $usuario, 'MicroredId' => $microred])->assertStatus(422);
         $this->patchJson("/api/usuarios-ambitos/{$red}", ['EessId' => $eess])->assertStatus(422);
 
-        $this->getJson('/api/usuarios-ambitos?por_pagina=100')->assertOk()->assertJsonCount(11, 'data');
+        $this->getJson('/api/usuarios-ambitos?por_pagina=100')->assertOk()->assertJsonCount(18, 'data');
         $this->getJson('/api/usuarios-ambitos?buscar=Gutiérrez')->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.alcance', 'RED');
         $this->getJson('/api/usuarios-ambitos?microred_id='.$this->id('Organizacion.Microred', 'MicroredId', ['MicroredCodigo' => 'MR-FM']))->assertOk()->assertJsonCount(1, 'data');
         $this->getJson('/api/usuarios-ambitos?estado=0')->assertOk()->assertJsonCount(1, 'data');

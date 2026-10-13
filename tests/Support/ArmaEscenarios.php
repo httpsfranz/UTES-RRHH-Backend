@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * Escenarios que arman directamente en la base los datos de los que dependen los modulos de programacion, consolidacion,
  * liquidacion y vacaciones (niveles 4 a 6): periodos, programaciones, turnos, consolidados y periodos vacacionales. Se
- * mezcla en CrudModulosTestCase; cada metodo crea filas nuevas (dentro de la transaccion del test) para no chocar con
+ * mezcla en CrudModulosTestCase y en Nivel3CalculoAsistenciaTest; cada metodo crea filas nuevas (dentro de la transaccion del test) para no chocar con
  * las sembradas.
  */
 trait ArmaEscenarios
@@ -21,6 +21,50 @@ trait ArmaEscenarios
     public function recordar(string $clave, Closure $crea): mixed
     {
         return $this->recordados[$clave] ??= $crea();
+    }
+
+    private function idSembrado(string $tabla, string $pk, array $filtro): int
+    {
+        $id = DB::table($tabla)->where($filtro)->value($pk);
+        $this->assertNotNull($id, "Falta la fila sembrada {$tabla} ".json_encode($filtro).' (php artisan migrate:fresh --seed).');
+
+        return (int) $id;
+    }
+
+    /**
+     * Crea un trabajador activo SIN vinculo, usuario, colegiatura ni biometria: sirve de base para probar los
+     * modulos de Nivel 2 sin chocar con los trabajadores sembrados.
+     *
+     * @param  array<string,mixed>  $extra  columnas de Personal.Trabajador a pisar (p. ej. ProfesionId)
+     */
+    public function nuevoTrabajador(array $extra = []): int
+    {
+        return (int) DB::table('Personal.Trabajador')->insertGetId($extra + [
+            'TipoDocumentoIdentidadId' => $this->idSembrado('Personal.TipoDocumentoIdentidad', 'TipoDocumentoIdentidadId', ['TipoDocumentoIdentidadCodigo' => 'DNI']),
+            'TrabajadorNumeroDocumento' => (string) random_int(71000000, 78999999),
+            'TrabajadorNombres' => 'Prueba',
+            'TrabajadorApellidoPaterno' => 'Nivel',
+            'TrabajadorApellidoMaterno' => 'Dos',
+            'TrabajadorEstado' => 1,
+        ], 'TrabajadorId');
+    }
+
+    /**
+     * Crea un vinculo laboral vigente (desde 2026-01-01, sin fin) de un trabajador nuevo en EESS-LE-01, sin AIRHSP
+     * (condicion DESTACADO). Sirve de base para los modulos de Nivel 3 sin chocar con los vinculos sembrados.
+     *
+     * @param  array<string,mixed>  $extra  columnas de Personal.VinculoLaboral a pisar (p. ej. EessId, fechas)
+     */
+    public function nuevoVinculo(array $extra = [], ?int $trabajadorId = null): int
+    {
+        return (int) DB::table('Personal.VinculoLaboral')->insertGetId($extra + [
+            'TrabajadorId' => $trabajadorId ?? $this->nuevoTrabajador(),
+            'EessId' => $this->idSembrado('Organizacion.EstablecimientoSalud', 'EessId', ['EessCodigo' => 'EESS-LE-01']),
+            'RegimenLaboralId' => $this->idSembrado('Personal.RegimenLaboral', 'RegimenLaboralId', ['RegimenLaboralCodigo' => 'OTRO']),
+            'CondicionLaboralId' => $this->idSembrado('Personal.CondicionLaboral', 'CondicionLaboralId', ['CondicionLaboralCodigo' => 'DESTACADO']),
+            'CargoId' => $this->idSembrado('Personal.Cargo', 'CargoId', ['CargoNombre' => 'Contador(a)']),
+            'VinculoLaboralFechaInicio' => '2026-01-01',
+        ], 'VinculoLaboralId');
     }
 
     protected function idPorCodigo(string $tabla, string $pk, string $columna, string $valor): int

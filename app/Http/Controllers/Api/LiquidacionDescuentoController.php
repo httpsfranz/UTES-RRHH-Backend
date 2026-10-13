@@ -8,6 +8,7 @@ use App\Http\Resources\LiquidacionDescuentoResource;
 use App\Models\Compensaciones\LiquidacionDescuento;
 use App\Models\Consolidacion\ConsolidadoAsistencia;
 use App\Services\LiquidacionDescuentoService;
+use App\Support\AlcanceDeEess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -39,8 +40,8 @@ class LiquidacionDescuentoController extends Controller
             ->when($request->filled('consolidado_asistencia_id'), fn ($q) => $q->where('ConsolidadoAsistenciaId', $request->integer('consolidado_asistencia_id')))
             ->when($request->filled('estado'), fn ($q) => $q->where('LiquidacionDescuentoEstado', $request->string('estado')->toString()))
             ->when($request->filled('periodo_asistencia_id'), fn ($q) => $q->whereHas('consolidado', fn ($c) => $c->where('PeriodoAsistenciaId', $request->integer('periodo_asistencia_id'))))
-            ->when($request->filled('vinculo_laboral_id'), fn ($q) => $q->whereHas('consolidado', fn ($c) => $c->where('VinculoLaboralId', $request->integer('vinculo_laboral_id'))))
-            ->when($request->filled('eess_id'), fn ($q) => $q->whereHas('consolidado.vinculoLaboral', fn ($v) => $v->where('EessId', $request->integer('eess_id'))))
+            ->when(AlcanceDeEess::restringeVinculos($request), fn ($q) => $q->whereHas('consolidado', fn ($c) => $c->whereIn('VinculoLaboralId', AlcanceDeEess::vinculos($request))))
+            ->when(AlcanceDeEess::restringe($request), fn ($q) => $q->whereHas('consolidado.vinculoLaboral', fn ($v) => $v->whereIn('EessId', AlcanceDeEess::ids($request))))
             ->when($request->filled('desde'), fn ($q) => $q->whereDate('LiquidacionDescuentoFechaGeneracion', '>=', $request->date('desde')))
             ->when($request->filled('hasta'), fn ($q) => $q->whereDate('LiquidacionDescuentoFechaGeneracion', '<=', $request->date('hasta')))
             ->orderByDesc('LiquidacionDescuentoFechaGeneracion')

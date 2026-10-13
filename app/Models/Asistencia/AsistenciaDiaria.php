@@ -33,6 +33,7 @@ class AsistenciaDiaria extends Model
         'AsistenciaDiariaMinutosTrabajados',
         'AsistenciaDiariaObservacion',
         'AsistenciaDiariaFechaProceso',
+        'AsistenciaDiariaOrigen',
     ];
 
     protected $casts = [

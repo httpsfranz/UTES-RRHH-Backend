@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\NotificacionRequest;
 use App\Http\Resources\NotificacionResource;
 use App\Models\Soporte\Notificacion;
+use App\Support\AccesoUsuario;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -27,6 +28,7 @@ class NotificacionController extends Controller
                 ->where('NotificacionTitulo', 'like', "%{$buscar}%")
                 ->orWhere('NotificacionMensaje', 'like', "%{$buscar}%")
                 ->orWhere('NotificacionTipo', 'like', "%{$buscar}%")))
+            ->when(! $this->veTodas($request), fn ($q) => $q->where('UsuarioId', $request->user()->UsuarioId))
             ->when($request->filled('usuario_id'), fn ($q) => $q->where('UsuarioId', $request->integer('usuario_id')))
             ->when($request->filled('tipo'), fn ($q) => $q->where('NotificacionTipo', $request->string('tipo')->toString()))
             ->when($request->filled('leida'), fn ($q) => $q->where('NotificacionLeida', $request->boolean('leida')))
@@ -51,14 +53,17 @@ class NotificacionController extends Controller
     }
 
     // GET /api/notificaciones/{notificacion}
-    public function show(Notificacion $notificacion)
+    public function show(Request $request, Notificacion $notificacion)
     {
+        $this->exigirPropia($request, $notificacion);
+
         return new NotificacionResource($notificacion->load(self::RELACIONES));
     }
 
     // PUT|PATCH /api/notificaciones/{notificacion}
     public function update(NotificacionRequest $request, Notificacion $notificacion)
     {
+        $this->exigirPropia($request, $notificacion);
         $notificacion->update($request->datos());
 
         return new NotificacionResource($notificacion->fresh()->load(self::RELACIONES));
@@ -71,5 +76,16 @@ class NotificacionController extends Controller
         $notificacion->delete();
 
         return response()->json(['mensaje' => 'Notificación eliminada.'], 200);
+    }
+
+    /** Quien tiene SEGURIDAD_VER administra las notificaciones de todos; los demas solo ven y marcan las suyas. */
+    private function veTodas(Request $request): bool
+    {
+        return AccesoUsuario::de($request->user())->tiene('SEGURIDAD_VER');
+    }
+
+    private function exigirPropia(Request $request, Notificacion $notificacion): void
+    {
+        abort_unless($this->veTodas($request) || (int) $notificacion->UsuarioId === (int) $request->user()->UsuarioId, 403, 'Solo puedes ver tus propias notificaciones.');
     }
 }

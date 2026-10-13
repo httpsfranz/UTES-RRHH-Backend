@@ -4,6 +4,10 @@ namespace Database\Seeders;
 
 use Carbon\CarbonImmutable;
 use Database\Seeders\Concerns\SiembraCatalogos;
+use Database\Seeders\Concerns\VolumenAsistencia;
+use Database\Seeders\Concerns\VolumenBase;
+use Database\Seeders\Concerns\VolumenCierre;
+use Database\Seeders\Concerns\VolumenPersonal;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
@@ -18,10 +22,20 @@ use Illuminate\Support\Facades\DB;
  *
  * Todo es deterministico (fechas fijas, sin aleatorios): dos corridas dan el mismo estado.
  * Nombres de EESS, telefonos y documentos son FICTICIOS.
+ *
+ * Despues de los casos puntuales de arriba (cada modulo con sus estados y reglas), la EXPANSION DE VOLUMEN
+ * (Concerns/Volumen*.php) puebla la Red entera como si ya estuviera en uso: plantilla completa de cada establecimiento,
+ * programacion de turnos de julio a noviembre, marcaciones diarias, solicitudes, asistencia calculada con el motor del
+ * sistema, consolidados y liquidaciones de julio a setiembre, y la operacion alrededor (responsables, PAD, supervisiones,
+ * porteria, sesiones, auditoria). Los trabajadores de volumen son DNI 46NNNNNN / VL-1NNN.
  */
 class DatosPruebaSeeder extends Seeder
 {
     use SiembraCatalogos;
+    use VolumenAsistencia;
+    use VolumenBase;
+    use VolumenCierre;
+    use VolumenPersonal;
 
     public function run(): void
     {
@@ -51,6 +65,26 @@ class DatosPruebaSeeder extends Seeder
         // Nivel 3 (asistencia, solicitudes, programacion, seguridad...) y niveles 4 a 6: necesitan todo lo anterior.
         $this->call(DatosPruebaNivel3Seeder::class);
         $this->call(DatosPruebaNivel4Seeder::class);
+
+        // Expansion de volumen: despues de todo lo anterior (los seeders de nivel 3 y 4 solo siembran si su tabla esta vacia).
+        $this->expansionDeVolumen();
+    }
+
+    /** La Red "en uso" (config/seed.php: SEED_VOLUMEN). Es idempotente: si ya existe el primer trabajador de volumen no hace nada. */
+    private function expansionDeVolumen(): void
+    {
+        if (! filter_var(config('seed.volumen'), FILTER_VALIDATE_BOOLEAN) || $this->yaTieneVolumen()) {
+            return;
+        }
+        $this->command?->info('Expansión de volumen: personal, programación, marcaciones y asistencia de julio a octubre...');
+        $this->volumenPersonal();
+        $this->volumenAsistencia();
+        $this->volumenCalcularAsistencia();
+        $this->volumenCompensaciones();
+        $this->volumenAjustesDeMarcacion();
+        $this->volumenCambiosDeTurno();
+        $this->volumenCierreDeMes();
+        $this->volumenOperacion();
     }
 
     private function microredes(): void

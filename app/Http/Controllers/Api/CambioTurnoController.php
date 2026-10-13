@@ -8,6 +8,7 @@ use App\Http\Requests\ResolucionRequest;
 use App\Http\Resources\CambioTurnoResource;
 use App\Models\Programacion\CambioTurno;
 use App\Services\CambioTurnoService;
+use App\Support\AlcanceDeEess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -50,7 +51,7 @@ class CambioTurnoController extends Controller
             ->when($request->filled('vinculo_laboral_solicitante_id'), fn ($q) => $q->where('VinculoLaboralSolicitanteId', $request->integer('vinculo_laboral_solicitante_id')))
             ->when($request->filled('vinculo_laboral_reemplazante_id'), fn ($q) => $q->where('VinculoLaboralReemplazanteId', $request->integer('vinculo_laboral_reemplazante_id')))
             ->when($request->filled('estado'), fn ($q) => $q->where('CambioTurnoEstado', $request->string('estado')->toString()))
-            ->when($request->filled('eess_id'), fn ($q) => $q->whereHas('turnoProgramado.programacionTrabajador.periodo', fn ($p) => $p->where('EessId', $request->integer('eess_id'))))
+            ->when(AlcanceDeEess::restringe($request), fn ($q) => $q->whereHas('turnoProgramado.programacionTrabajador.periodo', fn ($p) => $p->whereIn('EessId', AlcanceDeEess::ids($request))))
             ->when($request->filled('vinculo_laboral_id'), fn ($q) => $q->where(fn ($s) => $s->where('VinculoLaboralSolicitanteId', $request->integer('vinculo_laboral_id'))->orWhere('VinculoLaboralReemplazanteId', $request->integer('vinculo_laboral_id'))))
             ->when($request->filled('desde'), fn ($q) => $q->whereDate('CambioTurnoFechaSolicitud', '>=', $request->date('desde')))
             ->when($request->filled('hasta'), fn ($q) => $q->whereDate('CambioTurnoFechaSolicitud', '<=', $request->date('hasta')))

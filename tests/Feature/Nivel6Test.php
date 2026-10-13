@@ -48,7 +48,7 @@ class Nivel6Test extends CrudModulosTestCase
     /** Avisos de cambio de turno aprobado que recibio quien registra las solicitudes (los sembrados ya traen dos). */
     private function avisosDeAprobacion(): int
     {
-        return DB::table('Soporte.Notificacion')->where('UsuarioId', $this->usuarioId())->where('NotificacionTipo', 'SOLICITUD_DE_CAMBIO_DE_TURNO_APROBADA')->count();
+        return DB::table('Soporte.Notificacion')->where('UsuarioId', $this->usuarioId('pgutierrez'))->where('NotificacionTipo', 'SOLICITUD_DE_CAMBIO_DE_TURNO_APROBADA')->count();
     }
 
     private function horas(int $programacionTrabajador): float
@@ -300,7 +300,6 @@ class Nivel6Test extends CrudModulosTestCase
         // Y si la programacion se cerro o el turno se anulo, tampoco.
         DB::table('Programacion.TurnoProgramado')->where('TurnoProgramadoId', $e['turno'])->update(['TurnoProgramadoEstado' => 'ANULADO']);
         $this->postJson("/api/cambios-turno/{$id}/aprobar", $this->resolutor())->assertStatus(422);
-        $this->postJson("/api/cambios-turno/{$id}/aprobar", [])->assertStatus(422)->assertJsonValidationErrors(['UsuarioId']);
     }
 
     public function test_rechazar_pide_motivo_y_deja_la_programacion_igual(): void

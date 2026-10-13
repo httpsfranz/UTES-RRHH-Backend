@@ -7,6 +7,7 @@ use App\Http\Requests\TurnoProgramadoRequest;
 use App\Http\Resources\TurnoProgramadoResource;
 use App\Models\Programacion\TurnoProgramado;
 use App\Services\TurnoProgramadoService;
+use App\Support\AlcanceDeEess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -38,9 +39,9 @@ class TurnoProgramadoController extends Controller
             ->when($request->filled('es_guardia'), fn ($q) => $q->where('TurnoProgramadoEsGuardia', $request->boolean('es_guardia')))
             ->when($request->filled('estado'), fn ($q) => $q->where('TurnoProgramadoEstado', $request->string('estado')->toString()))
             ->when($request->filled('programacion_periodo_id'), fn ($q) => $q->whereHas('programacionTrabajador', fn ($p) => $p->where('ProgramacionPeriodoId', $request->integer('programacion_periodo_id'))))
-            ->when($request->filled('vinculo_laboral_id'), fn ($q) => $q->whereHas('programacionTrabajador', fn ($p) => $p->where('VinculoLaboralId', $request->integer('vinculo_laboral_id'))))
+            ->when(AlcanceDeEess::restringeVinculos($request), fn ($q) => $q->whereHas('programacionTrabajador', fn ($p) => $p->whereIn('VinculoLaboralId', AlcanceDeEess::vinculos($request))))
             ->when($request->filled('periodo_estado'), fn ($q) => $q->whereHas('programacionTrabajador.periodo', fn ($p) => $p->where('ProgramacionPeriodoEstado', $request->string('periodo_estado')->toString())))
-            ->when($request->filled('eess_id'), fn ($q) => $q->whereHas('programacionTrabajador.periodo', fn ($p) => $p->where('EessId', $request->integer('eess_id'))))
+            ->when(AlcanceDeEess::restringe($request), fn ($q) => $q->whereHas('programacionTrabajador.periodo', fn ($p) => $p->whereIn('EessId', AlcanceDeEess::ids($request))))
             ->when($request->filled('desde'), fn ($q) => $q->whereDate('TurnoProgramadoFecha', '>=', $request->date('desde')))
             ->when($request->filled('hasta'), fn ($q) => $q->whereDate('TurnoProgramadoFecha', '<=', $request->date('hasta')))
             ->orderBy('TurnoProgramadoFecha')

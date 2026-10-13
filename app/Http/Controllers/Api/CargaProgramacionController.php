@@ -7,6 +7,7 @@ use App\Http\Requests\CargaProgramacionRequest;
 use App\Http\Resources\CargaProgramacionResource;
 use App\Models\Programacion\CargaProgramacion;
 use App\Services\SolicitudService;
+use App\Support\AlcanceDeEess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -31,7 +32,7 @@ class CargaProgramacionController extends Controller
                 ->where('CargaProgramacionCodigo', 'like', "%{$buscar}%")
                 ->orWhere('CargaProgramacionDocumentoNumero', 'like', "%{$buscar}%")
                 ->orWhere('CargaProgramacionMotivo', 'like', "%{$buscar}%")))
-            ->when($request->filled('eess_id'), fn ($q) => $q->where('EessId', $request->integer('eess_id')))
+            ->when(AlcanceDeEess::restringe($request), fn ($q) => $q->whereIn('EessId', AlcanceDeEess::ids($request)))
             ->when($request->filled('tipo_periodo_programacion_id'), fn ($q) => $q->where('TipoPeriodoProgramacionId', $request->integer('tipo_periodo_programacion_id')))
             ->when($request->filled('programacion_periodo_id'), fn ($q) => $q->where('ProgramacionPeriodoId', $request->integer('programacion_periodo_id')))
             ->when($request->filled('anio'), fn ($q) => $q->where('CargaProgramacionAnio', $request->integer('anio')))

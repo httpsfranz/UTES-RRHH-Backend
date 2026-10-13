@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\OcurrenciaPorteriaRequest;
 use App\Http\Resources\OcurrenciaPorteriaResource;
 use App\Models\Solicitudes\OcurrenciaPorteria;
+use App\Support\AlcanceDeEess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -31,8 +32,8 @@ class OcurrenciaPorteriaController extends Controller
                 ->orWhereHas('vinculoLaboral.trabajador', fn ($t) => $t
                     ->where('TrabajadorNombreCompleto', 'like', "%{$buscar}%")
                     ->orWhere('TrabajadorNumeroDocumento', 'like', "%{$buscar}%"))))
-            ->when($request->filled('eess_id'), fn ($q) => $q->where('EessId', $request->integer('eess_id')))
-            ->when($request->filled('vinculo_laboral_id'), fn ($q) => $q->where('VinculoLaboralId', $request->integer('vinculo_laboral_id')))
+            ->when(AlcanceDeEess::restringe($request), fn ($q) => $q->whereIn('EessId', AlcanceDeEess::ids($request)))
+            ->when(AlcanceDeEess::restringeVinculos($request), fn ($q) => $q->whereIn('VinculoLaboralId', AlcanceDeEess::vinculos($request)))
             ->when($request->filled('tipo'), fn ($q) => $q->where('OcurrenciaPorteriaTipo', $request->string('tipo')->toString()))
             ->when($request->filled('estado'), fn ($q) => $q->where('OcurrenciaPorteriaEstado', $request->string('estado')->toString()))
             ->when($request->filled('desde'), fn ($q) => $q->whereDate('OcurrenciaPorteriaFechaHora', '>=', $request->date('desde')))

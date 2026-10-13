@@ -7,6 +7,7 @@ use App\Http\Requests\ProgramacionTrabajadorRequest;
 use App\Http\Resources\ProgramacionTrabajadorResource;
 use App\Models\Programacion\ProgramacionTrabajador;
 use App\Services\ProgramacionTrabajadorService;
+use App\Support\AlcanceDeEess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -33,9 +34,9 @@ class ProgramacionTrabajadorController extends Controller
                     ->where('TrabajadorNombreCompleto', 'like', "%{$buscar}%")
                     ->orWhere('TrabajadorNumeroDocumento', 'like', "%{$buscar}%"))))
             ->when($request->filled('programacion_periodo_id'), fn ($q) => $q->where('ProgramacionPeriodoId', $request->integer('programacion_periodo_id')))
-            ->when($request->filled('vinculo_laboral_id'), fn ($q) => $q->where('VinculoLaboralId', $request->integer('vinculo_laboral_id')))
+            ->when(AlcanceDeEess::restringeVinculos($request), fn ($q) => $q->whereIn('VinculoLaboralId', AlcanceDeEess::vinculos($request)))
             ->when($request->filled('estado'), fn ($q) => $q->where('ProgramacionTrabajadorEstado', $request->string('estado')->toString()))
-            ->when($request->filled('eess_id'), fn ($q) => $q->whereHas('periodo', fn ($v) => $v->where('EessId', $request->integer('eess_id'))))
+            ->when(AlcanceDeEess::restringe($request), fn ($q) => $q->whereHas('periodo', fn ($v) => $v->whereIn('EessId', AlcanceDeEess::ids($request))))
 
             ->orderByDesc('ProgramacionPeriodoId')
             ->orderBy('ProgramacionTrabajadorId')

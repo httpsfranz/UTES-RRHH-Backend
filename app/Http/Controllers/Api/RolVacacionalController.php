@@ -8,6 +8,7 @@ use App\Http\Requests\RolVacacionalRequest;
 use App\Http\Resources\RolVacacionalResource;
 use App\Models\Vacaciones\RolVacacional;
 use App\Services\RolVacacionalService;
+use App\Support\AlcanceDeEess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -34,8 +35,8 @@ class RolVacacionalController extends Controller
                     ->orWhere('TrabajadorNumeroDocumento', 'like', "%{$buscar}%"))))
             ->when($request->filled('periodo_vacacional_id'), fn ($q) => $q->where('PeriodoVacacionalId', $request->integer('periodo_vacacional_id')))
             ->when($request->filled('estado'), fn ($q) => $q->where('RolVacacionalEstado', $request->string('estado')->toString()))
-            ->when($request->filled('vinculo_laboral_id'), fn ($q) => $q->whereHas('periodoVacacional', fn ($p) => $p->where('VinculoLaboralId', $request->integer('vinculo_laboral_id'))))
-            ->when($request->filled('eess_id'), fn ($q) => $q->whereHas('periodoVacacional.vinculoLaboral', fn ($v) => $v->where('EessId', $request->integer('eess_id'))))
+            ->when(AlcanceDeEess::restringeVinculos($request), fn ($q) => $q->whereHas('periodoVacacional', fn ($p) => $p->whereIn('VinculoLaboralId', AlcanceDeEess::vinculos($request))))
+            ->when(AlcanceDeEess::restringe($request), fn ($q) => $q->whereHas('periodoVacacional.vinculoLaboral', fn ($v) => $v->whereIn('EessId', AlcanceDeEess::ids($request))))
             ->when($request->filled('anio'), fn ($q) => $q->whereHas('periodoVacacional', fn ($p) => $p->where('PeriodoVacacionalAnio', $request->integer('anio'))))
             ->when($request->filled('desde'), fn ($q) => $q->whereDate('RolVacacionalFechaProgramada', '>=', $request->date('desde')))
             ->when($request->filled('hasta'), fn ($q) => $q->whereDate('RolVacacionalFechaProgramada', '<=', $request->date('hasta')))

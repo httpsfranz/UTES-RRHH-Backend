@@ -76,7 +76,7 @@ final class Nivel3Modulos
                 ],
                 'keys' => ['id', 'vinculo_laboral_id', 'turno_programado_id', 'estado_asistencia_id', 'justificacion_falta_id', 'fecha',
                     'hora_entrada', 'hora_salida', 'minutos_tardanza', 'minutos_falta', 'minutos_extra', 'minutos_trabajados', 'observacion',
-                    'fecha_proceso', 'trabajador', 'vinculo', 'estado'],
+                    'origen', 'fecha_proceso', 'trabajador', 'vinculo', 'estado'],
                 'required' => ['VinculoLaboralId', 'EstadoAsistenciaId', 'AsistenciaDiariaFecha'],
                 'unique' => [], 'uniqueComposite' => 'AsistenciaDiariaFecha',
                 'maxlen' => ['AsistenciaDiariaObservacion' => 1000],

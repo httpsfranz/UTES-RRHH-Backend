@@ -23,8 +23,12 @@
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
         <env name="CACHE_STORE" value="array"/>
-        <!-- El esquema vive en SQL Server (13 esquemas, scripts T-SQL): las pruebas usan la base de .env. -->
+        <!-- El esquema vive en SQL Server (13 esquemas, scripts T-SQL). Las pruebas corren en SU base, con solo los casos
+             puntuales de los seeders; la de trabajo (.env) lleva ademas el volumen y no se toca. La crea
+             `php artisan pruebas:preparar` (el nombre debe coincidir con config/seed.php). -->
         <env name="DB_CONNECTION" value="sqlsrv"/>
+        <env name="DB_DATABASE" value="DB_ControlAsistencia_Test" force="true"/>
+        <env name="SEED_VOLUMEN" value="false" force="true"/>
         <env name="DB_URL" value=""/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>

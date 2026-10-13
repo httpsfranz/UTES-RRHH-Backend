@@ -43,6 +43,11 @@ class CatalogosSeeder extends Seeder
         $this->disciplina();
         $this->seguridad();
         $this->parametrosDelSistema();
+        // En produccion este es el unico seeder que corre: deja listos permisos, matriz de roles y usuarios predeterminados.
+        // En desarrollo los crea DatabaseSeeder al final (despues de los datos de prueba, para no desplazar sus Id).
+        if (app()->isProduction()) {
+            $this->call(UsuariosYPermisosSeeder::class);
+        }
     }
 
     private function organizacion(): void
@@ -309,7 +314,8 @@ class CatalogosSeeder extends Seeder
             ['SALIDA_ANTIC', 'Salida anticipada', 0, 1, 1],
             ['FALTA', 'Falta injustificada', 1, 1, 1],
             ['FALTA_JUST', 'Falta justificada', 1, 0, 1],
-            ['OMISION_MARCA', 'Omision de marcacion', 1, 0, 1],
+            ['OMISION_MARCA', 'Omision de marcacion', 1, 1, 1],   // RIT Art. 22 y 23 c: omitir la marca es inasistencia injustificada (descuenta, pero se puede justificar)
+            ['FALTA_GUARDIA', 'Guardia no realizada', 1, 1, 1],   // RIT Art. 20 y 22: equivale a dos dias de inasistencia
             ['PAPELETA', 'Con papeleta autorizada', 0, 0, 1],
             ['COMISION', 'Comision de servicio', 0, 0, 1],
             ['LICENCIA', 'Con licencia', 0, 0, 1],
@@ -326,6 +332,8 @@ class CatalogosSeeder extends Seeder
             'EstadoAsistenciaEsDescontable' => $e[3],
             'EstadoAsistenciaEsLaborable' => $e[4],
         ], $estados));
+        // El catalogo se siembra solo si falta la fila: la omision de marca ya sembrada con el criterio anterior se corrige aqui.
+        DB::table('Asistencia.EstadoAsistencia')->where('EstadoAsistenciaCodigo', 'OMISION_MARCA')->update(['EstadoAsistenciaEsDescontable' => 1]);
 
         $conceptos = [
             ['DESCANSO_MED', 'Descanso medico / CITT', 1, 1, 'Inasistencia por incapacidad temporal'],
@@ -459,6 +467,7 @@ class CatalogosSeeder extends Seeder
             ['ParametroSistemaCodigo' => 'DOC_STORAGE_BASE', 'ParametroSistemaValor' => '/storage/documentos', 'ParametroSistemaDescripcion' => 'Ruta base del almacenamiento externo de documentos'],
             ['ParametroSistemaCodigo' => 'DIAS_JUSTIFICAR_FALTA', 'ParametroSistemaValor' => '3', 'ParametroSistemaDescripcion' => 'Dias habiles para presentar la justificacion de una falta'],
             ['ParametroSistemaCodigo' => 'DIAS_ANTICIPO_PROG', 'ParametroSistemaValor' => '5', 'ParametroSistemaDescripcion' => 'Dias de anticipacion para remitir la programacion'],
+            ['ParametroSistemaCodigo' => 'REFRIGERIO_DESCUENTA_JORNADA', 'ParametroSistemaValor' => '0', 'ParametroSistemaDescripcion' => '1 = el refrigerio de la sede (45 min) se resta de los minutos trabajados; 0 = no se marca ni se descuenta (RIT Art. 16.1)'],
             ['ParametroSistemaCodigo' => 'TOLERANCIA_GLOBAL_MIN', 'ParametroSistemaValor' => '5', 'ParametroSistemaDescripcion' => 'Minutos de tolerancia por defecto'],
         ]);
     }

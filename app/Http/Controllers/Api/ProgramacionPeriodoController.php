@@ -7,6 +7,7 @@ use App\Http\Requests\ProgramacionPeriodoRequest;
 use App\Http\Resources\ProgramacionPeriodoResource;
 use App\Models\Programacion\ProgramacionPeriodo;
 use App\Services\ProgramacionPeriodoService;
+use App\Support\AlcanceDeEess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -29,7 +30,7 @@ class ProgramacionPeriodoController extends Controller
             ->when($request->filled('buscar'), fn ($q) => $q->where(fn ($s) => $s
                 ->where('ProgramacionPeriodoCodigo', 'like', "%{$buscar}%")
                 ->orWhere('ProgramacionPeriodoObservacion', 'like', "%{$buscar}%")))
-            ->when($request->filled('eess_id'), fn ($q) => $q->where('EessId', $request->integer('eess_id')))
+            ->when(AlcanceDeEess::restringe($request), fn ($q) => $q->whereIn('EessId', AlcanceDeEess::ids($request)))
             ->when($request->filled('tipo_periodo_programacion_id'), fn ($q) => $q->where('TipoPeriodoProgramacionId', $request->integer('tipo_periodo_programacion_id')))
             ->when($request->filled('anio'), fn ($q) => $q->where('ProgramacionPeriodoAnio', $request->integer('anio')))
             ->when($request->filled('mes'), fn ($q) => $q->where('ProgramacionPeriodoMes', $request->integer('mes')))

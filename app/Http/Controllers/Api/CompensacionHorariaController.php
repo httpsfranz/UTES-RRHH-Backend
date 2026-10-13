@@ -9,6 +9,7 @@ use App\Http\Requests\ResolucionRequest;
 use App\Http\Resources\CompensacionHorariaResource;
 use App\Models\Compensaciones\CompensacionHoraria;
 use App\Services\CompensacionHorariaService;
+use App\Support\AlcanceDeEess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -34,11 +35,11 @@ class CompensacionHorariaController extends Controller
                 ->orWhereHas('vinculoLaboral.trabajador', fn ($t) => $t
                     ->where('TrabajadorNombreCompleto', 'like', "%{$buscar}%")
                     ->orWhere('TrabajadorNumeroDocumento', 'like', "%{$buscar}%"))))
-            ->when($request->filled('vinculo_laboral_id'), fn ($q) => $q->where('VinculoLaboralId', $request->integer('vinculo_laboral_id')))
+            ->when(AlcanceDeEess::restringeVinculos($request), fn ($q) => $q->whereIn('VinculoLaboralId', AlcanceDeEess::vinculos($request)))
             ->when($request->filled('tipo_compensacion_id'), fn ($q) => $q->where('TipoCompensacionId', $request->integer('tipo_compensacion_id')))
             ->when($request->filled('asistencia_diaria_id'), fn ($q) => $q->where('AsistenciaDiariaId', $request->integer('asistencia_diaria_id')))
             ->when($request->filled('estado'), fn ($q) => $q->where('CompensacionHorariaEstado', $request->string('estado')->toString()))
-            ->when($request->filled('eess_id'), fn ($q) => $q->whereHas('vinculoLaboral', fn ($v) => $v->where('EessId', $request->integer('eess_id'))))
+            ->when(AlcanceDeEess::restringe($request), fn ($q) => $q->whereHas('vinculoLaboral', fn ($v) => $v->whereIn('EessId', AlcanceDeEess::ids($request))))
             ->when($request->filled('desde'), fn ($q) => $q->whereDate('CompensacionHorariaFechaGeneracion', '>=', $request->date('desde')))
             ->when($request->filled('hasta'), fn ($q) => $q->whereDate('CompensacionHorariaFechaGeneracion', '<=', $request->date('hasta')))
             ->orderByDesc('CompensacionHorariaFechaGeneracion')

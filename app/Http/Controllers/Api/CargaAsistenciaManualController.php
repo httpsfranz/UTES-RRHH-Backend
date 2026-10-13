@@ -7,6 +7,7 @@ use App\Http\Requests\CargaAsistenciaManualRequest;
 use App\Http\Resources\CargaAsistenciaManualResource;
 use App\Models\Asistencia\CargaAsistenciaManual;
 use App\Services\CargaAsistenciaManualService;
+use App\Support\AlcanceDeEess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -30,7 +31,7 @@ class CargaAsistenciaManualController extends Controller
             ->when($request->filled('buscar'), fn ($q) => $q->where(fn ($s) => $s
                 ->where('CargaAsistenciaManualNombreArchivo', 'like', "%{$buscar}%")
                 ->orWhere('CargaAsistenciaManualObservacion', 'like', "%{$buscar}%")))
-            ->when($request->filled('eess_id'), fn ($q) => $q->where('EessId', $request->integer('eess_id')))
+            ->when(AlcanceDeEess::restringe($request), fn ($q) => $q->whereIn('EessId', AlcanceDeEess::ids($request)))
             ->when($request->filled('usuario_id'), fn ($q) => $q->where('UsuarioId', $request->integer('usuario_id')))
             ->when($request->filled('estado'), fn ($q) => $q->where('CargaAsistenciaManualEstado', $request->string('estado')->toString()))
 

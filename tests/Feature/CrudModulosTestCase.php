@@ -78,50 +78,6 @@ abstract class CrudModulosTestCase extends TestCase
         return $override + $spec['create'] + $ids;
     }
 
-    private function idSembrado(string $tabla, string $pk, array $filtro): int
-    {
-        $id = DB::table($tabla)->where($filtro)->value($pk);
-        $this->assertNotNull($id, "Falta la fila sembrada {$tabla} ".json_encode($filtro).' (php artisan migrate:fresh --seed).');
-
-        return (int) $id;
-    }
-
-    /**
-     * Crea un trabajador activo SIN vinculo, usuario, colegiatura ni biometria: sirve de base para probar los
-     * modulos de Nivel 2 sin chocar con los trabajadores sembrados.
-     *
-     * @param  array<string,mixed>  $extra  columnas de Personal.Trabajador a pisar (p. ej. ProfesionId)
-     */
-    public function nuevoTrabajador(array $extra = []): int
-    {
-        return (int) DB::table('Personal.Trabajador')->insertGetId($extra + [
-            'TipoDocumentoIdentidadId' => $this->idSembrado('Personal.TipoDocumentoIdentidad', 'TipoDocumentoIdentidadId', ['TipoDocumentoIdentidadCodigo' => 'DNI']),
-            'TrabajadorNumeroDocumento' => (string) random_int(71000000, 78999999),
-            'TrabajadorNombres' => 'Prueba',
-            'TrabajadorApellidoPaterno' => 'Nivel',
-            'TrabajadorApellidoMaterno' => 'Dos',
-            'TrabajadorEstado' => 1,
-        ], 'TrabajadorId');
-    }
-
-    /**
-     * Crea un vinculo laboral vigente (desde 2026-01-01, sin fin) de un trabajador nuevo en EESS-LE-01, sin AIRHSP
-     * (condicion DESTACADO). Sirve de base para los modulos de Nivel 3 sin chocar con los vinculos sembrados.
-     *
-     * @param  array<string,mixed>  $extra  columnas de Personal.VinculoLaboral a pisar (p. ej. EessId, fechas)
-     */
-    public function nuevoVinculo(array $extra = [], ?int $trabajadorId = null): int
-    {
-        return (int) DB::table('Personal.VinculoLaboral')->insertGetId($extra + [
-            'TrabajadorId' => $trabajadorId ?? $this->nuevoTrabajador(),
-            'EessId' => $this->idSembrado('Organizacion.EstablecimientoSalud', 'EessId', ['EessCodigo' => 'EESS-LE-01']),
-            'RegimenLaboralId' => $this->idSembrado('Personal.RegimenLaboral', 'RegimenLaboralId', ['RegimenLaboralCodigo' => 'OTRO']),
-            'CondicionLaboralId' => $this->idSembrado('Personal.CondicionLaboral', 'CondicionLaboralId', ['CondicionLaboralCodigo' => 'DESTACADO']),
-            'CargoId' => $this->idSembrado('Personal.Cargo', 'CargoId', ['CargoNombre' => 'Contador(a)']),
-            'VinculoLaboralFechaInicio' => '2026-01-01',
-        ], 'VinculoLaboralId');
-    }
-
     /** Registra un consentimiento biometrico del trabajador (aceptado o revocado) directamente en la base. */
     public function conConsentimiento(int $trabajadorId, bool $acepta = true): int
     {
@@ -185,7 +141,13 @@ abstract class CrudModulosTestCase extends TestCase
     {
         $spec = $this->spec($slug);
 
-        $this->postJson($spec['endpoint'], [])->assertStatus(422)->assertJsonValidationErrors($spec['required']);
+        // El usuario que registra lo fija el servidor con el de la sesion (VerificarPermiso): ya no se exige en el cuerpo.
+        $obligatorios = array_values(array_diff($spec['required'], $this->camposDelUsuarioAutenticado($spec)));
+        if ($obligatorios === []) {
+            $this->markTestSkipped('Todos sus campos obligatorios los fija el servidor con el usuario autenticado.');
+        }
+
+        $this->postJson($spec['endpoint'], [])->assertStatus(422)->assertJsonValidationErrors($obligatorios);
     }
 
     #[DataProvider('modulos')]
@@ -228,6 +190,9 @@ abstract class CrudModulosTestCase extends TestCase
         }
 
         foreach ($spec['invalid'] as [$override, $campo]) {
+            if (in_array($campo, $this->camposDelUsuarioAutenticado($spec), true)) {
+                continue;
+            }
             $this->postJson($spec['endpoint'], $this->payload($spec, $override))
                 ->assertStatus(422, 'Se esperaba 422 para '.json_encode($override).' en '.$slug)
                 ->assertJsonValidationErrors([$campo]);
@@ -310,5 +275,22 @@ abstract class CrudModulosTestCase extends TestCase
             $this->assertEquals(0, $fila->{$spec['estado']});
             $this->getJson("{$spec['endpoint']}/{$id}")->assertOk()->assertJsonPath('data.activo', false);
         }
+    }
+
+    /**
+     * Campos del cuerpo que el servidor sobrescribe con el usuario de la sesion al crear (ver VerificarPermiso).
+     *
+     * @param  array<string,mixed>  $spec
+     * @return list<string>
+     */
+    protected function camposDelUsuarioAutenticado(array $spec): array
+    {
+        $recurso = trim((string) preg_replace('#^/api/#', '', $spec['endpoint']), '/');
+        $campos = ['UsuarioRegistroId'];
+        if (in_array($recurso, ['ajustes-marcacion', 'cargas-asistencia-manual', 'supervisiones-inopinadas', 'ocurrencias-porteria'], true)) {
+            $campos[] = 'UsuarioId';
+        }
+
+        return $campos;
     }
 }

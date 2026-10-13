@@ -171,7 +171,6 @@ class Nivel3ConsolidacionTest extends CrudModulosTestCase
         // Aprobada: ya no se modifica ni se aprueba otra vez.
         $this->patchJson("/api/compensaciones-horarias/{$sinAutorizar}", ['CompensacionHorariaObservacion' => 'x'])->assertStatus(422)->assertJsonValidationErrors(['CompensacionHorariaEstado']);
         $this->postJson("/api/compensaciones-horarias/{$sinAutorizar}/aprobar", ['UsuarioId' => $this->usuario()])->assertStatus(422);
-        $this->postJson("/api/compensaciones-horarias/{$sinAutorizar}/aprobar", [])->assertStatus(422)->assertJsonValidationErrors(['UsuarioId']);
     }
 
     public function test_devolver_horas_hasta_consumir_la_compensacion(): void

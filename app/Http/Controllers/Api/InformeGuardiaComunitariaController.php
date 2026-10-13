@@ -8,6 +8,7 @@ use App\Http\Requests\ResolucionRequest;
 use App\Http\Resources\InformeGuardiaComunitariaResource;
 use App\Models\Programacion\InformeGuardiaComunitaria;
 use App\Services\SolicitudService;
+use App\Support\AlcanceDeEess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -32,9 +33,9 @@ class InformeGuardiaComunitariaController extends Controller
                 ->orWhereHas('vinculoLaboral.trabajador', fn ($t) => $t
                     ->where('TrabajadorNombreCompleto', 'like', "%{$buscar}%")
                     ->orWhere('TrabajadorNumeroDocumento', 'like', "%{$buscar}%"))))
-            ->when($request->filled('vinculo_laboral_id'), fn ($q) => $q->where('VinculoLaboralId', $request->integer('vinculo_laboral_id')))
+            ->when(AlcanceDeEess::restringeVinculos($request), fn ($q) => $q->whereIn('VinculoLaboralId', AlcanceDeEess::vinculos($request)))
             ->when($request->filled('estado'), fn ($q) => $q->where('InformeGuardiaComunitariaEstado', $request->string('estado')->toString()))
-            ->when($request->filled('eess_id'), fn ($q) => $q->whereHas('vinculoLaboral', fn ($v) => $v->where('EessId', $request->integer('eess_id'))))
+            ->when(AlcanceDeEess::restringe($request), fn ($q) => $q->whereHas('vinculoLaboral', fn ($v) => $v->whereIn('EessId', AlcanceDeEess::ids($request))))
             ->when($request->filled('desde'), fn ($q) => $q->whereDate('InformeGuardiaComunitariaFecha', '>=', $request->date('desde')))
             ->when($request->filled('hasta'), fn ($q) => $q->whereDate('InformeGuardiaComunitariaFecha', '<=', $request->date('hasta')))
             ->orderByDesc('InformeGuardiaComunitariaFecha')

@@ -7,6 +7,7 @@ use App\Http\Requests\DetalleConsolidadoRequest;
 use App\Http\Resources\DetalleConsolidadoResource;
 use App\Models\Consolidacion\DetalleConsolidado;
 use App\Services\DetalleConsolidadoService;
+use App\Support\AlcanceDeEess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -36,8 +37,8 @@ class DetalleConsolidadoController extends Controller
             ->when($request->filled('estado'), fn ($q) => $q->where('DetalleConsolidadoEstado', $request->string('estado')->toString()))
             ->when($request->filled('es_justificada'), fn ($q) => $q->where('DetalleConsolidadoEsJustificada', $request->boolean('es_justificada')))
             ->when($request->filled('periodo_asistencia_id'), fn ($q) => $q->whereHas('consolidado', fn ($c) => $c->where('PeriodoAsistenciaId', $request->integer('periodo_asistencia_id'))))
-            ->when($request->filled('vinculo_laboral_id'), fn ($q) => $q->whereHas('consolidado', fn ($c) => $c->where('VinculoLaboralId', $request->integer('vinculo_laboral_id'))))
-            ->when($request->filled('eess_id'), fn ($q) => $q->whereHas('consolidado.vinculoLaboral', fn ($v) => $v->where('EessId', $request->integer('eess_id'))))
+            ->when(AlcanceDeEess::restringeVinculos($request), fn ($q) => $q->whereHas('consolidado', fn ($c) => $c->whereIn('VinculoLaboralId', AlcanceDeEess::vinculos($request))))
+            ->when(AlcanceDeEess::restringe($request), fn ($q) => $q->whereHas('consolidado.vinculoLaboral', fn ($v) => $v->whereIn('EessId', AlcanceDeEess::ids($request))))
             ->when($request->filled('desde'), fn ($q) => $q->whereDate('DetalleConsolidadoFecha', '>=', $request->date('desde')))
             ->when($request->filled('hasta'), fn ($q) => $q->whereDate('DetalleConsolidadoFecha', '<=', $request->date('hasta')))
             ->orderByDesc('DetalleConsolidadoFecha')

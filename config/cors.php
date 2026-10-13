@@ -25,7 +25,8 @@ return [
 
     'allowed_headers' => ['*'],
 
-    'exposed_headers' => [],
+    // El navegador solo lee Content-Disposition entre origenes si se expone: el PDF del calendario lo usa para el nombre del archivo.
+    'exposed_headers' => ['Content-Disposition'],
 
     'max_age' => 0,
 

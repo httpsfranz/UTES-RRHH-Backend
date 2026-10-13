@@ -307,10 +307,12 @@ class Nivel3AsistenciaTest extends CrudModulosTestCase
         $falta2 = $this->asistencia($vinculo, '2026-09-22', 'FALTA');
         $asistio = $this->asistencia($vinculo, '2026-09-23', 'ASISTIO');
         $fuera = $this->asistencia($vinculo, '2026-09-25', 'FALTA');
+        $this->actuarComo('rvargas');   // quien registra es el usuario de la sesion
         $id = $this->postJson('/api/justificaciones-falta', [
             'VinculoLaboralId' => $vinculo, 'ConceptoJustificacionId' => $this->id('Asistencia.ConceptoJustificacion', 'ConceptoJustificacionId', ['ConceptoJustificacionCodigo' => 'EMERGENCIA']),
-            'UsuarioRegistroId' => $this->usuario(), 'JustificacionFaltaFechaInicio' => '2026-09-21', 'JustificacionFaltaFechaFin' => '2026-09-23',
+            'JustificacionFaltaFechaInicio' => '2026-09-21', 'JustificacionFaltaFechaFin' => '2026-09-23',
         ])->assertCreated()->assertJsonPath('data.estado', 'PENDIENTE')->json('data.id');
+        $this->actuarComo('pgutierrez');
 
         $r = $this->postJson("/api/justificaciones-falta/{$id}/aprobar", ['UsuarioId' => $this->usuario('pgutierrez'), 'Motivo' => 'Constancia presentada'])->assertOk();
         $r->assertJsonPath('data.estado', 'APROBADO')->assertJsonPath('data.usuario_resolucion.nombre', 'pgutierrez')->assertJsonPath('asistencias_actualizadas', 2)
@@ -347,10 +349,9 @@ class Nivel3AsistenciaTest extends CrudModulosTestCase
         ])->assertCreated()->json('data.id');
 
         $this->postJson("/api/justificaciones-falta/{$id}/rechazar", ['UsuarioId' => $this->usuario('pgutierrez')])->assertStatus(422)->assertJsonValidationErrors(['Motivo']);
-        $this->postJson("/api/justificaciones-falta/{$id}/rechazar", ['Motivo' => 'Sin sustento'])->assertStatus(422)->assertJsonValidationErrors(['UsuarioId']);
-        $this->postJson("/api/justificaciones-falta/{$id}/rechazar", ['UsuarioId' => 999999, 'Motivo' => 'x'])->assertStatus(422)->assertJsonValidationErrors(['UsuarioId']);
-        $this->postJson("/api/justificaciones-falta/{$id}/rechazar", ['UsuarioId' => $this->usuario('pgutierrez'), 'Motivo' => 'Sin sustento'])
-            ->assertOk()->assertJsonPath('data.estado', 'RECHAZADO')->assertJsonPath('data.motivo_rechazo', 'Sin sustento');
+        // Quien rechaza es el usuario de la sesion: el UsuarioId del cuerpo se ignora.
+        $this->postJson("/api/justificaciones-falta/{$id}/rechazar", ['UsuarioId' => 999999, 'Motivo' => 'Sin sustento'])
+            ->assertOk()->assertJsonPath('data.estado', 'RECHAZADO')->assertJsonPath('data.motivo_rechazo', 'Sin sustento')->assertJsonPath('data.usuario_resolucion.nombre', 'pgutierrez');
 
         $this->assertNull(DB::table('Asistencia.AsistenciaDiaria')->where('AsistenciaDiariaId', $falta)->value('JustificacionFaltaId'));
         $this->assertSame($this->estado('FALTA'), (int) DB::table('Asistencia.AsistenciaDiaria')->where('AsistenciaDiariaId', $falta)->value('EstadoAsistenciaId'));

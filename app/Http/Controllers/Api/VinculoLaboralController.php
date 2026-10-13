@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\VinculoLaboralRequest;
 use App\Http\Resources\VinculoLaboralResource;
 use App\Models\Personal\VinculoLaboral;
+use App\Support\AlcanceDeEess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -29,7 +30,7 @@ class VinculoLaboralController extends Controller
                     ->where('TrabajadorNombreCompleto', 'like', "%{$buscar}%")
                     ->orWhere('TrabajadorNumeroDocumento', 'like', "%{$buscar}%"))))
             ->when($request->filled('trabajador_id'), fn ($q) => $q->where('TrabajadorId', $request->integer('trabajador_id')))
-            ->when($request->filled('eess_id'), fn ($q) => $q->where('EessId', $request->integer('eess_id')))
+            ->when(AlcanceDeEess::restringe($request), fn ($q) => $q->whereIn('EessId', AlcanceDeEess::ids($request)))
             ->when($request->filled('microred_id'), fn ($q) => $q->whereHas('eess', fn ($e) => $e->where('MicroredId', $request->integer('microred_id'))))
             ->when($request->filled('cargo_id'), fn ($q) => $q->where('CargoId', $request->integer('cargo_id')))
             ->when($request->filled('condicion_laboral_id'), fn ($q) => $q->where('CondicionLaboralId', $request->integer('condicion_laboral_id')))

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\DispositivoMarcacionRequest;
 use App\Http\Resources\DispositivoMarcacionResource;
 use App\Models\Biometria\DispositivoMarcacion;
+use App\Support\AlcanceDeEess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -21,7 +22,7 @@ class DispositivoMarcacionController extends Controller
             ->when($request->filled('buscar'), fn ($q) => $q->where(fn ($s) => $s
                 ->where('DispositivoMarcacionNombre', 'like', "%{$buscar}%")
                 ->orWhere('DispositivoMarcacionCodigo', 'like', "%{$buscar}%")))
-            ->when($request->filled('eess_id'), fn ($q) => $q->where('EessId', $request->integer('eess_id')))
+            ->when(AlcanceDeEess::restringe($request), fn ($q) => $q->whereIn('EessId', AlcanceDeEess::ids($request)))
             ->when($request->filled('estado'), fn ($q) => $q->where('DispositivoMarcacionEstado', $request->boolean('estado')))
             ->orderBy('DispositivoMarcacionNombre')
             ->paginate(max(1, min($request->integer('por_pagina', 15), 100)));

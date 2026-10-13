@@ -12,7 +12,8 @@ use RuntimeException;
  *   1. Vacia TODAS las tablas de los 13 esquemas del sistema (conserva la estructura,
  *      respeta FK y reinicia los Id a 1) -> App\Support\VaciaEsquemasDelSistema.
  *   2. Siembra los catalogos base                -> CatalogosSeeder.
- *   3. Siembra datos de prueba para Nivel 0      -> DatosPruebaSeeder.
+ *   3. Siembra datos de prueba                   -> DatosPruebaSeeder: los casos puntuales de cada modulo y, salvo
+ *      SEED_VOLUMEN=false, la expansion de volumen (la Red entera como un sistema ya en uso, ~45 segundos).
  *
  * Es reproducible: cada ejecucion termina en exactamente el mismo estado, sin importar
  * cuantas pruebas se hicieron antes.
@@ -40,6 +41,8 @@ class DatabaseSeeder extends Seeder
         $this->call([
             CatalogosSeeder::class,
             DatosPruebaSeeder::class,
+            // Otra vez al final: ahora que existen microredes y establecimientos, los usuarios predeterminados reciben su ambito.
+            UsuariosYPermisosSeeder::class,
         ]);
     }
 }

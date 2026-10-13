@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\HorarioRequest;
 use App\Http\Resources\HorarioResource;
 use App\Models\Configuracion\Horario;
+use App\Support\AlcanceDeEess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -22,7 +23,7 @@ class HorarioController extends Controller
                 ->where('HorarioNombre', 'like', "%{$buscar}%")
                 ->orWhere('HorarioCodigo', 'like', "%{$buscar}%")))
             ->when($request->filled('tipo_jornada_id'), fn ($q) => $q->where('TipoJornadaId', $request->integer('tipo_jornada_id')))
-            ->when($request->filled('eess_id'), fn ($q) => $q->where('EessId', $request->integer('eess_id')))
+            ->when(AlcanceDeEess::restringe($request), fn ($q) => $q->whereIn('EessId', AlcanceDeEess::ids($request)))
             ->when($request->filled('es_rotativo'), fn ($q) => $q->where('HorarioEsRotativo', $request->boolean('es_rotativo')))
             ->when($request->filled('estado'), fn ($q) => $q->where('HorarioEstado', $request->boolean('estado')))
             ->orderBy('HorarioNombre')

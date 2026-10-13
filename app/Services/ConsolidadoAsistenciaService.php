@@ -13,7 +13,8 @@ use Illuminate\Support\Facades\DB;
  * Consolidado mensual a partir de la asistencia diaria (PHP primero; un procedimiento almacenado solo si se mide que
  * hace falta, segun el manual de desarrollo). Por cada vinculo con asistencia en el periodo:
  *   dias trabajados          = dias con estado no-falta y laborable (EsFalta = 0 y EsLaborable = 1)
- *   dias de falta            = dias con falta descontable                (EsFalta = 1 y EsDescontable = 1)
+ *   dias de falta            = dias con falta descontable                (EsFalta = 1 y EsDescontable = 1);
+ *                              una guardia no realizada (FALTA_GUARDIA) vale dos dias (RIT, Art. 20 y 22)
  *   dias de falta justificada = faltas no descontables                  (EsFalta = 1 y EsDescontable = 0)
  *   minutos de tardanza y de sobretiempo = suma de la asistencia diaria.
  * Cada consolidado guarda ademas el detalle de sus dias (Consolidacion.DetalleConsolidado): la foto de la asistencia
@@ -43,7 +44,7 @@ class ConsolidadoAsistenciaService
                 ->groupBy('Asistencia.AsistenciaDiaria.VinculoLaboralId')
                 ->selectRaw('Asistencia.AsistenciaDiaria.VinculoLaboralId AS VinculoLaboralId')
                 ->selectRaw('SUM(CASE WHEN ea.EstadoAsistenciaEsFalta = 0 AND ea.EstadoAsistenciaEsLaborable = 1 THEN 1 ELSE 0 END) AS Trabajados')
-                ->selectRaw('SUM(CASE WHEN ea.EstadoAsistenciaEsFalta = 1 AND ea.EstadoAsistenciaEsDescontable = 1 THEN 1 ELSE 0 END) AS Faltas')
+                ->selectRaw("SUM(CASE WHEN ea.EstadoAsistenciaEsFalta = 1 AND ea.EstadoAsistenciaEsDescontable = 1 THEN (CASE WHEN ea.EstadoAsistenciaCodigo = 'FALTA_GUARDIA' THEN 2 ELSE 1 END) ELSE 0 END) AS Faltas")
                 ->selectRaw('SUM(CASE WHEN ea.EstadoAsistenciaEsFalta = 1 AND ea.EstadoAsistenciaEsDescontable = 0 THEN 1 ELSE 0 END) AS Justificadas')
                 ->selectRaw('SUM(AsistenciaDiariaMinutosTardanza) AS Tardanza')
                 ->selectRaw('SUM(AsistenciaDiariaMinutosExtra) AS Extra')

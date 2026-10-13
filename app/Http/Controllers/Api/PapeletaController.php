@@ -8,6 +8,7 @@ use App\Http\Requests\ResolucionRequest;
 use App\Http\Resources\PapeletaResource;
 use App\Models\Solicitudes\Papeleta;
 use App\Services\SolicitudService;
+use App\Support\AlcanceDeEess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -37,12 +38,12 @@ class PapeletaController extends Controller
                 ->orWhereHas('vinculoLaboral.trabajador', fn ($t) => $t
                     ->where('TrabajadorNombreCompleto', 'like', "%{$buscar}%")
                     ->orWhere('TrabajadorNumeroDocumento', 'like', "%{$buscar}%"))))
-            ->when($request->filled('vinculo_laboral_id'), fn ($q) => $q->where('VinculoLaboralId', $request->integer('vinculo_laboral_id')))
+            ->when(AlcanceDeEess::restringeVinculos($request), fn ($q) => $q->whereIn('VinculoLaboralId', AlcanceDeEess::vinculos($request)))
             ->when($request->filled('tipo_papeleta_id'), fn ($q) => $q->where('TipoPapeletaId', $request->integer('tipo_papeleta_id')))
             ->when($request->filled('motivo_papeleta_id'), fn ($q) => $q->where('MotivoPapeletaId', $request->integer('motivo_papeleta_id')))
             ->when($request->filled('estado'), fn ($q) => $q->where('PapeletaEstado', $request->string('estado')->toString()))
             ->when($request->filled('es_dia_completo'), fn ($q) => $q->where('PapeletaEsDiaCompleto', $request->boolean('es_dia_completo')))
-            ->when($request->filled('eess_id'), fn ($q) => $q->whereHas('vinculoLaboral', fn ($v) => $v->where('EessId', $request->integer('eess_id'))))
+            ->when(AlcanceDeEess::restringe($request), fn ($q) => $q->whereHas('vinculoLaboral', fn ($v) => $v->whereIn('EessId', AlcanceDeEess::ids($request))))
             ->when($request->filled('desde'), fn ($q) => $q->whereDate('PapeletaFecha', '>=', $request->date('desde')))
             ->when($request->filled('hasta'), fn ($q) => $q->whereDate('PapeletaFecha', '<=', $request->date('hasta')))
             ->orderByDesc('PapeletaFecha')

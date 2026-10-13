@@ -7,6 +7,7 @@ use App\Http\Requests\ConstatacionDomiciliariaRequest;
 use App\Http\Resources\ConstatacionDomiciliariaResource;
 use App\Models\Solicitudes\ConstatacionDomiciliaria;
 use App\Services\SolicitudService;
+use App\Support\AlcanceDeEess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -34,10 +35,10 @@ class ConstatacionDomiciliariaController extends Controller
                 ->orWhereHas('vinculoLaboral.trabajador', fn ($t) => $t
                     ->where('TrabajadorNombreCompleto', 'like', "%{$buscar}%")
                     ->orWhere('TrabajadorNumeroDocumento', 'like', "%{$buscar}%"))))
-            ->when($request->filled('vinculo_laboral_id'), fn ($q) => $q->where('VinculoLaboralId', $request->integer('vinculo_laboral_id')))
+            ->when(AlcanceDeEess::restringeVinculos($request), fn ($q) => $q->whereIn('VinculoLaboralId', AlcanceDeEess::vinculos($request)))
             ->when($request->filled('descanso_medico_id'), fn ($q) => $q->where('DescansoMedicoId', $request->integer('descanso_medico_id')))
             ->when($request->filled('estado'), fn ($q) => $q->where('ConstatacionDomiciliariaEstado', $request->string('estado')->toString()))
-            ->when($request->filled('eess_id'), fn ($q) => $q->whereHas('vinculoLaboral', fn ($v) => $v->where('EessId', $request->integer('eess_id'))))
+            ->when(AlcanceDeEess::restringe($request), fn ($q) => $q->whereHas('vinculoLaboral', fn ($v) => $v->whereIn('EessId', AlcanceDeEess::ids($request))))
             ->when($request->filled('desde'), fn ($q) => $q->whereDate('ConstatacionDomiciliariaFecha', '>=', $request->date('desde')))
             ->when($request->filled('hasta'), fn ($q) => $q->whereDate('ConstatacionDomiciliariaFecha', '<=', $request->date('hasta')))
             ->orderByDesc('ConstatacionDomiciliariaFecha')

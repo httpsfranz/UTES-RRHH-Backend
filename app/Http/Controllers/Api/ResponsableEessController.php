@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\ResponsableEessRequest;
 use App\Http\Resources\ResponsableEessResource;
 use App\Models\Organizacion\ResponsableEess;
+use App\Support\AlcanceDeEess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -33,8 +34,8 @@ class ResponsableEessController extends Controller
                 ->orWhereHas('vinculoLaboral.trabajador', fn ($t) => $t
                     ->where('TrabajadorNombreCompleto', 'like', "%{$buscar}%")
                     ->orWhere('TrabajadorNumeroDocumento', 'like', "%{$buscar}%"))))
-            ->when($request->filled('eess_id'), fn ($q) => $q->where('EessId', $request->integer('eess_id')))
-            ->when($request->filled('vinculo_laboral_id'), fn ($q) => $q->where('VinculoLaboralId', $request->integer('vinculo_laboral_id')))
+            ->when(AlcanceDeEess::restringe($request), fn ($q) => $q->whereIn('EessId', AlcanceDeEess::ids($request)))
+            ->when(AlcanceDeEess::restringeVinculos($request), fn ($q) => $q->whereIn('VinculoLaboralId', AlcanceDeEess::vinculos($request)))
             ->when($request->filled('tipo_responsabilidad_id'), fn ($q) => $q->where('TipoResponsabilidadId', $request->integer('tipo_responsabilidad_id')))
             ->when($request->filled('estado'), fn ($q) => $q->where('ResponsableEessEstado', $request->boolean('estado')))
             ->when($request->filled('microred_id'), fn ($q) => $q->whereHas('eess', fn ($e) => $e->where('MicroredId', $request->integer('microred_id'))))
