@@ -44,9 +44,7 @@ class TurnoProgramadoController extends Controller
             ->when(AlcanceDeEess::restringe($request), fn ($q) => $q->whereHas('programacionTrabajador.periodo', fn ($p) => $p->whereIn('EessId', AlcanceDeEess::ids($request))))
             ->when($request->filled('desde'), fn ($q) => $q->whereDate('TurnoProgramadoFecha', '>=', $request->date('desde')))
             ->when($request->filled('hasta'), fn ($q) => $q->whereDate('TurnoProgramadoFecha', '<=', $request->date('hasta')))
-            ->orderBy('TurnoProgramadoFecha')
-            ->orderBy('TurnoProgramadoHoraEntrada')
-            ->orderBy('TurnoProgramadoId')
+            ->orderByDesc('TurnoProgramadoId')
             ->paginate(max(1, min($request->integer('por_pagina', 15), 100)));
 
         return TurnoProgramadoResource::collection($registros);

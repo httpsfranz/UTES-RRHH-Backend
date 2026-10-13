@@ -212,8 +212,7 @@ class Nivel7AccesoTest extends TestCase
         $this->assertSame('personal', $propio['perfil']);
         $this->assertSame('programacion', $prog['perfil']);
         $this->assertLessThanOrEqual($this->kpi($red, 'Trabajadores activos'), $this->kpi($eess, 'Trabajadores activos'));
-        $this->assertContains('accesos', array_column($red['widgets'], 'id'), 'el administrador ve la seguridad');
-        $this->assertNotContains('accesos', array_column($eess['widgets'], 'id'));
+        $this->assertContains('por_eess', array_column($red['widgets'], 'id'), 'la Red se compara por establecimiento');
         $this->assertNotContains('por_eess', array_column($eess['widgets'], 'id'), 'un solo establecimiento no se compara con otros');
         $this->assertNotContains('pendientes', array_column($propio['widgets'], 'id'), 'el trabajador no resuelve solicitudes');
         $this->assertContains('cobertura', array_column($prog['widgets'], 'id'));

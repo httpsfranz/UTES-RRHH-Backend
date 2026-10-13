@@ -18,6 +18,16 @@ return [
         'key' => env('POSTMARK_API_KEY'),
     ],
 
+    // Consulta de DNI para autocompletar el alta de trabajadores. El proveedor es intercambiable (App\Services\ConsultaDni).
+    'consulta_dni' => [
+        'proveedor' => env('CONSULTA_DNI_PROVEEDOR', 'decolecta'),
+        'decolecta' => [
+            'token' => env('DECOLECTA_TOKEN'),
+            'url' => env('DECOLECTA_URL', 'https://api.decolecta.com/v1'),
+            'timeout' => (int) env('DECOLECTA_TIMEOUT', 5),
+        ],
+    ],
+
     'resend' => [
         'key' => env('RESEND_API_KEY'),
     ],

@@ -9,8 +9,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * Catalogos base sin los cuales el sistema no arranca (roles, regimenes laborales,
  * tipos de documento, estados de asistencia, turnos base, escala de tolerancia...).
- * Antes vivian en la seccion 20 de V001__esquema_base.sql; el esquema ahora es solo
- * estructura y los datos se siembran aqui.
+ * El esquema (V001) es solo estructura: los datos base se siembran aqui.
  *
  * Es IDEMPOTENTE: inserta solo lo que falta (por codigo) y no toca lo que ya existe,
  * asi que es seguro en cualquier ambiente, produccion incluida:

@@ -25,40 +25,41 @@ use App\Http\Controllers\Api\CondicionLaboralController;
 use App\Http\Controllers\Api\ConsentimientoBiometricoController;
 use App\Http\Controllers\Api\ConsolidadoAsistenciaController;
 use App\Http\Controllers\Api\ConstatacionDomiciliariaController;
+use App\Http\Controllers\Api\ConsultaDniController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DescansoMedicoController;
 use App\Http\Controllers\Api\DetalleConsolidadoController;
 use App\Http\Controllers\Api\DetalleLiquidacionController;
 use App\Http\Controllers\Api\DispositivoMarcacionController;
 use App\Http\Controllers\Api\DocumentoSustentoController;
-use App\Http\Controllers\Api\EstablecimientoSaludController;
 // Consolidacion
-use App\Http\Controllers\Api\EstadoAsistenciaController;
+use App\Http\Controllers\Api\EstablecimientoSaludController;
 // Disciplina
-use App\Http\Controllers\Api\ExpedientePadController;
+use App\Http\Controllers\Api\EstadoAsistenciaController;
 // Organizacion
+use App\Http\Controllers\Api\ExpedientePadController;
 use App\Http\Controllers\Api\GoceVacacionalController;
 use App\Http\Controllers\Api\GrupoOcupacionalController;
 use App\Http\Controllers\Api\HorarioController;
-use App\Http\Controllers\Api\HorarioDetalleController;
 // Personal
+use App\Http\Controllers\Api\HorarioDetalleController;
 use App\Http\Controllers\Api\InformeGuardiaComunitariaController;
 use App\Http\Controllers\Api\JustificacionFaltaController;
 use App\Http\Controllers\Api\LicenciaController;
 use App\Http\Controllers\Api\LiquidacionDescuentoController;
 use App\Http\Controllers\Api\LogIntegracionController;
-use App\Http\Controllers\Api\MarcacionController;
 // Programacion
+use App\Http\Controllers\Api\MarcacionController;
 use App\Http\Controllers\Api\MetodoMarcacionController;
-use App\Http\Controllers\Api\MicroredController;
 // Seguridad
+use App\Http\Controllers\Api\MicroredController;
 use App\Http\Controllers\Api\MotivoPapeletaController;
 use App\Http\Controllers\Api\NotificacionController;
-use App\Http\Controllers\Api\OcurrenciaPorteriaController;
 // Solicitudes
+use App\Http\Controllers\Api\OcurrenciaPorteriaController;
 use App\Http\Controllers\Api\PapeletaController;
-use App\Http\Controllers\Api\ParametroJornadaController;
 // Soporte
+use App\Http\Controllers\Api\ParametroJornadaController;
 use App\Http\Controllers\Api\ParametroSistemaController;
 use App\Http\Controllers\Api\PeriodoAsistenciaController;
 use App\Http\Controllers\Api\PeriodoVacacionalController;
@@ -208,6 +209,7 @@ Route::middleware(['auth:sanctum', 'permiso'])->group(function () {
     Route::apiResource('colegiaturas', ColegiaturaController::class)
         ->parameters(['colegiaturas' => 'colegiatura']);
 
+    Route::get('consulta-dni/{dni}', [ConsultaDniController::class, 'mostrar'])->middleware('throttle:60,1');
     Route::get('trabajadores/plantilla', [TrabajadorImportacionController::class, 'plantilla']);
     Route::post('trabajadores/importar', [TrabajadorImportacionController::class, 'importar']);
     Route::apiResource('trabajadores', TrabajadorController::class)

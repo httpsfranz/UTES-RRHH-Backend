@@ -330,11 +330,6 @@ final class Nivel3Modulos
                 'patch' => ['ProgramacionPeriodoObservacion' => 'Revisada por el jefe'], 'patchKey' => 'observacion',
                 'invalid' => [
                     [['ProgramacionPeriodoCodigo' => 'con espacios'], 'ProgramacionPeriodoCodigo'],
-                    [['ProgramacionPeriodoAnio' => 1999], 'ProgramacionPeriodoAnio'],
-                    [['ProgramacionPeriodoAnio' => 2025], 'ProgramacionPeriodoAnio'],   // no coincide con las fechas
-                    [['ProgramacionPeriodoMes' => 13], 'ProgramacionPeriodoMes'],
-                    [['ProgramacionPeriodoMes' => 10], 'ProgramacionPeriodoMes'],       // no coincide con las fechas
-                    [['ProgramacionPeriodoNumero' => 6], 'ProgramacionPeriodoNumero'],
                     [['ProgramacionPeriodoFechaInicio' => '01/11/2026'], 'ProgramacionPeriodoFechaInicio'],
                     [['ProgramacionPeriodoFechaFin' => '30/11/2026'], 'ProgramacionPeriodoFechaFin'],
                     [['ProgramacionPeriodoFechaFin' => '2026-10-31'], 'ProgramacionPeriodoFechaFin'],

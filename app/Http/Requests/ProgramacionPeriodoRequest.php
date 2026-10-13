@@ -20,6 +20,25 @@ class ProgramacionPeriodoRequest extends CatalogoRequest
 {
     use ReglasDeNegocio;
 
+    /**
+     * Año, mes y numero de quincena o semana salen de la fecha de inicio: no se piden aparte.
+     */
+    protected function prepareForValidation(): void
+    {
+        $inicio = $this->input('ProgramacionPeriodoFechaInicio');
+        if (! is_string($inicio) || ! preg_match('/^(\d{4})-(\d{2})-(\d{2})$/D', $inicio, $m)) {
+            return;
+        }
+        $derivados = ['ProgramacionPeriodoAnio' => (int) $m[1], 'ProgramacionPeriodoMes' => (int) $m[2]];
+        $codigo = TipoPeriodoProgramacion::query()->whereKey($this->input('TipoPeriodoProgramacionId'))->value('TipoPeriodoProgramacionCodigo');
+        if ($codigo === 'QUINCENAL') {
+            $derivados['ProgramacionPeriodoNumero'] = (int) $m[3] <= 15 ? 1 : 2;
+        } elseif ($codigo === 'SEMANAL') {
+            $derivados['ProgramacionPeriodoNumero'] = (int) ceil((int) $m[3] / 7);
+        }
+        $this->merge($derivados);
+    }
+
     public function rules(): array
     {
         return [

@@ -139,6 +139,20 @@ class AsistenciaDiariaRequest extends CatalogoRequest
             }
         }
 
+        // Una falta (FALTA, FALTA_JUST, FALTA_GUARDIA) no tiene marcas ni minutos trabajados, de tardanza o extra.
+        $codigoEstado = EstadoAsistencia::query()->whereKey($this->valorEfectivo('EstadoAsistenciaId'))->value('EstadoAsistenciaCodigo');
+        if (str_starts_with((string) $codigoEstado, 'FALTA')) {
+            return array_merge($datos, [
+                'AsistenciaDiariaHoraEntrada' => null,
+                'AsistenciaDiariaHoraSalida' => null,
+                'AsistenciaDiariaMinutosTardanza' => 0,
+                'AsistenciaDiariaMinutosExtra' => 0,
+                'AsistenciaDiariaMinutosTrabajados' => 0,
+                'AsistenciaDiariaFechaProceso' => now()->format('Y-m-d H:i:s'),
+                'AsistenciaDiariaOrigen' => 'MANUAL',
+            ]);
+        }
+
         // Minutos trabajados = salida - entrada, salvo que se indiquen (descuenta lo que el motor no sabe: refrigerio).
         $entrada = $this->momento('AsistenciaDiariaHoraEntrada');
         $salida = $this->momento('AsistenciaDiariaHoraSalida');

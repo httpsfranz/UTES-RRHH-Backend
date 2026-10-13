@@ -57,15 +57,14 @@ class Nivel3ProgramacionTest extends CrudModulosTestCase
     {
         // MENSUAL: el mes completo.
         $this->postJson('/api/programaciones-periodo', $this->programacion('MENSUAL', ['ProgramacionPeriodoFechaFin' => '2026-11-29']))->assertStatus(422)->assertJsonValidationErrors(['ProgramacionPeriodoFechaInicio']);
-        $this->postJson('/api/programaciones-periodo', $this->programacion('MENSUAL', ['ProgramacionPeriodoMes' => null]))->assertStatus(422)->assertJsonValidationErrors(['ProgramacionPeriodoMes']);
-        $this->postJson('/api/programaciones-periodo', $this->programacion('MENSUAL'))->assertCreated()->assertJsonPath('data.estado', 'BORRADOR')->assertJsonPath('data.tipo_periodo.codigo', 'MENSUAL');
+        $this->postJson('/api/programaciones-periodo', $this->programacion('MENSUAL'))->assertCreated()->assertJsonPath('data.estado', 'BORRADOR')->assertJsonPath('data.tipo_periodo.codigo', 'MENSUAL')
+            ->assertJsonPath('data.anio', 2026)->assertJsonPath('data.mes', 11);   // salen de la fecha de inicio
 
         // QUINCENAL: indica la quincena y sus fechas (1 al 15, 16 al fin de mes).
         $quincena = fn (array $extra) => $this->programacion('QUINCENAL', ['EessId' => $this->eess('EESS-LE-03')] + $extra);
-        $this->postJson('/api/programaciones-periodo', $quincena(['ProgramacionPeriodoFechaFin' => '2026-11-15']))->assertStatus(422)->assertJsonValidationErrors(['ProgramacionPeriodoNumero']);
         $this->postJson('/api/programaciones-periodo', $quincena(['ProgramacionPeriodoNumero' => 1]))->assertStatus(422)->assertJsonValidationErrors(['ProgramacionPeriodoFechaInicio']);
-        $this->postJson('/api/programaciones-periodo', $quincena(['ProgramacionPeriodoNumero' => 1, 'ProgramacionPeriodoFechaFin' => '2026-11-15']))->assertCreated();
-        $this->postJson('/api/programaciones-periodo', $quincena(['ProgramacionPeriodoNumero' => 2, 'ProgramacionPeriodoFechaInicio' => '2026-11-16', 'ProgramacionPeriodoFechaFin' => '2026-11-30']))->assertCreated();
+        $this->postJson('/api/programaciones-periodo', $quincena(['ProgramacionPeriodoFechaFin' => '2026-11-15']))->assertCreated()->assertJsonPath('data.numero', 1);
+        $this->postJson('/api/programaciones-periodo', $quincena(['ProgramacionPeriodoFechaInicio' => '2026-11-16', 'ProgramacionPeriodoFechaFin' => '2026-11-30']))->assertCreated()->assertJsonPath('data.numero', 2);
         $this->postJson('/api/programaciones-periodo', $quincena(['ProgramacionPeriodoNumero' => 2, 'ProgramacionPeriodoFechaInicio' => '2026-12-16', 'ProgramacionPeriodoFechaFin' => '2026-12-30', 'ProgramacionPeriodoMes' => 12]))->assertStatus(422);
 
         // SEMANAL: hasta 7 dias y sin cruzar de mes; EXTRAORD: libre.

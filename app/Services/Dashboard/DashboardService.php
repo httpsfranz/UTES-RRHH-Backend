@@ -122,7 +122,7 @@ class DashboardService
                 'porteria' => $this->widgetsDePorteria(),
                 'programacion' => $this->widgetsDeProgramacion(),
                 default => $this->widgetsDeGestion(),
-            }, $this->avisos()],
+            }],
         ];
     }
 
@@ -251,16 +251,6 @@ class DashboardService
         }
         $widgets[] = $this->alertasDeFaltas();
         $widgets[] = $this->estadoDeLaProgramacion();
-        if ($this->perfil === 'red' || $this->perfil === 'microred') {
-            $widgets[] = $this->trabajadoresPorCondicion();
-        }
-        $widgets[] = $this->sinProgramacion();
-        $widgets[] = $this->contratosPorVencer();
-        $widgets[] = $this->colegiaturasPorVencer();
-        if ($this->acceso->tiene('SEGURIDAD_AUDITORIA')) {
-            $widgets[] = $this->accesosAlSistema();
-            $widgets[] = $this->actividadReciente();
-        }
 
         return $widgets;
     }
@@ -279,8 +269,6 @@ class DashboardService
             ], 2),
             $this->coberturaDiaria(),
             $this->estadoDeLaProgramacion(),
-            $this->sinProgramacion(),
-            $this->contratosPorVencer(),
         ];
     }
 
@@ -464,7 +452,7 @@ class DashboardService
                 ['nombre' => 'Tardanzas', 'tono' => 'ambar', 'valores' => $filas->map(fn ($f) => (int) $f->tardanzas)->all()],
                 ['nombre' => 'Faltas', 'tono' => 'rojo', 'valores' => $filas->map(fn ($f) => (int) $f->faltas)->all()],
             ],
-        ], 2, 'Los 12 con más faltas en el período');
+        ], 2, 'Porcentaje de asistencias, tardanzas y faltas; los 12 con más faltas en el período');
     }
 
     // ------------------------------------------------------------------ solicitudes pendientes
@@ -605,16 +593,6 @@ class DashboardService
     }
 
     /** @return array<string,mixed> */
-    private function sinProgramacion(): array
-    {
-        $filas = $this->sinProgramacionQuery()->join('Personal.Trabajador as t', 't.TrabajadorId', '=', 'vl.TrabajadorId')->join('Organizacion.EstablecimientoSalud as e', 'e.EessId', '=', 'vl.EessId')
-            ->orderBy('t.TrabajadorNombreCompleto')->limit(8)->get(['t.TrabajadorNombreCompleto as nombre', 'e.EessNombre as eess']);
-
-        return $this->lista('sin_programacion', 'Sin turnos en el mes', ['Trabajador', 'Establecimiento'], $filas->map(fn ($f) => [$this->nombre($f->nombre), $f->eess])->all(),
-            'Todo el personal vigente tiene turnos programados.', '/programacion/programaciones-trabajador', $this->contarSinProgramacion());
-    }
-
-    /** @return array<string,mixed> */
     private function alertasDeFaltas(): array
     {
         $casos = $this->automatizacion->faltasReiteradas($this->eess);
@@ -623,79 +601,7 @@ class DashboardService
             'Nadie supera los límites de faltas injustificadas.', '/disciplina/expedientes-pad', count($casos), 2);
     }
 
-    /** @return array<string,mixed> */
-    private function trabajadoresPorCondicion(): array
-    {
-        $filas = $this->vigentes($this->conVinculo(DB::table('Personal.VinculoLaboral as v0'), 'v0.VinculoLaboralId'))
-            ->join('Personal.CondicionLaboral as c', 'c.CondicionLaboralId', '=', 'vl.CondicionLaboralId')
-            ->selectRaw('c.CondicionLaboralNombre AS nombre, COUNT(*) AS total')->groupBy('c.CondicionLaboralNombre')->orderByDesc('total')->get();
-        $tonos = ['turquesa', 'azul', 'indigo', 'verde', 'ambar', 'naranja', 'gris'];
-
-        return $this->grafico('dona', 'condicion', 'Personal por condición laboral', [
-            'segmentos' => $filas->values()->map(fn ($f, $i) => ['etiqueta' => $f->nombre, 'valor' => (int) $f->total, 'tono' => $tonos[$i % count($tonos)]])->all(),
-        ], 1, 'Vínculos vigentes hoy');
-    }
-
-    /** @return array<string,mixed> */
-    private function contratosPorVencer(): array
-    {
-        $limite = $this->hoy->addDays(30)->toDateString();
-        $q = $this->conVinculo(DB::table('Personal.VinculoLaboral as v0')->where('vl.VinculoLaboralEstado', 1)
-            ->whereDate('vl.VinculoLaboralFechaFin', '>=', $this->hoy->toDateString())->whereDate('vl.VinculoLaboralFechaFin', '<=', $limite), 'v0.VinculoLaboralId');
-        $total = (clone $q)->count();
-        $filas = $q->join('Personal.Trabajador as t', 't.TrabajadorId', '=', 'vl.TrabajadorId')->join('Organizacion.EstablecimientoSalud as e', 'e.EessId', '=', 'vl.EessId')
-            ->orderBy('vl.VinculoLaboralFechaFin')->limit(8)->get(['t.TrabajadorNombreCompleto as nombre', 'e.EessNombre as eess', 'vl.VinculoLaboralFechaFin as fin']);
-
-        return $this->lista('contratos', 'Contratos por vencer (30 días)', ['Trabajador', 'Establecimiento', 'Vence'], $filas->map(fn ($f) => [$this->nombre($f->nombre), $f->eess, $this->fecha($f->fin)])->all(),
-            'No hay contratos por vencer en los próximos 30 días.', '/personal/vinculos-laborales', $total);
-    }
-
-    /** @return array<string,mixed> */
-    private function colegiaturasPorVencer(): array
-    {
-        $limite = $this->hoy->addDays(60)->toDateString();
-        $q = $this->vigentes($this->conVinculo(DB::table('Personal.Colegiatura as c')->join('Personal.VinculoLaboral as v0', 'v0.TrabajadorId', '=', 'c.TrabajadorId'), 'v0.VinculoLaboralId'))
-            ->where('c.ColegiaturaEstado', 1)->whereDate('c.ColegiaturaFechaVencimiento', '>=', $this->hoy->toDateString())->whereDate('c.ColegiaturaFechaVencimiento', '<=', $limite);
-        $total = (clone $q)->distinct()->count('c.ColegiaturaId');
-        $filas = $q->join('Personal.Trabajador as t', 't.TrabajadorId', '=', 'c.TrabajadorId')->join('Personal.ColegiaturaTipo as ct', 'ct.ColegiaturaTipoId', '=', 'c.ColegiaturaTipoId')
-            ->orderBy('c.ColegiaturaFechaVencimiento')->limit(8)->distinct()->get(['t.TrabajadorNombreCompleto as nombre', 'ct.ColegiaturaTipoNombre as colegio', 'c.ColegiaturaFechaVencimiento as vence']);
-
-        return $this->lista('colegiaturas', 'Colegiaturas por vencer (60 días)', ['Trabajador', 'Colegio', 'Vence'], $filas->map(fn ($f) => [$this->nombre($f->nombre), $f->colegio, $this->fecha($f->vence)])->all(),
-            'No hay colegiaturas por vencer.', '/personal/colegiaturas', $total);
-    }
-
     // ------------------------------------------------------------------ seguridad (solo con SEGURIDAD_AUDITORIA)
-
-    /** @return array<string,mixed> */
-    private function accesosAlSistema(): array
-    {
-        $desde = $this->hoy->subDays(6);
-        $filas = DB::table('Seguridad.SesionAcceso')->whereDate('SesionAccesoFechaInicio', '>=', $desde->toDateString())
-            ->selectRaw("CAST(SesionAccesoFechaInicio AS date) AS dia, SUM(CASE WHEN SesionAccesoResultado = 'EXITOSO' THEN 1 ELSE 0 END) AS ok, SUM(CASE WHEN SesionAccesoResultado <> 'EXITOSO' THEN 1 ELSE 0 END) AS fallidos")
-            ->groupByRaw('CAST(SesionAccesoFechaInicio AS date)')->get()->keyBy(fn ($f) => substr((string) $f->dia, 0, 10));
-        $dias = [];
-        for ($d = $desde; $d->lte($this->hoy); $d = $d->addDay()) {
-            $dias[] = $d->toDateString();
-        }
-
-        return $this->grafico('barras', 'accesos', 'Accesos al sistema (7 días)', [
-            'categorias' => array_map(fn ($d) => CarbonImmutable::parse($d)->format('d/m'), $dias),
-            'series' => [
-                ['nombre' => 'Exitosos', 'tono' => 'verde', 'valores' => array_map(fn ($d) => (int) ($filas[$d]->ok ?? 0), $dias)],
-                ['nombre' => 'Fallidos', 'tono' => 'rojo', 'valores' => array_map(fn ($d) => (int) ($filas[$d]->fallidos ?? 0), $dias)],
-            ],
-        ], 1, 'Intentos de ingreso por día');
-    }
-
-    /** @return array<string,mixed> */
-    private function actividadReciente(): array
-    {
-        $filas = DB::table('Seguridad.Auditoria as a')->leftJoin('Seguridad.Usuario as u', 'u.UsuarioId', '=', 'a.UsuarioId')->orderByDesc('a.AuditoriaFechaHora')->limit(8)
-            ->get(['a.AuditoriaFechaHora as fecha', 'u.UsuarioNombre as usuario', 'a.AuditoriaOperacion as operacion', 'a.AuditoriaTabla as tabla']);
-
-        return $this->lista('actividad', 'Actividad reciente', ['Fecha', 'Usuario', 'Acción'], $filas->map(fn ($f) => [substr((string) $f->fecha, 0, 16), (string) $f->usuario, $f->operacion.' · '.$f->tabla])->all(),
-            'Aún no hay actividad registrada.', '/seguridad/auditoria');
-    }
 
     // ------------------------------------------------------------------ perfil personal
 
@@ -734,17 +640,6 @@ class DashboardService
 
         return $this->lista('mis_marcaciones', 'Mis últimas marcaciones', ['Fecha y hora', 'Tipo', 'Origen'], $filas->map(fn ($f) => [substr((string) $f->fecha, 0, 16), $this->legible($f->tipo), $this->legible((string) $f->origen)])->all(),
             'Aún no tienes marcaciones.', '/asistencia/marcaciones');
-    }
-
-    /** @return array<string,mixed> */
-    private function avisos(): array
-    {
-        $filas = DB::table('Soporte.Notificacion')->where('UsuarioId', $this->usuario->UsuarioId)->orderByDesc('NotificacionFecha')->limit(6)
-            ->get(['NotificacionTitulo as titulo', 'NotificacionFecha as fecha', 'NotificacionLeida as leida']);
-        $sinLeer = (int) DB::table('Soporte.Notificacion')->where('UsuarioId', $this->usuario->UsuarioId)->where('NotificacionLeida', 0)->count();
-
-        return $this->lista('avisos', 'Mis avisos', ['Aviso', 'Fecha', 'Estado'], $filas->map(fn ($f) => [(string) $f->titulo, substr((string) $f->fecha, 0, 10), $f->leida ? 'Leído' : 'Nuevo'])->all(),
-            'No tienes avisos.', '/soporte/notificaciones', $sinLeer, 2);
     }
 
     // ------------------------------------------------------------------ construccion de widgets y utilidades

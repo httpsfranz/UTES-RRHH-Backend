@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Services\ConsultaDni\ConsultaDniService;
+use App\Services\ConsultaDni\DecolectaProveedor;
 use App\Support\CodigoAutomatico;
 use App\Support\RegistroAuditoria;
 use Illuminate\Support\Facades\Event;
@@ -14,7 +16,16 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Proveedor de consulta de DNI segun config/services.php (sin proveedor = sin consulta automatica).
+        $this->app->bind(ConsultaDniService::class, function () {
+            $config = config('services.consulta_dni');
+            $proveedor = match ($config['proveedor']) {
+                'decolecta' => new DecolectaProveedor($config['decolecta']['token'], $config['decolecta']['url'], $config['decolecta']['timeout']),
+                default => null,
+            };
+
+            return new ConsultaDniService($proveedor);
+        });
     }
 
     /**

@@ -251,6 +251,30 @@ class Nivel3AsistenciaTest extends CrudModulosTestCase
 
     // ================================================================== Asistencia diaria
 
+    public function test_una_falta_no_guarda_marcas_ni_minutos_trabajados_tardanza_o_extra(): void
+    {
+        $vinculo = $this->nuevoVinculo();
+        $base = ['VinculoLaboralId' => $vinculo, 'AsistenciaDiariaFecha' => '2026-09-22'];
+
+        // Una asistencia con marcas que se corrige a falta: se limpian las marcas y los minutos.
+        $id = $this->postJson('/api/asistencia-diaria', $base + ['EstadoAsistenciaId' => $this->estado('TARDANZA'), 'AsistenciaDiariaHoraEntrada' => '2026-09-22 07:45:00', 'AsistenciaDiariaHoraSalida' => '2026-09-22 13:30:00', 'AsistenciaDiariaMinutosTardanza' => 10, 'AsistenciaDiariaMinutosExtra' => 5])
+            ->assertCreated()->assertJsonPath('data.minutos_tardanza', 10)->json('data.id');
+
+        $this->patchJson("/api/asistencia-diaria/{$id}", ['EstadoAsistenciaId' => $this->estado('FALTA'), 'AsistenciaDiariaMinutosFalta' => 360])
+            ->assertOk()->assertJsonPath('data.hora_entrada', null)->assertJsonPath('data.hora_salida', null)
+            ->assertJsonPath('data.minutos_tardanza', 0)->assertJsonPath('data.minutos_extra', 0)->assertJsonPath('data.minutos_trabajados', 0)->assertJsonPath('data.minutos_falta', 360);
+
+        // Crear directamente una falta con marcas: las marcas se ignoran.
+        $otro = $this->nuevoVinculo();
+        $this->postJson('/api/asistencia-diaria', ['VinculoLaboralId' => $otro, 'AsistenciaDiariaFecha' => '2026-09-22', 'EstadoAsistenciaId' => $this->estado('FALTA'), 'AsistenciaDiariaHoraEntrada' => '2026-09-22 07:30:00'])
+            ->assertCreated()->assertJsonPath('data.hora_entrada', null);
+
+        // La omision de marcacion si conserva la marca que existe.
+        $tercero = $this->nuevoVinculo();
+        $this->postJson('/api/asistencia-diaria', ['VinculoLaboralId' => $tercero, 'AsistenciaDiariaFecha' => '2026-09-22', 'EstadoAsistenciaId' => $this->estado('OMISION_MARCA'), 'AsistenciaDiariaHoraEntrada' => '2026-09-22 07:30:00'])
+            ->assertCreated()->assertJsonPath('data.hora_entrada', '2026-09-22 07:30:00');
+    }
+
     public function test_los_minutos_trabajados_se_calculan_de_la_entrada_y_la_salida(): void
     {
         $vinculo = $this->nuevoVinculo();
