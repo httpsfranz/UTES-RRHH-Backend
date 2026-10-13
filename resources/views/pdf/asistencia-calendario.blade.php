@@ -15,6 +15,8 @@
     $fondo = [
         'tardanza' => '#fde9b8', 'salida' => '#fdd8b5', 'falta' => '#f6c4c4', 'justificada' => '#cfe4f6', 'cobertura' => '#e2d8f3', 'descanso' => '#e4e6ea',
         'normal' => '#cdeccf', 'programado' => '#ffffff',
+        'turno' => '#ccefe9', 'guardia' => '#d9dcf7', 'borrador' => '#eceff3', 'conflicto' => '#f6c4c4',
+        'descanso_medico' => '#cfe4f6', 'licencia' => '#e2d8f3', 'vacaciones' => '#cdeccf', 'vacaciones_prog' => '#e3f5d0', 'papeleta' => '#fde9b8',
     ];
     $rojo = '#c0392b';
 @endphp
@@ -22,11 +24,14 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Asistencia - {{ $c['eess']['nombre'] }} - {{ $c['periodo']['etiqueta'] }}</title>
+<title>{{ $c['titulo'] ?? 'Asistencia' }} - {{ $c['eess']['nombre'] }} - {{ $c['periodo']['etiqueta'] }}</title>
 <style>
     @page { margin: 8mm 8mm 12mm 8mm; }
     body { font-family: Helvetica, sans-serif; font-size: {{ $fs }}pt; color: #111; margin: 0; }
-    .cabecera { text-align: center; margin-bottom: 3mm; }
+    table.cabecera { width: {{ $ancho }}mm; border-collapse: collapse; margin-bottom: 3mm; }
+    table.cabecera td { border: 0; padding: 0; vertical-align: middle; }
+    .logo { height: {{ $a3 ? 28 : 21 }}mm; width: {{ $a3 ? 28 : 21 }}mm; }
+    .cab-texto { text-align: center; }
     .entidad { font-size: {{ $fs + 1 }}pt; color: #444; margin: 0; }
     .titulo { font-size: {{ $fuerte + 5 }}pt; font-weight: bold; margin: 1mm 0 0 0; }
     .eess { font-size: {{ $fuerte + 3 }}pt; font-weight: bold; margin: 1mm 0 0 0; }
@@ -56,12 +61,18 @@
 </style>
 </head>
 <body>
-    <div class="cabecera">
-        <p class="entidad">{{ $c['entidad'] }} · {{ $c['eess']['microred'] }}</p>
-        <p class="titulo">ASISTENCIA</p>
-        <p class="eess">{{ $c['eess']['nombre'] }}</p>
-        <p class="periodo">{{ $c['periodo']['etiqueta'] }}</p>
-    </div>
+    <table class="cabecera">
+        <tr>
+            <td style="width: {{ $a3 ? 32 : 25 }}mm">@if (! empty($logo))<img class="logo" src="{{ $logo }}" alt="">@endif</td>
+            <td class="cab-texto">
+                <p class="entidad">{{ $c['entidad'] }} · {{ $c['eess']['microred'] }}</p>
+                <p class="titulo">{{ $c['titulo'] ?? 'ASISTENCIA' }}</p>
+                <p class="eess">{{ $c['eess']['nombre'] }}</p>
+                <p class="periodo">{{ $c['periodo']['etiqueta'] }}</p>
+            </td>
+            <td style="width: {{ $a3 ? 32 : 25 }}mm">&nbsp;</td>
+        </tr>
+    </table>
 
     <table class="cal">
         <thead>
@@ -114,7 +125,6 @@
             @endforeach
         </tr>
     </table>
-    <p class="nota">Cada celda muestra el turno del día (primera línea) y, debajo, los minutos de descuento por tardanza o la abreviatura del estado. Sin turno, la primera línea es la abreviatura del estado.</p>
     <table class="ley">
         @foreach (array_chunk($c['leyenda']['estados'], 4) as $grupo)
             <tr>

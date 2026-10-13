@@ -17,6 +17,7 @@ class LicenciaController extends Controller
     private const RELACIONES = [
         'vinculoLaboral:VinculoLaboralId,TrabajadorId,EessId,VinculoLaboralCodigo',
         'vinculoLaboral.trabajador:TrabajadorId,TrabajadorNumeroDocumento,TrabajadorNombreCompleto',
+        'vinculoLaboral.eess:EessId,EessNombre',
         'tipo:TipoLicenciaId,TipoLicenciaCodigo,TipoLicenciaNombre,TipoLicenciaConGoce,TipoLicenciaMaximoDias',
         'documento:DocumentoSustentoId,DocumentoSustentoNombre',
         'usuarioRegistro:UsuarioId,UsuarioNombre',

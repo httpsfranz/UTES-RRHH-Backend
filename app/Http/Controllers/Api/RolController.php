@@ -17,12 +17,14 @@ class RolController extends Controller
         $buscar = $request->string('buscar')->toString();
 
         $roles = Rol::query()
-            ->when($request->filled('buscar'), fn ($q) =>
-                $q->where(fn ($s) => $s
-                    ->where('RolNombre', 'like', "%{$buscar}%")
-                    ->orWhere('RolCodigo', 'like', "%{$buscar}%")))
-            ->when($request->filled('estado'), fn ($q) =>
-                $q->where('RolEstado', $request->boolean('estado')))
+            ->withCount([
+                'rolPermisos as permisos_total' => fn ($q) => $q->where('RolPermisoEstado', 1),
+                'usuarioRoles as usuarios_total' => fn ($q) => $q->where('UsuarioRolEstado', 1),
+            ])
+            ->when($request->filled('buscar'), fn ($q) => $q->where(fn ($s) => $s
+                ->where('RolNombre', 'like', "%{$buscar}%")
+                ->orWhere('RolCodigo', 'like', "%{$buscar}%")))
+            ->when($request->filled('estado'), fn ($q) => $q->where('RolEstado', $request->boolean('estado')))
             ->orderBy('RolNombre')
             ->paginate(max(1, min($request->integer('por_pagina', 15), 100)));
 

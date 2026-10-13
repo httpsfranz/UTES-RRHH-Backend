@@ -17,12 +17,11 @@ class MicroredController extends Controller
         $buscar = $request->string('buscar')->toString();
 
         $microredes = Microred::query()
-            ->when($request->filled('buscar'), fn ($q) =>
-                $q->where(fn ($s) => $s
-                    ->where('MicroredNombre', 'like', "%{$buscar}%")
-                    ->orWhere('MicroredCodigo', 'like', "%{$buscar}%")))
-            ->when($request->filled('estado'), fn ($q) =>
-                $q->where('MicroredEstado', $request->boolean('estado')))
+            ->withCount(['establecimientos as establecimientos_total' => fn ($q) => $q->where('EessEstado', 1)])
+            ->when($request->filled('buscar'), fn ($q) => $q->where(fn ($s) => $s
+                ->where('MicroredNombre', 'like', "%{$buscar}%")
+                ->orWhere('MicroredCodigo', 'like', "%{$buscar}%")))
+            ->when($request->filled('estado'), fn ($q) => $q->where('MicroredEstado', $request->boolean('estado')))
             ->orderBy('MicroredNombre')
             ->paginate(max(1, min($request->integer('por_pagina', 15), 100)));
 

@@ -43,5 +43,8 @@ class Rol extends Model
         return $this->hasMany(RolPermiso::class, 'RolId', 'RolId');
     }
 
-    // NOTA: Seguridad.UsuarioRol depende de esta tabla, pero su modulo aun no existe (nivel 3).
+    public function usuarioRoles(): HasMany
+    {
+        return $this->hasMany(UsuarioRol::class, 'RolId', 'RolId');
+    }
 }

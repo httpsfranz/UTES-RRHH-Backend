@@ -124,7 +124,7 @@ class Nivel7AutomatizacionTest extends TestCase
     private function usuarioConRol(string $rol): int
     {
         $usuario = DB::table('Seguridad.Usuario')->insertGetId([
-            'TrabajadorId' => DB::table('Personal.Trabajador')->value('TrabajadorId'), 'UsuarioNombre' => 'auto'.uniqid(), 'UsuarioPasswordHash' => 'x', 'UsuarioEstado' => 1,
+            'TrabajadorId' => DB::table('Personal.Trabajador as t')->whereNotExists(fn ($q) => $q->selectRaw('1')->from('Seguridad.Usuario as u')->whereColumn('u.TrabajadorId', 't.TrabajadorId'))->orderBy('t.TrabajadorId')->value('t.TrabajadorId'), 'UsuarioNombre' => 'auto'.uniqid(), 'UsuarioPasswordHash' => 'x', 'UsuarioEstado' => 1,
         ], 'UsuarioId');
         DB::table('Seguridad.UsuarioRol')->insert([
             'UsuarioId' => $usuario, 'RolId' => DB::table('Seguridad.Rol')->where('RolCodigo', $rol)->value('RolId'), 'UsuarioRolFechaInicio' => '2026-01-01', 'UsuarioRolEstado' => 1,

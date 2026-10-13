@@ -28,7 +28,7 @@ return [
     // El navegador solo lee Content-Disposition entre origenes si se expone: el PDF del calendario lo usa para el nombre del archivo.
     'exposed_headers' => ['Content-Disposition'],
 
-    'max_age' => 0,
+    'max_age' => 7200, // el navegador recuerda el permiso 2 h: sin esto cada peticion cross-origin va precedida de un OPTIONS
 
     'supports_credentials' => false,
 

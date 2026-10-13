@@ -185,20 +185,63 @@ class Nivel7AccesoTest extends TestCase
         $this->assertGreaterThan($antes, DB::table('Seguridad.Auditoria')->count());
     }
 
-    public function test_el_resumen_del_inicio_se_limita_al_alcance_del_usuario(): void
+    private function kpi(array $panel, string $etiqueta): int|float
+    {
+        foreach ($panel['widgets'] as $w) {
+            foreach ($w['tipo'] === 'kpis' ? $w['items'] : [] as $item) {
+                if ($item['etiqueta'] === $etiqueta) {
+                    return $item['valor'];
+                }
+            }
+        }
+        $this->fail("Sin indicador {$etiqueta}");
+    }
+
+    public function test_el_panel_de_inicio_depende_del_rol_y_se_limita_al_alcance(): void
     {
         $red = $this->getJson('/api/dashboard')->assertOk()->json();
         $this->actuarComo('crojas');
         $eess = $this->getJson('/api/dashboard')->assertOk()->json();
         $this->actuarComo('mquispe');
         $propio = $this->getJson('/api/dashboard')->assertOk()->json();
+        $this->actuarComo('programador');
+        $prog = $this->getJson('/api/dashboard')->assertOk()->json();
 
-        $this->assertSame('red', $red['alcance']);
-        $this->assertSame('establecimientos', $eess['alcance']);
-        $this->assertSame('propio', $propio['alcance']);
-        $this->assertLessThanOrEqual($red['trabajadores_activos'], $eess['trabajadores_activos']);
-        $this->assertLessThanOrEqual($eess['trabajadores_activos'], $propio['trabajadores_activos']);
-        $this->assertArrayHasKey('asistencia_mes', $propio);
+        $this->assertSame(['red', 'Toda la Red'], [$red['perfil'], $red['alcance']]);
+        $this->assertSame('eess', $eess['perfil']);
+        $this->assertSame('personal', $propio['perfil']);
+        $this->assertSame('programacion', $prog['perfil']);
+        $this->assertLessThanOrEqual($this->kpi($red, 'Trabajadores activos'), $this->kpi($eess, 'Trabajadores activos'));
+        $this->assertContains('accesos', array_column($red['widgets'], 'id'), 'el administrador ve la seguridad');
+        $this->assertNotContains('accesos', array_column($eess['widgets'], 'id'));
+        $this->assertNotContains('por_eess', array_column($eess['widgets'], 'id'), 'un solo establecimiento no se compara con otros');
+        $this->assertNotContains('pendientes', array_column($propio['widgets'], 'id'), 'el trabajador no resuelve solicitudes');
+        $this->assertContains('cobertura', array_column($prog['widgets'], 'id'));
+    }
+
+    public function test_el_filtro_del_panel_no_amplia_el_alcance(): void
+    {
+        $this->actuarComo('crojas');
+        $propios = $this->getJson('/api/dashboard')->assertOk()->json();
+        $ajeno = DB::table('Organizacion.EstablecimientoSalud')->where('EessId', '<>', $propios['filtros']['establecimientos'][0]['id'] ?? 0)->value('EessId');
+        $r = $this->getJson('/api/dashboard?eess_id='.$ajeno)->assertOk()->json();
+
+        $this->assertSame(0, $this->kpi($r, 'Trabajadores activos'));
+        $this->getJson('/api/dashboard?perfil=cualquiera')->assertStatus(422);
+    }
+
+    public function test_los_listados_de_seguridad_traen_sus_relaciones(): void
+    {
+        $usuario = collect($this->getJson('/api/usuarios?buscar=resp.eess')->assertOk()->json('data'))->firstWhere('nombre', 'resp.eess');
+        $this->assertSame(['RESP_EESS'], array_column($usuario['roles'], 'codigo'));
+        $this->assertSame('EESS', $usuario['ambitos'][0]['alcance']);
+
+        $rol = collect($this->getJson('/api/roles?por_pagina=100')->json('data'))->firstWhere('codigo', 'RESP_EESS');
+        $this->assertGreaterThan(0, $rol['permisos_total']);
+        $this->assertGreaterThan(0, $rol['usuarios_total']);
+
+        $trabajador = $this->getJson('/api/trabajadores?buscar=99000003')->assertOk()->json('data.0');
+        $this->assertArrayHasKey('vinculos', $trabajador);
     }
 
     public function test_las_notificaciones_solo_se_ven_las_propias(): void

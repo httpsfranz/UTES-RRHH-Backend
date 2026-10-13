@@ -12,13 +12,24 @@ use Illuminate\Support\Facades\Hash;
 
 class UsuarioController extends Controller
 {
+    // Roles y ambito vigentes de cada usuario: dos consultas por pagina (no una por usuario).
+    /** @return array<int|string,mixed> */
+    private static function relaciones(): array
+    {
+        return [
+            'trabajador:TrabajadorId,TrabajadorNumeroDocumento,TrabajadorNombreCompleto',
+            'usuarioRoles' => fn ($q) => $q->where('UsuarioRolEstado', 1)->with('rol:RolId,RolCodigo,RolNombre'),
+            'ambitos' => fn ($q) => $q->where('UsuarioAmbitoEstado', 1)->with(['microred:MicroredId,MicroredNombre', 'eess:EessId,EessNombre']),
+        ];
+    }
+
     // GET /api/usuarios?buscar=mquispe|quispe|70000001&trabajador_id=1&estado=1&por_pagina=15
     public function index(Request $request)
     {
         $buscar = $request->string('buscar')->toString();
 
         $usuarios = Usuario::query()
-            ->with('trabajador:TrabajadorId,TrabajadorNumeroDocumento,TrabajadorNombreCompleto')
+            ->with(self::relaciones())
             ->when($request->filled('buscar'), fn ($q) => $q->where(fn ($s) => $s
                 ->where('UsuarioNombre', 'like', "%{$buscar}%")
                 ->orWhere('UsuarioCorreo', 'like', "%{$buscar}%")
@@ -38,7 +49,7 @@ class UsuarioController extends Controller
     {
         $usuario = Usuario::create($this->datos($request));
 
-        return (new UsuarioResource($usuario->fresh()->load('trabajador')))
+        return (new UsuarioResource($usuario->fresh()->load(self::relaciones())))
             ->response()
             ->setStatusCode(201);
     }
@@ -46,7 +57,7 @@ class UsuarioController extends Controller
     // GET /api/usuarios/{usuario}
     public function show(Usuario $usuario)
     {
-        return new UsuarioResource($usuario->load('trabajador'));
+        return new UsuarioResource($usuario->load(self::relaciones()));
     }
 
     // PUT|PATCH /api/usuarios/{usuario}  (la contrasena solo cambia si se envia una nueva)
@@ -54,7 +65,7 @@ class UsuarioController extends Controller
     {
         $usuario->update($this->datos($request));
 
-        return new UsuarioResource($usuario->fresh()->load('trabajador'));
+        return new UsuarioResource($usuario->fresh()->load(self::relaciones()));
     }
 
     // DELETE /api/usuarios/{usuario}

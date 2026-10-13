@@ -5,6 +5,7 @@ namespace App\Models\Seguridad;
 use App\Models\Personal\Trabajador;
 use App\Support\AccesoUsuario;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Laravel\Sanctum\HasApiTokens;
 
@@ -59,5 +60,15 @@ class Usuario extends Authenticatable
     public function trabajador(): BelongsTo
     {
         return $this->belongsTo(Trabajador::class, 'TrabajadorId', 'TrabajadorId');
+    }
+
+    public function usuarioRoles(): HasMany
+    {
+        return $this->hasMany(UsuarioRol::class, 'UsuarioId', 'UsuarioId');
+    }
+
+    public function ambitos(): HasMany
+    {
+        return $this->hasMany(UsuarioAmbito::class, 'UsuarioId', 'UsuarioId');
     }
 }

@@ -31,7 +31,6 @@ class AjusteMarcacionRequest extends CatalogoRequest
     {
         return [
             'MarcacionId' => [$this->obligatorio(), 'integer', $this->existe(Marcacion::class)],
-            // Quien solicita el ajuste. Se completara con el usuario autenticado cuando exista el login (M04).
             'UsuarioId' => [$this->obligatorio(), 'integer', $this->existeActivo(Usuario::class, 'UsuarioEstado', 'UsuarioId')],
             'DocumentoSustentoId' => ['nullable', 'integer', $this->existe(DocumentoSustento::class)],
             'AjusteMarcacionFechaHoraNueva' => ['nullable', 'date_format:Y-m-d H:i,Y-m-d H:i:s'],

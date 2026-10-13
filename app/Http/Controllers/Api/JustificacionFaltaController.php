@@ -17,6 +17,7 @@ class JustificacionFaltaController extends Controller
     private const RELACIONES = [
         'vinculoLaboral:VinculoLaboralId,TrabajadorId,EessId,VinculoLaboralCodigo',
         'vinculoLaboral.trabajador:TrabajadorId,TrabajadorNumeroDocumento,TrabajadorNombreCompleto',
+        'vinculoLaboral.eess:EessId,EessNombre',
         'concepto:ConceptoJustificacionId,ConceptoJustificacionCodigo,ConceptoJustificacionNombre,ConceptoJustificacionRequiereDocumento',
         'documento:DocumentoSustentoId,DocumentoSustentoNombre',
         'usuarioRegistro:UsuarioId,UsuarioNombre',

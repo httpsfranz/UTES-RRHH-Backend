@@ -8,7 +8,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Expansion de volumen, parte 2: lo que ocurre en la Red entre julio y el 3 de octubre de 2026. Cada trabajador tiene su
+ * Expansion de volumen, parte 2: lo que ocurre en la Red entre julio y el 20 de octubre de 2026. Cada trabajador tiene su
  * programacion mensual de turnos (o su horario fijo), sus vacaciones, licencias, descansos medicos y papeletas, y marca
  * entrada y salida cada dia con la variacion normal de una operacion real (tardanzas, omisiones, faltas, salidas
  * anticipadas, sobretiempo). La asistencia diaria NO se escribe a mano: se calcula con el mismo motor que usa el sistema

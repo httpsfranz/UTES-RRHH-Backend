@@ -42,7 +42,6 @@ class CambioTurnoRequest extends CatalogoRequest
             'VinculoLaboralSolicitanteId' => [$this->obligatorio(), 'integer', $this->existeActivo(VinculoLaboral::class, 'VinculoLaboralEstado', 'VinculoLaboralSolicitanteId')],
             'VinculoLaboralReemplazanteId' => ['nullable', 'integer', $this->existeActivo(VinculoLaboral::class, 'VinculoLaboralEstado', 'VinculoLaboralReemplazanteId')],
             'DocumentoSustentoId' => ['nullable', 'integer', $this->existe(DocumentoSustento::class)],
-            // Quien registra la solicitud. Se completara con el usuario autenticado cuando exista el login (M04).
             'UsuarioRegistroId' => [$this->obligatorio(), 'integer', $this->existeActivo(Usuario::class, 'UsuarioEstado', 'UsuarioRegistroId')],
             'CambioTurnoMotivo' => $this->texto(1000),
             'CambioTurnoObservacion' => $this->texto(1000),

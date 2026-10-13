@@ -19,6 +19,7 @@ class ConsolidadoAsistenciaController extends Controller
         'periodo:PeriodoAsistenciaId,PeriodoAsistenciaAnio,PeriodoAsistenciaMes,PeriodoAsistenciaEstado',
         'vinculoLaboral:VinculoLaboralId,TrabajadorId,EessId,VinculoLaboralCodigo',
         'vinculoLaboral.trabajador:TrabajadorId,TrabajadorNumeroDocumento,TrabajadorNombreCompleto',
+        'vinculoLaboral.eess:EessId,EessNombre',
     ];
 
     // GET /api/consolidados-asistencia?buscar=...&periodo_asistencia_id=&vinculo_laboral_id=&estado=

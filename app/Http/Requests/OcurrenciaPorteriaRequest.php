@@ -35,7 +35,6 @@ class OcurrenciaPorteriaRequest extends CatalogoRequest
             'EessId' => [$this->obligatorio(), 'integer', $this->existeActivo(EstablecimientoSalud::class, 'EessEstado', 'EessId')],
             // Persona involucrada. Opcional solo para el tipo OTRO (ver withValidator).
             'VinculoLaboralId' => ['nullable', 'integer', $this->existeActivo(VinculoLaboral::class, 'VinculoLaboralEstado', 'VinculoLaboralId')],
-            // Quien registra. Se completara con el usuario autenticado cuando exista el login (M04).
             'UsuarioId' => ['nullable', 'integer', $this->existeActivo(Usuario::class, 'UsuarioEstado', 'UsuarioId')],
             'OcurrenciaPorteriaFechaHora' => ['sometimes', 'date_format:Y-m-d H:i,Y-m-d H:i:s'],
             'OcurrenciaPorteriaTipo' => [$this->obligatorio(), Rule::in(self::TIPOS)],

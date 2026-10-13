@@ -26,7 +26,6 @@ class ConstatacionDomiciliariaRequest extends CatalogoRequest
             'VinculoLaboralId' => [$this->obligatorio(), 'integer', $this->existeActivo(VinculoLaboral::class, 'VinculoLaboralEstado', 'VinculoLaboralId')],
             'DescansoMedicoId' => ['nullable', 'integer', $this->existe(DescansoMedico::class)],
             'DocumentoSustentoId' => ['nullable', 'integer', $this->existe(DocumentoSustento::class)],
-            // Quien registra. Se completara con el usuario autenticado cuando exista el login (M04).
             'UsuarioRegistroId' => ['nullable', 'integer', $this->existeActivo(Usuario::class, 'UsuarioEstado', 'UsuarioRegistroId')],
             'ConstatacionDomiciliariaFecha' => [$this->obligatorio(), 'date_format:Y-m-d'],
             'ConstatacionDomiciliariaDireccion' => $this->texto(300),

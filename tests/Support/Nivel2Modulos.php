@@ -78,7 +78,7 @@ final class Nivel2Modulos
                     'UsuarioNombre' => 'zz.usuario', 'UsuarioPassword' => 'Clave2026', 'UsuarioPasswordConfirmacion' => 'Clave2026',
                     'UsuarioCorreo' => 'zz@ejemplo.pe',
                 ],
-                'keys' => ['id', 'trabajador_id', 'nombre', 'correo', 'fecha_creacion', 'activo', 'trabajador'],
+                'keys' => ['id', 'trabajador_id', 'nombre', 'correo', 'fecha_creacion', 'activo', 'roles', 'ambitos', 'trabajador'],
                 'required' => ['TrabajadorId', 'UsuarioNombre', 'UsuarioPassword'],
                 'unique' => ['TrabajadorId', 'UsuarioNombre', 'UsuarioCorreo'],
                 'maxlen' => ['UsuarioNombre' => 100, 'UsuarioCorreo' => 200],

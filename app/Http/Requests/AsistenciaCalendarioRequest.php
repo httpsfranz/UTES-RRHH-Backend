@@ -11,7 +11,6 @@ class AsistenciaCalendarioRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        // Mientras no exista el modulo de Seguridad (M04), true. La restriccion por establecimiento vive en AlcanceDeEess.
         return true;
     }
 

@@ -53,7 +53,6 @@ abstract class CatalogoRequest extends FormRequest
 
     public function authorize(): bool
     {
-        // Mientras no exista el modulo de Seguridad (M04), true. Despues: $this->user()->puede(...).
         return true;
     }
 
@@ -184,7 +183,10 @@ abstract class CatalogoRequest extends FormRequest
      */
     protected function codigoUnico(string $modelo, string $columna, int $max): array
     {
-        return [$this->obligatorio(), 'string', "max:{$max}", new Codigo, $this->unico($modelo, $columna)];
+        $automatico = ! in_array($columna, ['PermisoCodigo', 'ParametroSistemaCodigo', 'EstadoAsistenciaCodigo', 'TipoDocumentoIdentidadCodigo', 'ColegiaturaTipoCodigo'], true);
+
+        // Los codigos que no son claves tecnicas se generan solos (CodigoAutomatico) cuando no se envian.
+        return [$automatico ? 'nullable' : $this->obligatorio(), 'string', "max:{$max}", new Codigo, $this->unico($modelo, $columna)];
     }
 
     /**

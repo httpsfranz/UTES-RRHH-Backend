@@ -18,6 +18,7 @@ class EstablecimientoSaludController extends Controller
 
         $establecimientos = EstablecimientoSalud::query()
             ->with(['microred:MicroredId,MicroredNombre', 'tipoEstablecimiento:TipoEstablecimientoId,TipoEstablecimientoNombre'])
+            ->withCount(['vinculos as trabajadores_total' => fn ($q) => $q->vigentes()])
             ->when($request->filled('buscar'), fn ($q) => $q->where(fn ($s) => $s
                 ->where('EessNombre', 'like', "%{$buscar}%")
                 ->orWhere('EessCodigo', 'like', "%{$buscar}%")

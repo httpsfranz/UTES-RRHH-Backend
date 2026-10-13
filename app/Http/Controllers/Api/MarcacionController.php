@@ -15,6 +15,7 @@ class MarcacionController extends Controller
     private const RELACIONES = [
         'vinculoLaboral:VinculoLaboralId,TrabajadorId,EessId,VinculoLaboralCodigo',
         'vinculoLaboral.trabajador:TrabajadorId,TrabajadorNumeroDocumento,TrabajadorNombreCompleto',
+        'vinculoLaboral.eess:EessId,EessNombre',
         'metodo:MetodoMarcacionId,MetodoMarcacionCodigo,MetodoMarcacionNombre',
         'dispositivo:DispositivoMarcacionId,DispositivoMarcacionCodigo,DispositivoMarcacionNombre',
     ];

@@ -39,7 +39,7 @@ class CalendarioProgramacionService
     /** @return array<string,mixed> */
     public function programacion(int $eessId, int $anio, int $mes, ?string $buscar = null, ?array $soloVinculos = null): array
     {
-        [$envoltura, $trabajadores, $primero, $ultimo] = $this->preparar($eessId, $anio, $mes, $buscar, $soloVinculos);
+        [$envoltura, $trabajadores, $primero, $ultimo] = $this->preparar($eessId, $anio, $mes, $buscar, $soloVinculos, 'PROGRAMACIÓN');
         $ids = $trabajadores->pluck('vinculo_id')->all();
         $ausencias = $ids === [] ? collect() : $this->ausenciasPorDia($ids, $primero, $ultimo);
         $turnos = $ids === [] ? collect() : $this->turnosProgramados($ids, $primero, $ultimo);
@@ -69,7 +69,7 @@ class CalendarioProgramacionService
     /** @return array<string,mixed> */
     public function ausencias(int $eessId, int $anio, int $mes, ?string $buscar = null, ?array $soloVinculos = null): array
     {
-        [$envoltura, $trabajadores, $primero, $ultimo] = $this->preparar($eessId, $anio, $mes, $buscar, $soloVinculos);
+        [$envoltura, $trabajadores, $primero, $ultimo] = $this->preparar($eessId, $anio, $mes, $buscar, $soloVinculos, 'AUSENCIAS Y VACACIONES');
         $ids = $trabajadores->pluck('vinculo_id')->all();
         $ausencias = $ids === [] ? collect() : $this->ausenciasPorDia($ids, $primero, $ultimo);
 
@@ -90,7 +90,7 @@ class CalendarioProgramacionService
     }
 
     /** @return array{0:array<string,mixed>,1:Collection<int,array<string,mixed>>,2:CarbonImmutable,3:CarbonImmutable} */
-    private function preparar(int $eessId, int $anio, int $mes, ?string $buscar, ?array $soloVinculos): array
+    private function preparar(int $eessId, int $anio, int $mes, ?string $buscar, ?array $soloVinculos, string $titulo = ''): array
     {
         $primero = CarbonImmutable::create($anio, $mes, 1)->startOfDay();
         $ultimo = $primero->endOfMonth()->startOfDay();
@@ -100,6 +100,7 @@ class CalendarioProgramacionService
         abort_if($eess === null, 404, 'El establecimiento no existe.');
 
         $envoltura = [
+            'titulo' => $titulo,
             'entidad' => DB::table('Configuracion.ParametroSistema')->where('ParametroSistemaCodigo', 'ENTIDAD_NOMBRE')->value('ParametroSistemaValor') ?? 'Red de Salud Trujillo',
             'eess' => ['id' => (int) $eess->EessId, 'codigo' => $eess->EessCodigo, 'nombre' => $eess->EessNombre, 'microred' => $eess->MicroredNombre],
             'periodo' => ['anio' => $anio, 'mes' => $mes, 'nombre_mes' => CalendarioAsistenciaService::MESES[$mes], 'etiqueta' => CalendarioAsistenciaService::MESES[$mes].' '.$anio, 'dias' => $this->base->dias($primero, $ultimo, (int) $eess->MicroredId)],

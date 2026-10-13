@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AsistenciaCalendarioRequest;
+use App\Services\CalendarioAsistenciaPdf;
 use App\Services\CalendarioProgramacionService;
 use App\Support\AlcanceDeEess;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Response;
 
 class ProgramacionCalendarioController extends Controller
 {
@@ -26,5 +28,29 @@ class ProgramacionCalendarioController extends Controller
         AlcanceDeEess::exigir($request->integer('eess_id'), $request->user());
 
         return response()->json($servicio->ausencias($request->integer('eess_id'), $request->integer('anio'), $request->integer('mes'), $request->input('buscar'), AlcanceDeEess::vinculosPropios($request->user())));
+    }
+
+    // GET /api/programacion-calendario/turnos/pdf?...&papel=a4|a3  — el mismo calendario como PDF apaisado.
+    public function turnosPdf(AsistenciaCalendarioRequest $request, CalendarioProgramacionService $servicio, CalendarioAsistenciaPdf $pdf): Response
+    {
+        AlcanceDeEess::exigir($request->integer('eess_id'), $request->user());
+
+        return $this->documento($pdf, $servicio->programacion($request->integer('eess_id'), $request->integer('anio'), $request->integer('mes'), $request->input('buscar'), AlcanceDeEess::vinculosPropios($request->user())), $request->input('papel', 'a4'));
+    }
+
+    // GET /api/programacion-calendario/ausencias/pdf?...&papel=a4|a3
+    public function ausenciasPdf(AsistenciaCalendarioRequest $request, CalendarioProgramacionService $servicio, CalendarioAsistenciaPdf $pdf): Response
+    {
+        AlcanceDeEess::exigir($request->integer('eess_id'), $request->user());
+
+        return $this->documento($pdf, $servicio->ausencias($request->integer('eess_id'), $request->integer('anio'), $request->integer('mes'), $request->input('buscar'), AlcanceDeEess::vinculosPropios($request->user())), $request->input('papel', 'a4'));
+    }
+
+    private function documento(CalendarioAsistenciaPdf $pdf, array $calendario, string $papel): Response
+    {
+        return response($pdf->generar($calendario, $papel), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="'.CalendarioAsistenciaPdf::nombreDeArchivo($calendario).'"',
+        ]);
     }
 }

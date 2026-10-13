@@ -28,7 +28,6 @@ class CargaProgramacionRequest extends CatalogoRequest
         return [
             'EessId' => [$this->obligatorio(), 'integer', $this->existeActivo(EstablecimientoSalud::class, 'EessEstado', 'EessId')],
             'DocumentoSustentoId' => [$this->obligatorio(), 'integer', $this->existe(DocumentoSustento::class)],
-            // Quien realiza la carga. Se completara con el usuario autenticado cuando exista el login (M04).
             'UsuarioRegistroId' => [$this->obligatorio(), 'integer', $this->existeActivo(Usuario::class, 'UsuarioEstado', 'UsuarioRegistroId')],
             'TipoPeriodoProgramacionId' => ['nullable', 'integer', $this->existeActivo(TipoPeriodoProgramacion::class, 'TipoPeriodoProgramacionEstado', 'TipoPeriodoProgramacionId')],
             'ProgramacionPeriodoId' => ['nullable', 'integer', $this->existe(ProgramacionPeriodo::class)],

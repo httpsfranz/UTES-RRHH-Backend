@@ -27,7 +27,6 @@ class LicenciaRequest extends CatalogoRequest
             'VinculoLaboralId' => [$this->obligatorio(), 'integer', $this->existeActivo(VinculoLaboral::class, 'VinculoLaboralEstado', 'VinculoLaboralId')],
             'TipoLicenciaId' => [$this->obligatorio(), 'integer', $this->existeActivo(TipoLicencia::class, 'TipoLicenciaEstado', 'TipoLicenciaId')],
             'DocumentoSustentoId' => ['nullable', 'integer', $this->existe(DocumentoSustento::class)],
-            // Quien registra. Se completara con el usuario autenticado cuando exista el login (M04).
             'UsuarioRegistroId' => ['nullable', 'integer', $this->existeActivo(Usuario::class, 'UsuarioEstado', 'UsuarioRegistroId')],
             'LicenciaNumeroResolucion' => ['nullable', 'string', 'max:60'],
             'LicenciaFechaInicio' => [$this->obligatorio(), 'date_format:Y-m-d'],

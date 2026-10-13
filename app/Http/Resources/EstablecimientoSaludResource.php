@@ -22,6 +22,7 @@ class EstablecimientoSaludResource extends JsonResource
             'telefono' => $this->EessTelefono,
             'descripcion' => $this->EessDescripcion,
             'activo' => (bool) $this->EessEstado,
+            'trabajadores_total' => $this->when(array_key_exists('trabajadores_total', $this->getAttributes()), fn () => (int) $this->trabajadores_total),
             'microred' => $this->whenLoaded('microred', fn () => [
                 'id' => $this->microred->MicroredId,
                 'nombre' => $this->microred->MicroredNombre,

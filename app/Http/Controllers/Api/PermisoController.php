@@ -17,14 +17,12 @@ class PermisoController extends Controller
         $buscar = $request->string('buscar')->toString();
 
         $permisos = Permiso::query()
-            ->when($request->filled('buscar'), fn ($q) =>
-                $q->where(fn ($s) => $s
-                    ->where('PermisoNombre', 'like', "%{$buscar}%")
-                    ->orWhere('PermisoCodigo', 'like', "%{$buscar}%")))
-            ->when($request->filled('modulo'), fn ($q) =>
-                $q->where('PermisoModulo', $request->string('modulo')->toString()))
-            ->when($request->filled('estado'), fn ($q) =>
-                $q->where('PermisoEstado', $request->boolean('estado')))
+            ->withCount(['rolPermisos as roles_total' => fn ($q) => $q->where('RolPermisoEstado', 1)])
+            ->when($request->filled('buscar'), fn ($q) => $q->where(fn ($s) => $s
+                ->where('PermisoNombre', 'like', "%{$buscar}%")
+                ->orWhere('PermisoCodigo', 'like', "%{$buscar}%")))
+            ->when($request->filled('modulo'), fn ($q) => $q->where('PermisoModulo', $request->string('modulo')->toString()))
+            ->when($request->filled('estado'), fn ($q) => $q->where('PermisoEstado', $request->boolean('estado')))
             ->orderBy('PermisoNombre')
             ->paginate(max(1, min($request->integer('por_pagina', 15), 100)));
 

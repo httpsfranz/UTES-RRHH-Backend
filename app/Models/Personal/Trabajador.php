@@ -4,6 +4,7 @@ namespace App\Models\Personal;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Trabajador extends Model
 {
@@ -57,5 +58,11 @@ class Trabajador extends Model
     public function profesion(): BelongsTo
     {
         return $this->belongsTo(Profesion::class, 'ProfesionId', 'ProfesionId');
+    }
+
+    /** Vinculos que rigen hoy (normalmente uno): cargo, condicion y establecimiento actuales del trabajador. */
+    public function vinculosVigentes(): HasMany
+    {
+        return $this->hasMany(VinculoLaboral::class, 'TrabajadorId', 'TrabajadorId')->vigentes();
     }
 }

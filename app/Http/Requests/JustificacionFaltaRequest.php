@@ -24,7 +24,6 @@ class JustificacionFaltaRequest extends CatalogoRequest
             'VinculoLaboralId' => [$this->obligatorio(), 'integer', $this->existeActivo(VinculoLaboral::class, 'VinculoLaboralEstado', 'VinculoLaboralId')],
             'ConceptoJustificacionId' => [$this->obligatorio(), 'integer', $this->existeActivo(ConceptoJustificacion::class, 'ConceptoJustificacionEstado', 'ConceptoJustificacionId')],
             'DocumentoSustentoId' => ['nullable', 'integer', $this->existe(DocumentoSustento::class)],
-            // Quien registra. Se completara con el usuario autenticado cuando exista el login (M04).
             'UsuarioRegistroId' => [$this->obligatorio(), 'integer', $this->existeActivo(Usuario::class, 'UsuarioEstado', 'UsuarioRegistroId')],
             'JustificacionFaltaFechaInicio' => [$this->obligatorio(), 'date_format:Y-m-d'],
             'JustificacionFaltaFechaFin' => [$this->obligatorio(), 'date_format:Y-m-d'],

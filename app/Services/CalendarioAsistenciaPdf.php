@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Dompdf\Dompdf;
 use Dompdf\Options;
+use Illuminate\Support\Str;
 
 /**
  * PDF del calendario mensual de asistencia, apaisado. Renderiza la vista pdf.asistencia-calendario con EXACTAMENTE el
@@ -17,7 +18,17 @@ class CalendarioAsistenciaPdf
     /** Nombre sugerido del archivo, por ejemplo Asistencia_EESS-LE-01_2026-10.pdf. */
     public static function nombreDeArchivo(array $calendario): string
     {
-        return sprintf('Asistencia_%s_%d-%02d.pdf', preg_replace('/[^A-Za-z0-9_-]+/', '-', (string) $calendario['eess']['codigo']), $calendario['periodo']['anio'], $calendario['periodo']['mes']);
+        $titulo = preg_replace('/[^A-Za-z0-9]+/', '-', Str::ascii(ucfirst(mb_strtolower((string) ($calendario['titulo'] ?? 'Asistencia')))));
+
+        return sprintf('%s_%s_%d-%02d.pdf', trim($titulo, '-'), preg_replace('/[^A-Za-z0-9_-]+/', '-', (string) $calendario['eess']['codigo']), $calendario['periodo']['anio'], $calendario['periodo']['mes']);
+    }
+
+    /** Logo institucional como data URI (dompdf no abre recursos remotos); null si el archivo no esta. */
+    public static function logo(): ?string
+    {
+        $ruta = resource_path('images/logo-gerencia-salud.jpg');
+
+        return is_file($ruta) ? 'data:image/jpeg;base64,'.base64_encode((string) file_get_contents($ruta)) : null;
     }
 
     /** Memoria que reserva el armado del PDF: dompdf necesita unos 110 MB para un establecimiento de 25 trabajadores. */
@@ -54,7 +65,7 @@ class CalendarioAsistenciaPdf
 
         $pdf = new Dompdf($opciones);
         $pdf->setPaper(self::PAPELES[$papel], 'landscape');
-        $pdf->loadHtml(view('pdf.asistencia-calendario', ['c' => $calendario, 'papel' => $papel])->render(), 'UTF-8');
+        $pdf->loadHtml(view('pdf.asistencia-calendario', ['c' => $calendario, 'papel' => $papel, 'logo' => self::logo()])->render(), 'UTF-8');
         $pdf->render();
 
         $lienzo = $pdf->getCanvas();

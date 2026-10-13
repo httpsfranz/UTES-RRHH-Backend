@@ -15,6 +15,7 @@ class PeriodoVacacionalController extends Controller
     private const RELACIONES = [
         'vinculoLaboral:VinculoLaboralId,TrabajadorId,EessId,VinculoLaboralCodigo',
         'vinculoLaboral.trabajador:TrabajadorId,TrabajadorNumeroDocumento,TrabajadorNombreCompleto',
+        'vinculoLaboral.eess:EessId,EessNombre',
     ];
 
     // GET /api/periodos-vacacionales?buscar=...&vinculo_laboral_id=&anio=&estado=

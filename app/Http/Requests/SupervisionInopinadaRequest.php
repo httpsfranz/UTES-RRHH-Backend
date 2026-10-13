@@ -34,7 +34,6 @@ class SupervisionInopinadaRequest extends CatalogoRequest
         return [
             'EessId' => [$this->obligatorio(), 'integer', $this->existeActivo(EstablecimientoSalud::class, 'EessEstado', 'EessId')],
             'VinculoLaboralId' => ['nullable', 'integer', $this->existeActivo(VinculoLaboral::class, 'VinculoLaboralEstado', 'VinculoLaboralId')],
-            // Supervisor. Se completara con el usuario autenticado cuando exista el login (M04).
             'UsuarioId' => [$this->obligatorio(), 'integer', $this->existeActivo(Usuario::class, 'UsuarioEstado', 'UsuarioId')],
             // Acta de supervision escaneada.
             'DocumentoSustentoId' => ['nullable', 'integer', $this->existe(DocumentoSustento::class)],

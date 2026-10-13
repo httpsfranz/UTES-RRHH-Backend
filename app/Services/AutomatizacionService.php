@@ -74,36 +74,61 @@ class AutomatizacionService
     }
 
     /**
-     * Avisa de los trabajadores que alcanzaron el limite del Art. 23. Un aviso por usuario destinatario y por falta mas
-     * reciente: si no hay faltas nuevas no se repite.
+     * Trabajadores que superan los limites de faltas injustificadas del RIT (Art. 23): mas de 3 consecutivas o mas de 5 en
+     * 30 dias, o mas de 15 en 180 dias. Solo lee; lo usan el aviso automatico y el panel de inicio.
      *
-     * @return int avisos creados
+     * @param  list<int>|null  $eessIds  limitar a esos establecimientos (null = toda la Red)
+     * @return list<array{vinculo:int,codigo:string,nombre:string,eess:string,motivo:string,ultima:string}>
      */
-    public function detectarFaltasReiteradas(): int
+    public function faltasReiteradas(?array $eessIds = null): array
     {
         $hoy = HoraLocal::hoy();
         $faltas = DB::table('Asistencia.AsistenciaDiaria as ad')
             ->join('Asistencia.EstadoAsistencia as ea', 'ea.EstadoAsistenciaId', '=', 'ad.EstadoAsistenciaId')
             ->join('Personal.VinculoLaboral as vl', 'vl.VinculoLaboralId', '=', 'ad.VinculoLaboralId')
             ->join('Personal.Trabajador as t', 't.TrabajadorId', '=', 'vl.TrabajadorId')
+            ->join('Organizacion.EstablecimientoSalud as e', 'e.EessId', '=', 'vl.EessId')
             ->where('ea.EstadoAsistenciaEsLaborable', 1)
+            ->when($eessIds !== null, fn ($q) => $q->whereIn('vl.EessId', $eessIds))
             ->whereDate('ad.AsistenciaDiariaFecha', '>', $hoy->subDays(180)->toDateString())
             ->whereDate('ad.AsistenciaDiariaFecha', '<=', $hoy->toDateString())
             ->orderBy('ad.AsistenciaDiariaFecha')
-            ->get(['ad.VinculoLaboralId as vinculo', 'vl.VinculoLaboralCodigo as codigo', 't.TrabajadorNombreCompleto as nombre', 'ad.AsistenciaDiariaFecha as fecha',
+            ->get(['ad.VinculoLaboralId as vinculo', 'vl.VinculoLaboralCodigo as codigo', 't.TrabajadorNombreCompleto as nombre', 'e.EessNombre as eess', 'ad.AsistenciaDiariaFecha as fecha',
                 'ea.EstadoAsistenciaEsFalta as es_falta', 'ea.EstadoAsistenciaEsDescontable as es_descontable'])
             ->groupBy('vinculo');
 
-        $destinatarios = $this->destinatarios();
-        $creados = 0;
+        $resultado = [];
         foreach ($faltas as $filas) {
             $motivo = $this->motivoSiSuperaElLimite($filas, $hoy);
-            if ($motivo === null || $destinatarios === []) {
+            if ($motivo === null) {
                 continue;
             }
-            $nombre = trim(preg_replace('/\s+/', ' ', str_replace(' ,', ',', (string) $filas->first()->nombre)));
-            $titulo = "Faltas injustificadas reiteradas: {$nombre} ({$filas->first()->codigo})";
-            $mensaje = "{$motivo} Última falta: ".$this->ultimaFalta($filas).'. Evaluar el inicio del procedimiento disciplinario (RIT, Art. 23).';
+            $primera = $filas->first();
+            $resultado[] = [
+                'vinculo' => (int) $primera->vinculo,
+                'codigo' => (string) $primera->codigo,
+                'nombre' => trim(preg_replace('/\s+/', ' ', str_replace(' ,', ',', (string) $primera->nombre))),
+                'eess' => (string) $primera->eess,
+                'motivo' => $motivo,
+                'ultima' => $this->ultimaFalta($filas),
+            ];
+        }
+
+        return $resultado;
+    }
+
+    /**
+     * Avisa a RRHH cuando alguien supera los limites de faltas injustificadas (ver faltasReiteradas()). Una sola vez por caso.
+     *
+     * @return int avisos creados
+     */
+    public function detectarFaltasReiteradas(): int
+    {
+        $destinatarios = $this->destinatarios();
+        $creados = 0;
+        foreach ($destinatarios === [] ? [] : $this->faltasReiteradas() as $caso) {
+            $titulo = "Faltas injustificadas reiteradas: {$caso['nombre']} ({$caso['codigo']})";
+            $mensaje = "{$caso['motivo']} Última falta: {$caso['ultima']}. Evaluar el inicio del procedimiento disciplinario (RIT, Art. 23).";
             foreach ($destinatarios as $usuarioId) {
                 $yaAvisado = DB::table('Soporte.Notificacion')->where(['UsuarioId' => $usuarioId, 'NotificacionTipo' => self::TIPO_ALERTA_FALTAS, 'NotificacionTitulo' => $titulo, 'NotificacionMensaje' => $mensaje])->exists();
                 if (! $yaAvisado) {

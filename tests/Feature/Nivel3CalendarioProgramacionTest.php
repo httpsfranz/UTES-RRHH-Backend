@@ -101,4 +101,14 @@ class Nivel3CalendarioProgramacionTest extends TestCase
 
         $this->getJson('/api/programacion-calendario/turnos?anio=2026&mes=9')->assertStatus(422);
     }
+
+    public function test_los_calendarios_de_programacion_y_ausencias_se_exportan_a_pdf_con_su_titulo(): void
+    {
+        foreach (['turnos' => 'Programacion', 'ausencias' => 'Ausencias-y-vacaciones'] as $vista => $prefijo) {
+            $r = $this->get("/api/programacion-calendario/{$vista}/pdf?eess_id=".$this->eessId().'&anio=2026&mes=9&papel=a3')->assertOk();
+            $this->assertStringStartsWith('application/pdf', $r->headers->get('Content-Type'));
+            $this->assertStringContainsString("filename=\"{$prefijo}_", $r->headers->get('Content-Disposition'));
+            $this->assertStringStartsWith('%PDF', $r->getContent());
+        }
+    }
 }

@@ -2,8 +2,10 @@
 
 namespace App\Models\Organizacion;
 
+use App\Models\Personal\VinculoLaboral;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class EstablecimientoSalud extends Model
 {
@@ -45,5 +47,10 @@ class EstablecimientoSalud extends Model
     public function tipoEstablecimiento(): BelongsTo
     {
         return $this->belongsTo(TipoEstablecimiento::class, 'TipoEstablecimientoId', 'TipoEstablecimientoId');
+    }
+
+    public function vinculos(): HasMany
+    {
+        return $this->hasMany(VinculoLaboral::class, 'EessId', 'EessId');
     }
 }

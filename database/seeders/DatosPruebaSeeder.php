@@ -538,7 +538,7 @@ class DatosPruebaSeeder extends Seeder
             'LogIntegracionReintentos' => $l[7],
         ], $logs));
 
-        // Historial de ejemplo (sin usuario: aun no hay login, UsuarioId es NULL).
+        // Historial de ejemplo (sin usuario: UsuarioId es NULL).
         $auditoría = [
             ['Organizacion', 'Microred', 'INSERT', '5', null, '{"MicroredCodigo":"MR-HU","MicroredNombre":"Microred Huanchaco"}', '2026-09-20 10:01:00'],
             ['Organizacion', 'Microred', 'UPDATE', '5', '{"MicroredTelefono":null}', '{"MicroredTelefono":"990100104"}', '2026-09-20 10:05:00'],

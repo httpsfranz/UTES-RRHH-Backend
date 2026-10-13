@@ -18,6 +18,7 @@ class CompensacionHorariaController extends Controller
     private const RELACIONES = [
         'vinculoLaboral:VinculoLaboralId,TrabajadorId,EessId,VinculoLaboralCodigo',
         'vinculoLaboral.trabajador:TrabajadorId,TrabajadorNumeroDocumento,TrabajadorNombreCompleto',
+        'vinculoLaboral.eess:EessId,EessNombre',
         'tipo:TipoCompensacionId,TipoCompensacionCodigo,TipoCompensacionNombre',
         'autorizadoPor:UsuarioId,UsuarioNombre',
     ];

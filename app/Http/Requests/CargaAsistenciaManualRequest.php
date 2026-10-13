@@ -23,7 +23,6 @@ class CargaAsistenciaManualRequest extends CatalogoRequest
     public function rules(): array
     {
         return [
-            // Quien carga el archivo. Se completara con el usuario autenticado cuando exista el login (M04).
             'UsuarioId' => [$this->obligatorio(), 'integer', $this->existeActivo(Usuario::class, 'UsuarioEstado', 'UsuarioId')],
             'EessId' => ['nullable', 'integer', $this->existeActivo(EstablecimientoSalud::class, 'EessEstado', 'EessId')],
             'DocumentoSustentoId' => ['nullable', 'integer', $this->existe(DocumentoSustento::class)],

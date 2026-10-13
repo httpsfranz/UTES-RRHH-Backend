@@ -25,7 +25,6 @@ class ProgramacionPeriodoRequest extends CatalogoRequest
         return [
             'EessId' => [$this->obligatorio(), 'integer', $this->existeActivo(EstablecimientoSalud::class, 'EessEstado', 'EessId')],
             'TipoPeriodoProgramacionId' => [$this->obligatorio(), 'integer', $this->existeActivo(TipoPeriodoProgramacion::class, 'TipoPeriodoProgramacionEstado', 'TipoPeriodoProgramacionId')],
-            // Quien elabora la programacion. Se completara con el usuario autenticado cuando exista el login (M04).
             'UsuarioRegistroId' => [$this->obligatorio(), 'integer', $this->existeActivo(Usuario::class, 'UsuarioEstado', 'UsuarioRegistroId')],
             'ProgramacionPeriodoCodigo' => ['nullable', 'string', 'max:50', new Codigo, $this->unico(ProgramacionPeriodo::class, 'ProgramacionPeriodoCodigo')],
             'ProgramacionPeriodoAnio' => [$this->obligatorio(), 'integer', 'between:2000,2100'],

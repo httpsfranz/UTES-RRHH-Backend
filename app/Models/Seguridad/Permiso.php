@@ -3,6 +3,7 @@
 namespace App\Models\Seguridad;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Permiso extends Model
 {
@@ -35,5 +36,10 @@ class Permiso extends Model
     public function scopeActivos($query)
     {
         return $query->where('PermisoEstado', 1);
+    }
+
+    public function rolPermisos(): HasMany
+    {
+        return $this->hasMany(RolPermiso::class, 'PermisoId', 'PermisoId');
     }
 }

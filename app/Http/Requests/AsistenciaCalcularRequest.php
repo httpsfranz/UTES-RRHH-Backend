@@ -16,7 +16,6 @@ class AsistenciaCalcularRequest extends FormRequest
 
     public function authorize(): bool
     {
-        // Mientras no exista el modulo de Seguridad (M04), true.
         return true;
     }
 

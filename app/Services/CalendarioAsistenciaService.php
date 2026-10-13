@@ -84,6 +84,7 @@ class CalendarioAsistenciaService
         })->all();
 
         return [
+            'titulo' => 'ASISTENCIA',
             'entidad' => DB::table('Configuracion.ParametroSistema')->where('ParametroSistemaCodigo', 'ENTIDAD_NOMBRE')->value('ParametroSistemaValor') ?? 'Red de Salud Trujillo',
             'eess' => ['id' => (int) $eess->EessId, 'codigo' => $eess->EessCodigo, 'nombre' => $eess->EessNombre, 'microred' => $eess->MicroredNombre],
             'periodo' => ['anio' => $anio, 'mes' => $mes, 'nombre_mes' => self::MESES[$mes], 'etiqueta' => self::MESES[$mes].' '.$anio, 'dias' => $dias],

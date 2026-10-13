@@ -29,7 +29,6 @@ class PapeletaRequest extends CatalogoRequest
             'TipoPapeletaId' => [$this->obligatorio(), 'integer', $this->existeActivo(TipoPapeleta::class, 'TipoPapeletaEstado', 'TipoPapeletaId')],
             'MotivoPapeletaId' => ['nullable', 'integer', $this->existeActivo(MotivoPapeleta::class, 'MotivoPapeletaEstado', 'MotivoPapeletaId')],
             'DocumentoSustentoId' => ['nullable', 'integer', $this->existe(DocumentoSustento::class)],
-            // Quien registra. Se completara con el usuario autenticado cuando exista el login (M04).
             'UsuarioRegistroId' => ['nullable', 'integer', $this->existeActivo(Usuario::class, 'UsuarioEstado', 'UsuarioRegistroId')],
             'PapeletaNumero' => ['nullable', 'string', 'max:50', 'regex:/^[A-Za-z0-9][A-Za-z0-9\-\/.]*$/D', $this->unico(Papeleta::class, 'PapeletaNumero')],
             'PapeletaFecha' => [$this->obligatorio(), 'date_format:Y-m-d'],

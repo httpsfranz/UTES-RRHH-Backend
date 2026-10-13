@@ -34,6 +34,7 @@ class AsistenciaDiariaResource extends JsonResource
                 'id' => $this->vinculoLaboral->VinculoLaboralId,
                 'codigo' => $this->vinculoLaboral->VinculoLaboralCodigo,
                 'eess_id' => $this->vinculoLaboral->EessId,
+                'eess' => $this->vinculoLaboral->relationLoaded('eess') && $this->vinculoLaboral->eess ? ['id' => $this->vinculoLaboral->eess->EessId, 'nombre' => $this->vinculoLaboral->eess->EessNombre] : null,
             ] : null),
             'estado' => $this->whenLoaded('estado', fn () => $this->estado ? [
                 'id' => $this->estado->EstadoAsistenciaId,

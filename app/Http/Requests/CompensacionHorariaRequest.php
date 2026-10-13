@@ -27,7 +27,6 @@ class CompensacionHorariaRequest extends CatalogoRequest
             'VinculoLaboralId' => [$this->obligatorio(), 'integer', $this->existeActivo(VinculoLaboral::class, 'VinculoLaboralEstado', 'VinculoLaboralId')],
             'TipoCompensacionId' => [$this->obligatorio(), 'integer', $this->existeActivo(TipoCompensacion::class, 'TipoCompensacionEstado', 'TipoCompensacionId')],
             'AsistenciaDiariaId' => ['nullable', 'integer', $this->existe(AsistenciaDiaria::class)],
-            // Jefe que autorizo el trabajo. Se completara con el usuario autenticado cuando exista el login (M04).
             'CompensacionHorariaAutorizadoPor' => ['nullable', 'integer', $this->existeActivo(Usuario::class, 'UsuarioEstado', 'CompensacionHorariaAutorizadoPor')],
             'CompensacionHorariaHorasGeneradas' => [$this->obligatorio(), 'numeric', 'gt:0', 'max:24', 'regex:/^\d+(\.\d{1,2})?$/'],
             'CompensacionHorariaFechaLimite' => ['nullable', 'date_format:Y-m-d'],

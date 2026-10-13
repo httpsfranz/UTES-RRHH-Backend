@@ -19,6 +19,7 @@ class UsuarioRolResource extends JsonResource
             'usuario' => $this->whenLoaded('usuario', fn () => $this->usuario ? [
                 'id' => $this->usuario->UsuarioId,
                 'nombre' => $this->usuario->UsuarioNombre,
+                'trabajador' => $this->usuario->relationLoaded('trabajador') && $this->usuario->trabajador ? trim(preg_replace('/\s+/', ' ', str_replace(' ,', ',', (string) $this->usuario->trabajador->TrabajadorNombreCompleto))) : null,
             ] : null),
             'rol' => $this->whenLoaded('rol', fn () => $this->rol ? [
                 'id' => $this->rol->RolId,

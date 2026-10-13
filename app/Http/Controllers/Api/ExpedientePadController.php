@@ -16,6 +16,7 @@ class ExpedientePadController extends Controller
     private const RELACIONES = [
         'vinculoLaboral:VinculoLaboralId,TrabajadorId,EessId,VinculoLaboralCodigo',
         'vinculoLaboral.trabajador:TrabajadorId,TrabajadorNumeroDocumento,TrabajadorNombreCompleto',
+        'vinculoLaboral.eess:EessId,EessNombre',
         'tipoFalta:TipoFaltaDisciplinariaId,TipoFaltaDisciplinariaCodigo,TipoFaltaDisciplinariaNombre,TipoFaltaDisciplinariaGravedad',
         'documento:DocumentoSustentoId,DocumentoSustentoNombre',
     ];

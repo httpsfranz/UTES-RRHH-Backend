@@ -33,6 +33,13 @@ class TrabajadorResource extends JsonResource
                 'nombre' => $this->tipoDocumento->TipoDocumentoIdentidadNombre,
                 'abreviatura' => $this->tipoDocumento->TipoDocumentoIdentidadAbreviatura,
             ]),
+            // Vinculos que rigen hoy (normalmente uno): donde trabaja y con que cargo y condicion.
+            'vinculos' => $this->whenLoaded('vinculosVigentes', fn () => $this->vinculosVigentes->map(fn ($v) => [
+                'id' => $v->VinculoLaboralId,
+                'cargo' => $v->cargo?->CargoNombre,
+                'condicion' => $v->condicionLaboral?->CondicionLaboralNombre,
+                'eess' => $v->eess?->EessNombre,
+            ])->values()->all()),
             'profesion' => $this->whenLoaded('profesion', fn () => $this->profesion ? [
                 'id' => $this->profesion->ProfesionId,
                 'nombre' => $this->profesion->ProfesionNombre,

@@ -16,6 +16,7 @@ class ConstatacionDomiciliariaController extends Controller
     private const RELACIONES = [
         'vinculoLaboral:VinculoLaboralId,TrabajadorId,EessId,VinculoLaboralCodigo',
         'vinculoLaboral.trabajador:TrabajadorId,TrabajadorNumeroDocumento,TrabajadorNombreCompleto',
+        'vinculoLaboral.eess:EessId,EessNombre',
         'descansoMedico:DescansoMedicoId,DescansoMedicoNumeroCitt,DescansoMedicoFechaInicio,DescansoMedicoFechaFin',
         'documento:DocumentoSustentoId,DocumentoSustentoNombre',
         'usuarioRegistro:UsuarioId,UsuarioNombre',

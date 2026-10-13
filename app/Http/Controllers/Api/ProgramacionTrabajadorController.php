@@ -17,6 +17,7 @@ class ProgramacionTrabajadorController extends Controller
         'periodo:ProgramacionPeriodoId,EessId,ProgramacionPeriodoCodigo,ProgramacionPeriodoFechaInicio,ProgramacionPeriodoFechaFin,ProgramacionPeriodoEstado',
         'vinculoLaboral:VinculoLaboralId,TrabajadorId,EessId,VinculoLaboralCodigo',
         'vinculoLaboral.trabajador:TrabajadorId,TrabajadorNumeroDocumento,TrabajadorNombreCompleto',
+        'vinculoLaboral.eess:EessId,EessNombre',
     ];
 
     // GET /api/programaciones-trabajador?buscar=...&programacion_periodo_id=&vinculo_laboral_id=&estado=

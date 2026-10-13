@@ -17,6 +17,7 @@ class AsistenciaDiariaController extends Controller
     private const RELACIONES = [
         'vinculoLaboral:VinculoLaboralId,TrabajadorId,EessId,VinculoLaboralCodigo',
         'vinculoLaboral.trabajador:TrabajadorId,TrabajadorNumeroDocumento,TrabajadorNombreCompleto',
+        'vinculoLaboral.eess:EessId,EessNombre',
         'estado:EstadoAsistenciaId,EstadoAsistenciaCodigo,EstadoAsistenciaNombre,EstadoAsistenciaEsFalta,EstadoAsistenciaEsDescontable',
     ];
 

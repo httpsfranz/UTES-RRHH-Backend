@@ -141,8 +141,10 @@ abstract class CrudModulosTestCase extends TestCase
     {
         $spec = $this->spec($slug);
 
-        // El usuario que registra lo fija el servidor con el de la sesion (VerificarPermiso): ya no se exige en el cuerpo.
-        $obligatorios = array_values(array_diff($spec['required'], $this->camposDelUsuarioAutenticado($spec)));
+        // El usuario que registra lo fija el servidor con el de la sesion (VerificarPermiso) y los codigos que no son claves
+        // tecnicas se generan solos (CodigoAutomatico): ninguno se exige en el cuerpo.
+        $automaticos = array_filter($spec['required'], fn (string $c) => str_ends_with($c, 'Codigo') && ! in_array($c, ['PermisoCodigo', 'ParametroSistemaCodigo', 'EstadoAsistenciaCodigo', 'TipoDocumentoIdentidadCodigo', 'ColegiaturaTipoCodigo'], true));
+        $obligatorios = array_values(array_diff($spec['required'], $this->camposDelUsuarioAutenticado($spec), $automaticos));
         if ($obligatorios === []) {
             $this->markTestSkipped('Todos sus campos obligatorios los fija el servidor con el usuario autenticado.');
         }

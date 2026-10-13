@@ -241,7 +241,7 @@ final class Nivel0Modulos
                     'DocumentoSustentoTipo' => 'application/pdf', 'DocumentoSustentoExtension' => 'pdf',
                     'DocumentoSustentoTamanoBytes' => 2048, 'DocumentoSustentoHash' => str_repeat('a', 64),
                 ],
-                'keys' => ['id', 'nombre', 'ruta', 'tipo', 'extension', 'tamano_bytes', 'hash', 'fecha_registro'],
+                'keys' => ['id', 'nombre', 'ruta', 'tipo', 'extension', 'tamano_bytes', 'hash', 'tiene_archivo', 'fecha_registro'],
                 'required' => ['DocumentoSustentoNombre'],
                 'unique' => ['DocumentoSustentoHash'],
                 'maxlen' => ['DocumentoSustentoNombre' => 255, 'DocumentoSustentoRuta' => 500, 'DocumentoSustentoTipo' => 100,

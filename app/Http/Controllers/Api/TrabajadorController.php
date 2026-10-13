@@ -17,7 +17,7 @@ class TrabajadorController extends Controller
         $buscar = $request->string('buscar')->toString();
 
         $trabajadores = Trabajador::query()
-            ->with(['tipoDocumento:TipoDocumentoIdentidadId,TipoDocumentoIdentidadCodigo,TipoDocumentoIdentidadNombre,TipoDocumentoIdentidadAbreviatura', 'profesion:ProfesionId,ProfesionNombre'])
+            ->with(['tipoDocumento:TipoDocumentoIdentidadId,TipoDocumentoIdentidadCodigo,TipoDocumentoIdentidadNombre,TipoDocumentoIdentidadAbreviatura', 'profesion:ProfesionId,ProfesionNombre', 'vinculosVigentes.cargo:CargoId,CargoNombre', 'vinculosVigentes.eess:EessId,EessNombre', 'vinculosVigentes.condicionLaboral:CondicionLaboralId,CondicionLaboralNombre'])
             ->when($request->filled('buscar'), fn ($q) => $q->where(fn ($s) => $s
                 ->where('TrabajadorNumeroDocumento', 'like', "%{$buscar}%")
                 ->orWhere('TrabajadorNombreCompleto', 'like', "%{$buscar}%")

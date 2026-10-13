@@ -14,14 +14,12 @@ class ResolucionRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        // Mientras no exista el modulo de Seguridad (M04), true.
         return true;
     }
 
     public function rules(): array
     {
         return [
-            // Quien resuelve. Se completara con el usuario autenticado cuando exista el login (M04).
             'UsuarioId' => ['required', 'integer', Rule::exists(Usuario::class, 'UsuarioId')->where('UsuarioEstado', 1)],
             'Motivo' => [$this->esRechazo() ? 'required' : 'nullable', 'string', 'max:500'],
         ];

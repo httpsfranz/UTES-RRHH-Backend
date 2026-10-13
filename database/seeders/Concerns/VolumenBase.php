@@ -19,7 +19,7 @@ trait VolumenBase
     /** La Red simula la operacion desde el inicio de julio (los meses cerrados, para ver historial) hasta este dia. */
     protected const VOLUMEN_DESDE = '2026-07-01';
 
-    protected const VOLUMEN_HASTA = '2026-10-03';
+    protected const VOLUMEN_HASTA = '2026-10-20';
 
     /** Primer vinculo de volumen: si existe, la expansion ya se sembro y no se repite. */
     protected const VOLUMEN_MARCADOR = 'VL-1001';

@@ -87,6 +87,7 @@ use App\Http\Controllers\Api\TipoPapeletaController;
 use App\Http\Controllers\Api\TipoPeriodoProgramacionController;
 use App\Http\Controllers\Api\TipoResponsabilidadController;
 use App\Http\Controllers\Api\TrabajadorController;
+use App\Http\Controllers\Api\TrabajadorImportacionController;
 use App\Http\Controllers\Api\TramoToleranciaController;
 use App\Http\Controllers\Api\TurnoController;
 use App\Http\Controllers\Api\TurnoProgramadoController;
@@ -207,6 +208,8 @@ Route::middleware(['auth:sanctum', 'permiso'])->group(function () {
     Route::apiResource('colegiaturas', ColegiaturaController::class)
         ->parameters(['colegiaturas' => 'colegiatura']);
 
+    Route::get('trabajadores/plantilla', [TrabajadorImportacionController::class, 'plantilla']);
+    Route::post('trabajadores/importar', [TrabajadorImportacionController::class, 'importar']);
     Route::apiResource('trabajadores', TrabajadorController::class)
         ->parameters(['trabajadores' => 'trabajador']);
 
@@ -279,6 +282,7 @@ Route::middleware(['auth:sanctum', 'permiso'])->group(function () {
     Route::apiResource('calendario-no-laborable', CalendarioNoLaborableController::class)
         ->parameters(['calendario-no-laborable' => 'dia']);
 
+    Route::get('documentos-sustento/{documento}/archivo', [DocumentoSustentoController::class, 'archivo']);
     Route::apiResource('documentos-sustento', DocumentoSustentoController::class)
         ->parameters(['documentos-sustento' => 'documento']);
 
@@ -287,7 +291,7 @@ Route::middleware(['auth:sanctum', 'permiso'])->group(function () {
         ->parameters(['logs-integracion' => 'log'])
         ->only(['index', 'show']);
 
-    /* ---- Nivel 3 / lote A: Asistencia y soporte ---- */
+    /* ---- Asistencia y soporte ---- */
     Route::post('justificaciones-falta/{justificacion}/aprobar', [JustificacionFaltaController::class, 'aprobar'])->whereNumber('justificacion');
     Route::post('justificaciones-falta/{justificacion}/rechazar', [JustificacionFaltaController::class, 'rechazar'])->whereNumber('justificacion');
     Route::apiResource('justificaciones-falta', JustificacionFaltaController::class)
@@ -299,6 +303,8 @@ Route::middleware(['auth:sanctum', 'permiso'])->group(function () {
     Route::post('asistencia-diaria/calcular', [AsistenciaDiariaController::class, 'calcular']);
     Route::get('asistencia-diaria/calendario/pdf', [AsistenciaCalendarioController::class, 'pdf']);
     Route::get('asistencia-diaria/calendario', [AsistenciaCalendarioController::class, 'mostrar']);
+    Route::get('programacion-calendario/turnos/pdf', [ProgramacionCalendarioController::class, 'turnosPdf']);
+    Route::get('programacion-calendario/ausencias/pdf', [ProgramacionCalendarioController::class, 'ausenciasPdf']);
     Route::get('programacion-calendario/turnos', [ProgramacionCalendarioController::class, 'turnos']);
     Route::get('programacion-calendario/ausencias', [ProgramacionCalendarioController::class, 'ausencias']);
     Route::apiResource('asistencia-diaria', AsistenciaDiariaController::class)
@@ -310,7 +316,7 @@ Route::middleware(['auth:sanctum', 'permiso'])->group(function () {
     Route::apiResource('notificaciones', NotificacionController::class)
         ->parameters(['notificaciones' => 'notificacion']);
 
-    /* ---- Nivel 3 / lote B: Solicitudes ---- */
+    /* ---- Solicitudes ---- */
     Route::post('papeletas/{papeleta}/aprobar', [PapeletaController::class, 'aprobar'])->whereNumber('papeleta');
     Route::post('papeletas/{papeleta}/rechazar', [PapeletaController::class, 'rechazar'])->whereNumber('papeleta');
     Route::apiResource('papeletas', PapeletaController::class)
@@ -329,7 +335,7 @@ Route::middleware(['auth:sanctum', 'permiso'])->group(function () {
     Route::apiResource('constataciones-domiciliarias', ConstatacionDomiciliariaController::class)
         ->parameters(['constataciones-domiciliarias' => 'constatacion']);
 
-    /* ---- Nivel 3 / lote C: Programacion, personal y seguridad ---- */
+    /* ---- Programacion, personal y seguridad ---- */
     Route::post('programaciones-periodo/{programacion}/publicar', [ProgramacionPeriodoController::class, 'publicar'])->whereNumber('programacion');
     Route::post('programaciones-periodo/{programacion}/cerrar', [ProgramacionPeriodoController::class, 'cerrar'])->whereNumber('programacion');
     Route::apiResource('programaciones-periodo', ProgramacionPeriodoController::class)
@@ -359,7 +365,7 @@ Route::middleware(['auth:sanctum', 'permiso'])->group(function () {
         ->parameters(['sesiones-acceso' => 'sesion'])
         ->only(['index', 'show']);
 
-    /* ---- Nivel 3 / lote D: Consolidacion, compensaciones, vacaciones y disciplina ---- */
+    /* ---- Consolidacion, compensaciones, vacaciones y disciplina ---- */
     Route::post('consolidados-asistencia/generar', [ConsolidadoAsistenciaController::class, 'generar']);
     Route::apiResource('consolidados-asistencia', ConsolidadoAsistenciaController::class)
         ->parameters(['consolidados-asistencia' => 'consolidado']);
@@ -378,7 +384,7 @@ Route::middleware(['auth:sanctum', 'permiso'])->group(function () {
     Route::apiResource('supervisiones-inopinadas', SupervisionInopinadaController::class)
         ->parameters(['supervisiones-inopinadas' => 'supervision']);
 
-    /* ---- Nivel 4: Programacion de trabajadores, ajustes, detalle de consolidado, liquidacion y rol vacacional ---- */
+    /* ---- Programacion de trabajadores, ajustes, detalle de consolidado, liquidacion y rol vacacional ---- */
     Route::apiResource('programaciones-trabajador', ProgramacionTrabajadorController::class)
         ->parameters(['programaciones-trabajador' => 'programacionTrabajador']);
 
@@ -400,7 +406,7 @@ Route::middleware(['auth:sanctum', 'permiso'])->group(function () {
     Route::apiResource('roles-vacacionales', RolVacacionalController::class)
         ->parameters(['roles-vacacionales' => 'rolVacacional']);
 
-    /* ---- Nivel 5: Turnos programados, detalle de liquidacion y goce vacacional ---- */
+    /* ---- Turnos programados, detalle de liquidacion y goce vacacional ---- */
     Route::post('turnos-programados/{turnoProgramado}/cumplir', [TurnoProgramadoController::class, 'cumplir'])->whereNumber('turnoProgramado');
     Route::apiResource('turnos-programados', TurnoProgramadoController::class)
         ->parameters(['turnos-programados' => 'turnoProgramado']);
@@ -413,7 +419,7 @@ Route::middleware(['auth:sanctum', 'permiso'])->group(function () {
     Route::apiResource('goces-vacacionales', GoceVacacionalController::class)
         ->parameters(['goces-vacacionales' => 'goce']);
 
-    /* ---- Nivel 6: Cambio de turno ---- */
+    /* ---- Cambio de turno ---- */
     Route::post('cambios-turno/{cambio}/aprobar', [CambioTurnoController::class, 'aprobar'])->whereNumber('cambio');
     Route::post('cambios-turno/{cambio}/rechazar', [CambioTurnoController::class, 'rechazar'])->whereNumber('cambio');
     Route::apiResource('cambios-turno', CambioTurnoController::class)
