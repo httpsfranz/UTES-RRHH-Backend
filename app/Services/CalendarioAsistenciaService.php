@@ -54,7 +54,49 @@ class CalendarioAsistenciaService
     public function armar(int $eessId, int $anio, int $mes, ?string $buscar = null, ?array $soloVinculos = null): array
     {
         $primero = CarbonImmutable::create($anio, $mes, 1)->startOfDay();
-        $ultimo = $primero->endOfMonth()->startOfDay();
+
+        return $this->armarRango($eessId, $primero, $primero->endOfMonth()->startOfDay(), 'mes', $buscar, $soloVinculos);
+    }
+
+    /**
+     * Rango de una vista del calendario que contiene la fecha: el dia, la semana (lunes a domingo) o el mes.
+     *
+     * @return array{0:CarbonImmutable,1:CarbonImmutable}
+     */
+    public static function rangoDeVista(string $vista, CarbonImmutable $fecha): array
+    {
+        $fecha = $fecha->startOfDay();
+
+        return match ($vista) {
+            'dia' => [$fecha, $fecha],
+            'semana' => [$fecha->startOfWeek(CarbonImmutable::MONDAY), $fecha->startOfWeek(CarbonImmutable::MONDAY)->addDays(6)],
+            default => [$fecha->startOfMonth(), $fecha->endOfMonth()->startOfDay()],
+        };
+    }
+
+    /** Texto del periodo que se ve: "Octubre 2026", "Semana del 19 al 25 de octubre de 2026" o "Lunes 19 de octubre de 2026". */
+    public static function etiqueta(string $vista, CarbonImmutable $primero, CarbonImmutable $ultimo): string
+    {
+        $mes = fn (CarbonImmutable $d) => mb_strtolower(self::MESES[$d->month]);
+        $nombres = [1 => 'Lunes', 2 => 'Martes', 3 => 'Miércoles', 4 => 'Jueves', 5 => 'Viernes', 6 => 'Sábado', 7 => 'Domingo'];
+
+        return match ($vista) {
+            'dia' => "{$nombres[$primero->dayOfWeekIso]} {$primero->day} de {$mes($primero)} de {$primero->year}",
+            'semana' => $primero->month === $ultimo->month
+                ? "Semana del {$primero->day} al {$ultimo->day} de {$mes($ultimo)} de {$ultimo->year}"
+                : "Semana del {$primero->day} de {$mes($primero)} al {$ultimo->day} de {$mes($ultimo)} de {$ultimo->year}",
+            default => self::MESES[$primero->month].' '.$primero->year,
+        };
+    }
+
+    /**
+     * @param  'dia'|'semana'|'mes'  $vista
+     * @return array<string,mixed>
+     */
+    public function armarRango(int $eessId, CarbonImmutable $primero, CarbonImmutable $ultimo, string $vista = 'mes', ?string $buscar = null, ?array $soloVinculos = null): array
+    {
+        $anio = $primero->year;
+        $mes = $primero->month;
         $eess = DB::table('Organizacion.EstablecimientoSalud as e')
             ->join('Organizacion.Microred as m', 'm.MicroredId', '=', 'e.MicroredId')
             ->where('e.EessId', $eessId)->first(['e.EessId', 'e.EessCodigo', 'e.EessNombre', 'e.MicroredId', 'm.MicroredNombre']);
@@ -87,7 +129,8 @@ class CalendarioAsistenciaService
             'titulo' => 'ASISTENCIA',
             'entidad' => DB::table('Configuracion.ParametroSistema')->where('ParametroSistemaCodigo', 'ENTIDAD_NOMBRE')->value('ParametroSistemaValor') ?? 'Red de Salud Trujillo',
             'eess' => ['id' => (int) $eess->EessId, 'codigo' => $eess->EessCodigo, 'nombre' => $eess->EessNombre, 'microred' => $eess->MicroredNombre],
-            'periodo' => ['anio' => $anio, 'mes' => $mes, 'nombre_mes' => self::MESES[$mes], 'etiqueta' => self::MESES[$mes].' '.$anio, 'dias' => $dias],
+            'periodo' => ['anio' => $anio, 'mes' => $mes, 'nombre_mes' => self::MESES[$mes], 'etiqueta' => self::etiqueta($vista, $primero, $ultimo), 'dias' => $dias,
+                'vista' => $vista, 'desde' => $primero->toDateString(), 'hasta' => $ultimo->toDateString(), 'hoy' => HoraLocal::hoy()->toDateString()],
             'trabajadores' => $filas,
             'leyenda' => [
                 'categorias' => collect(self::CATEGORIAS)->map(fn ($nombre, $clave) => ['clave' => $clave, 'nombre' => $nombre])->values()->all(),
@@ -101,7 +144,7 @@ class CalendarioAsistenciaService
     /** @return list<array<string,mixed>> */
     public function dias(CarbonImmutable $primero, CarbonImmutable $ultimo, int $microredId): array
     {
-        $noLaborables = DB::table('Soporte.CalendarioNoLaborable')
+        $noLaborables = DB::table('Soporte.CalendarioNoLaborable')->where('CalendarioNoLaborableEstado', 1)
             ->whereDate('CalendarioNoLaborableFecha', '>=', $primero->toDateString())->whereDate('CalendarioNoLaborableFecha', '<=', $ultimo->toDateString())
             ->where(fn ($q) => $q->whereNull('MicroredId')->orWhere('MicroredId', $microredId))
             ->get()->keyBy(fn ($d) => substr((string) $d->CalendarioNoLaborableFecha, 0, 10));
@@ -159,7 +202,7 @@ class CalendarioAsistenciaService
      * @param  list<int>  $ids
      * @return Collection<string,list<array<string,string>>>
      */
-    private function turnosEsperados(array $ids, CarbonImmutable $primero, CarbonImmutable $ultimo): Collection
+    public function turnosEsperados(array $ids, CarbonImmutable $primero, CarbonImmutable $ultimo): Collection
     {
         $d = $primero->toDateString();
         $h = $ultimo->toDateString();
@@ -252,9 +295,11 @@ class CalendarioAsistenciaService
     private function celda(?object $registro, array $turnos, Collection $catalogo): array
     {
         $turno = $turnos === [] ? null : implode('+', array_values(array_unique(array_column($turnos, 'codigo'))));
+        // "M 07:00 a 13:00 · T 13:00 a 19:00": el horario esperado del dia, para no tener que buscar a que turno pertenece.
+        $horario = $turnos === [] ? null : implode(' · ', array_values(array_unique(array_map(fn (array $t) => "{$t['codigo']} {$t['entrada']} a {$t['salida']}", $turnos))));
         if ($registro === null) {
             return $turno === null ? ['vacia' => true] : [
-                'vacia' => false, 'asistencia_id' => null, 'turno' => $turno, 'estado_codigo' => null, 'estado_nombre' => null, 'abreviatura' => null,
+                'vacia' => false, 'asistencia_id' => null, 'turno' => $turno, 'horario' => $horario, 'estado_codigo' => null, 'estado_nombre' => null, 'abreviatura' => null,
                 'categoria' => 'programado', 'linea1' => $turno, 'linea2' => '', 'minutos_tardanza' => 0, 'minutos_falta' => 0, 'minutos_extra' => 0, 'minutos_trabajados' => 0,
                 'hora_entrada' => null, 'hora_salida' => null, 'observacion' => null, 'origen' => null,
             ];
@@ -267,7 +312,7 @@ class CalendarioAsistenciaService
         $linea2 = $tardanza > 0 ? (string) $tardanza : ($turno !== null && $codigo !== 'ASISTIO' ? $abreviatura : '');
 
         return [
-            'vacia' => false, 'asistencia_id' => (int) $registro->AsistenciaDiariaId, 'turno' => $turno, 'estado_codigo' => $codigo, 'estado_nombre' => $estado->EstadoAsistenciaNombre,
+            'vacia' => false, 'asistencia_id' => (int) $registro->AsistenciaDiariaId, 'turno' => $turno, 'horario' => $horario, 'estado_codigo' => $codigo, 'estado_nombre' => $estado->EstadoAsistenciaNombre,
             'abreviatura' => $abreviatura, 'categoria' => $this->categoria($estado), 'linea1' => $turno ?? $abreviatura, 'linea2' => $linea2,
             'minutos_tardanza' => $tardanza, 'minutos_falta' => (int) $registro->AsistenciaDiariaMinutosFalta, 'minutos_extra' => (int) $registro->AsistenciaDiariaMinutosExtra,
             'minutos_trabajados' => (int) $registro->AsistenciaDiariaMinutosTrabajados,

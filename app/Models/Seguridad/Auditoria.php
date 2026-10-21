@@ -3,6 +3,7 @@
 namespace App\Models\Seguridad;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Auditoria extends Model
 {
@@ -18,7 +19,12 @@ class Auditoria extends Model
 
     // Sin $fillable: nadie escribe auditoria via API (ver AuditoriaController, solo lectura).
     protected $casts = [
-        'UsuarioId'          => 'integer',
+        'UsuarioId' => 'integer',
         'AuditoriaFechaHora' => 'datetime',
     ];
+
+    public function usuario(): BelongsTo
+    {
+        return $this->belongsTo(Usuario::class, 'UsuarioId', 'UsuarioId');
+    }
 }

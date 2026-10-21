@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Consolidacion\ConsolidadoAsistencia;
 use App\Models\Consolidacion\PeriodoAsistencia;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -35,6 +36,21 @@ class PeriodoAsistenciaRequest extends CatalogoRequest
     public function withValidator(Validator $validator): void
     {
         $this->despuesDeValidar($validator, function (Validator $validator) {
+            // Un periodo cerrado ya se consolido y remitio a RRHH (RIT, Art. 16): no se reabre ni se modifica.
+            if ($this->registro()?->PeriodoAsistenciaEstado === 'CERRADO') {
+                $validator->errors()->add('PeriodoAsistenciaEstado', 'El período está cerrado: ya no se puede reabrir ni modificar.');
+
+                return;
+            }
+            if ($this->input('PeriodoAsistenciaEstado') === 'CERRADO' && $this->registroId()) {
+                $pendientes = ConsolidadoAsistencia::query()->where('PeriodoAsistenciaId', $this->registroId())->whereIn('ConsolidadoAsistenciaEstado', ['GENERADO', 'OBSERVADO'])->count();
+                if ($pendientes > 0) {
+                    $validator->errors()->add('PeriodoAsistenciaEstado', "No se puede cerrar: {$pendientes} consolidado(s) aún no tienen conformidad. Revísalos y apruébalos primero.");
+
+                    return;
+                }
+            }
+
             $inicio = $this->fecha($this->valorEfectivo('PeriodoAsistenciaFechaInicio'));
             $fin = $this->fecha($this->valorEfectivo('PeriodoAsistenciaFechaFin'));
 

@@ -96,18 +96,19 @@ class Nivel3CalendarioAsistenciaTest extends TestCase
         $this->dia($v, '2026-09-10', 'LICENCIA');   // sin turno: manda el estado
         $this->dia($v, '2026-09-11', 'FALTA_JUST');
         $this->dia($v, '2026-09-12', 'DESCANSO');
-        $this->turno($v, '2026-09-14');   // programado, aun sin registro
+        $this->turno($v, '2026-09-14');   // programado sin marcas: el calendario recalcula al abrirse y lo declara falta
         $fila = $this->calendario($this->dniDe($v))['trabajadores'][0];
         $celdas = $fila['celdas'];
 
         $this->assertSame(['M', '', 'normal'], [$celdas['2026-09-07']['linea1'], $celdas['2026-09-07']['linea2'], $celdas['2026-09-07']['categoria']]);
         $this->assertSame('07:30', $celdas['2026-09-07']['hora_entrada']);
+        $this->assertMatchesRegularExpression('/^M \d{2}:\d{2} a \d{2}:\d{2}$/', $celdas['2026-09-07']['horario']);   // el horario esperado, no solo el codigo
         $this->assertSame(['M', '10', 'tardanza'], [$celdas['2026-09-08']['linea1'], $celdas['2026-09-08']['linea2'], $celdas['2026-09-08']['categoria']]);
         $this->assertSame(['T', 'FAL', 'falta'], [$celdas['2026-09-09']['linea1'], $celdas['2026-09-09']['linea2'], $celdas['2026-09-09']['categoria']]);
         $this->assertSame(['LIC', '', 'cobertura'], [$celdas['2026-09-10']['linea1'], $celdas['2026-09-10']['linea2'], $celdas['2026-09-10']['categoria']]);
         $this->assertSame('justificada', $celdas['2026-09-11']['categoria']);
         $this->assertSame('descanso', $celdas['2026-09-12']['categoria']);
-        $this->assertSame(['M', 'programado', null], [$celdas['2026-09-14']['linea1'], $celdas['2026-09-14']['categoria'], $celdas['2026-09-14']['asistencia_id']]);
+        $this->assertSame(['M', 'falta', 'CALCULADO'], [$celdas['2026-09-14']['linea1'], $celdas['2026-09-14']['categoria'], $celdas['2026-09-14']['origen']]);
         $this->assertTrue($celdas['2026-09-15']['vacia']);
         $this->assertSame(30, count($celdas));
         $this->assertSame($celdas['2026-09-08']['asistencia_id'], (int) DB::table('Asistencia.AsistenciaDiaria')->where(['VinculoLaboralId' => $v])->whereDate('AsistenciaDiariaFecha', '2026-09-08')->value('AsistenciaDiariaId'));

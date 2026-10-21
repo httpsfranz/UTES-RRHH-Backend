@@ -141,7 +141,7 @@ class Nivel3SolicitudesTest extends CrudModulosTestCase
 
         $aviso = DB::table('Soporte.Notificacion')->where('UsuarioId', $registrante)->where('NotificacionTipo', 'PAPELETA_APROBADA')->first();
         $this->assertNotNull($aviso);
-        $this->assertSame('/solicitudes/papeletas', $aviso->NotificacionEnlace);
+        $this->assertSame('/solicitudes/registro?pestana=papeletas', $aviso->NotificacionEnlace);
 
         // Resuelta: no se resuelve de nuevo ni se modifica.
         $this->postJson("/api/papeletas/{$id}/aprobar", ['UsuarioId' => $this->usuario()])->assertStatus(422);

@@ -130,6 +130,6 @@ class JustificacionFaltaService
 
     private function notificar(JustificacionFalta $justificacion, string $tipo, string $titulo, string $mensaje): void
     {
-        $this->notificaciones->notificar($justificacion->UsuarioRegistroId, $tipo, $titulo, $mensaje, '/asistencia/justificacion-faltas');
+        $this->notificaciones->notificar($justificacion->UsuarioRegistroId, $tipo, $titulo, $mensaje, '/solicitudes/registro?pestana=justificaciones');
     }
 }

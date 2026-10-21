@@ -30,6 +30,7 @@ class ExpedientePad extends Model
         'ExpedientePadDescripcion',
         'ExpedientePadSancion',
         'ExpedientePadEstado',
+        'SupervisionInopinadaId',
     ];
 
     protected $casts = [

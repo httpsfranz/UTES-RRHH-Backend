@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Personal\Colegiatura;
+use App\Models\Personal\ColegiaturaTipo;
 use App\Models\Personal\Profesion;
 use App\Models\Personal\TipoDocumentoIdentidad;
 use App\Models\Personal\Trabajador;
@@ -18,9 +20,32 @@ class TrabajadorRequest extends CatalogoRequest
 
     private const EDAD_MAXIMA = 100;
 
+    /** Nombre de una profesion o colegio escrito con "Otro": letras, numeros, espacios y puntuacion simple. */
+    private const NOMBRE_LIBRE = 'regex:/^[\pL\pN\s.,()\/-]+$/uD';
+
+    /** La Red identifica a su personal solo con DNI: si el formulario no envia el tipo, es DNI. */
+    protected function prepareForValidation(): void
+    {
+        if ($this->esCreacion() && ! $this->filled('TipoDocumentoIdentidadId')) {
+            $this->merge(['TipoDocumentoIdentidadId' => TipoDocumentoIdentidad::query()->where('TipoDocumentoIdentidadCodigo', 'DNI')->value('TipoDocumentoIdentidadId')]);
+        }
+    }
+
     public function rules(): array
     {
         return [
+            // Profesion "Otro": nombre de una profesion que aun no existe (se crea al guardar).
+            'ProfesionNueva' => ['nullable', 'string', 'max:150', self::NOMBRE_LIBRE],
+            // Colegiaturas del trabajador (se registran en el mismo formulario). Ausente = no se tocan.
+            'Colegiaturas' => ['sometimes', 'array', 'max:5'],
+            'Colegiaturas.*.ColegiaturaId' => ['nullable', 'integer'],
+            'Colegiaturas.*.ColegiaturaTipoId' => ['nullable', 'integer', 'required_without:Colegiaturas.*.ColegiaturaTipoNuevo', $this->existeActivo(ColegiaturaTipo::class, 'ColegiaturaTipoEstado', 'ColegiaturaTipoId')],
+            'Colegiaturas.*.ColegiaturaTipoNuevo' => ['nullable', 'string', 'max:150', self::NOMBRE_LIBRE],
+            'Colegiaturas.*.ColegiaturaNumero' => ['required', 'string', 'max:30', 'regex:/^[A-Za-z0-9]+$/D'],
+            'Colegiaturas.*.ColegiaturaFechaColegiatura' => ['nullable', 'date_format:Y-m-d', 'before_or_equal:today'],
+            'Colegiaturas.*.ColegiaturaFechaVencimiento' => ['nullable', 'date_format:Y-m-d'],
+            'Colegiaturas.*.ColegiaturaEsHabilitado' => ['nullable', 'boolean'],
+            'Colegiaturas.*.ColegiaturaEsPrincipal' => ['nullable', 'boolean'],
             'TipoDocumentoIdentidadId' => [
                 $this->obligatorio(), 'integer',
                 $this->existeActivo(TipoDocumentoIdentidad::class, 'TipoDocumentoIdentidadEstado', 'TipoDocumentoIdentidadId'),
@@ -88,6 +113,51 @@ class TrabajadorRequest extends CatalogoRequest
             if ($existe) {
                 $validator->errors()->add('TrabajadorNumeroDocumento', 'Ya existe un trabajador con ese documento de identidad.');
             }
+
+            $this->validarColegiaturas($validator);
         });
+    }
+
+    /**
+     * Las mismas reglas que Personal.Colegiatura exige una por una (ColegiaturaRequest), sobre la lista del formulario:
+     * un colegio por trabajador, una sola principal, numero unico por colegio y colegio de la profesion del trabajador.
+     */
+    private function validarColegiaturas(Validator $validator): void
+    {
+        $filas = $this->input('Colegiaturas');
+        if (! is_array($filas)) {
+            return;
+        }
+        $profesionId = filled($this->input('ProfesionNueva')) ? null : $this->valorEfectivo('ProfesionId');
+        $profesion = $profesionId ? Profesion::find($profesionId) : null;
+
+        if (count(array_filter($filas, fn ($f) => filter_var($f['ColegiaturaEsPrincipal'] ?? false, FILTER_VALIDATE_BOOLEAN))) > 1) {
+            $validator->errors()->add('Colegiaturas', 'Solo una colegiatura puede ser la principal.');
+        }
+
+        $vistos = [];
+        foreach ($filas as $i => $fila) {
+            // Un colegio escrito con "Otro" que ya existe (mismo nombre) es ese colegio: se valida igual.
+            $tipo = filled($fila['ColegiaturaTipoId'] ?? null)
+                ? ColegiaturaTipo::with('profesion:ProfesionId,ProfesionNombre')->find($fila['ColegiaturaTipoId'])
+                : (filled($fila['ColegiaturaTipoNuevo'] ?? null) ? ColegiaturaTipo::with('profesion:ProfesionId,ProfesionNombre')->whereRaw('LOWER(ColegiaturaTipoNombre) = ?', [mb_strtolower(trim((string) $fila['ColegiaturaTipoNuevo']))])->first() : null);
+            $claveTipo = $tipo?->ColegiaturaTipoId ?? 'nuevo:'.mb_strtolower(trim((string) ($fila['ColegiaturaTipoNuevo'] ?? '')));
+            if (isset($vistos[$claveTipo])) {
+                $validator->errors()->add("Colegiaturas.{$i}.ColegiaturaTipoId", 'Ese colegio ya está en la lista.');
+            }
+            $vistos[$claveTipo] = true;
+
+            if ($tipo?->ProfesionId && $profesion && $tipo->ProfesionId !== $profesion->ProfesionId) {
+                $validator->errors()->add("Colegiaturas.{$i}.ColegiaturaTipoId", "Ese colegio corresponde a la profesión {$tipo->profesion->ProfesionNombre}, y el trabajador es {$profesion->ProfesionNombre}.");
+            }
+
+            if ($tipo !== null) {
+                $repetido = Colegiatura::query()->where('ColegiaturaTipoId', $tipo->ColegiaturaTipoId)->where('ColegiaturaNumero', strtoupper((string) ($fila['ColegiaturaNumero'] ?? '')))
+                    ->when($this->registroId(), fn ($q, $id) => $q->where('TrabajadorId', '!=', $id))->exists();
+                if ($repetido) {
+                    $validator->errors()->add("Colegiaturas.{$i}.ColegiaturaNumero", 'Ya existe una colegiatura de ese colegio con ese número.');
+                }
+            }
+        }
     }
 }

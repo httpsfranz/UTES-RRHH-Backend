@@ -77,6 +77,8 @@ class Nivel3AsistenciaTest extends CrudModulosTestCase
     public function test_el_reconocimiento_facial_es_la_forma_de_registro_y_los_demas_metodos_piden_autorizacion(): void
     {
         $vinculo = $this->nuevoVinculo();
+        // La Red solo usa facial y manual (AlcanceRitSeeder); se reactiva la huella para probar la regla de autorizacion.
+        DB::table('Biometria.MetodoMarcacion')->where('MetodoMarcacionCodigo', 'HUELLA')->update(['MetodoMarcacionEstado' => 1]);
 
         // RIT Art. 21: unicamente reconocimiento facial; otro metodo, solo con autorizacion de Recursos Humanos.
         $this->postJson('/api/marcaciones', $this->marcacion($vinculo))->assertCreated();
@@ -132,6 +134,7 @@ class Nivel3AsistenciaTest extends CrudModulosTestCase
     public function test_la_plantilla_debe_ser_del_trabajador_y_del_tipo_del_metodo(): void
     {
         $vinculo = $this->nuevoVinculo();
+        DB::table('Biometria.MetodoMarcacion')->where('MetodoMarcacionCodigo', 'HUELLA')->update(['MetodoMarcacionEstado' => 1]);
         $ajena = $this->id('Biometria.PlantillaBiometrica', 'PlantillaBiometricaId', ['PlantillaBiometricaTipo' => 'ROSTRO']);   // de otro trabajador
         $this->postJson('/api/marcaciones', $this->marcacion($vinculo, ['PlantillaBiometricaId' => $ajena]))
             ->assertStatus(422)->assertJsonValidationErrors(['PlantillaBiometricaId']);

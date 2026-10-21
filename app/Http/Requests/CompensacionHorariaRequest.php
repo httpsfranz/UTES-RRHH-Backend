@@ -4,9 +4,12 @@ namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\ReglasDeNegocio;
 use App\Models\Asistencia\AsistenciaDiaria;
+use App\Models\Compensaciones\CompensacionHoraria;
 use App\Models\Compensaciones\TipoCompensacion;
 use App\Models\Personal\VinculoLaboral;
 use App\Models\Seguridad\Usuario;
+use App\Support\HoraLocal;
+use Carbon\CarbonImmutable;
 use Illuminate\Validation\Validator;
 
 /**
@@ -25,10 +28,13 @@ class CompensacionHorariaRequest extends CatalogoRequest
     {
         return [
             'VinculoLaboralId' => [$this->obligatorio(), 'integer', $this->existeActivo(VinculoLaboral::class, 'VinculoLaboralEstado', 'VinculoLaboralId')],
-            'TipoCompensacionId' => [$this->obligatorio(), 'integer', $this->existeActivo(TipoCompensacion::class, 'TipoCompensacionEstado', 'TipoCompensacionId')],
+            'TipoCompensacionId' => [$this->esCreacion() ? 'required_without:CompensacionHorariaFechaTrabajo' : 'sometimes', 'nullable', 'integer', $this->existeActivo(TipoCompensacion::class, 'TipoCompensacionEstado', 'TipoCompensacionId')],
             'AsistenciaDiariaId' => ['nullable', 'integer', $this->existe(AsistenciaDiaria::class)],
             'CompensacionHorariaAutorizadoPor' => ['nullable', 'integer', $this->existeActivo(Usuario::class, 'UsuarioEstado', 'CompensacionHorariaAutorizadoPor')],
-            'CompensacionHorariaHorasGeneradas' => [$this->obligatorio(), 'numeric', 'gt:0', 'max:24', 'regex:/^\d+(\.\d{1,2})?$/'],
+            // Fecha del trabajo fuera de jornada que el jefe autoriza ANTES (Art. 17): las horas salen luego de las marcaciones.
+            'CompensacionHorariaFechaTrabajo' => [$this->esCreacion() ? 'required_without:CompensacionHorariaHorasGeneradas' : 'sometimes', 'nullable', 'date_format:Y-m-d'],
+            // Solo para registros sin fecha de trabajo (historicos): con fecha, las horas las calcula el sistema y no se envian.
+            'CompensacionHorariaHorasGeneradas' => [$this->esCreacion() ? 'required_without:CompensacionHorariaFechaTrabajo' : 'sometimes', 'nullable', 'numeric', 'gt:0', 'max:24', 'regex:/^\d+(\.\d{1,2})?$/'],
             'CompensacionHorariaFechaLimite' => ['nullable', 'date_format:Y-m-d'],
             'CompensacionHorariaAutorizadoPreviamente' => $this->booleano(),
             'CompensacionHorariaObservacion' => $this->texto(500),
@@ -61,6 +67,21 @@ class CompensacionHorariaRequest extends CatalogoRequest
                 return;
             }
 
+            $fechaTrabajo = $this->fechaEfectiva('CompensacionHorariaFechaTrabajo');
+            if ($fechaTrabajo !== null) {
+                // Autorizacion PREVIA (Art. 17): para un dia ya pasado solo si se declara que se autorizo antes (correo o documento).
+                if ($this->esCreacion() && $fechaTrabajo < HoraLocal::hoy()->toDateString() && ! $this->boolean('CompensacionHorariaAutorizadoPreviamente')) {
+                    $validator->errors()->add('CompensacionHorariaFechaTrabajo', 'La autorización debe ser previa al trabajo (RIT, Art. 17). Si se autorizó antes por correo o documento, márcalo.');
+                }
+                $repetida = CompensacionHoraria::query()->where('VinculoLaboralId', $this->valorEfectivo('VinculoLaboralId'))->whereDate('CompensacionHorariaFechaTrabajo', $fechaTrabajo)
+                    ->where('CompensacionHorariaEstado', '<>', 'ANULADO')->when($this->registroId(), fn ($q, $id) => $q->whereKeyNot($id))->exists();
+                if ($repetida) {
+                    $validator->errors()->add('CompensacionHorariaFechaTrabajo', 'El trabajador ya tiene una autorización de trabajo fuera de jornada para ese día.');
+                }
+
+                return;
+            }
+
             $tipo = TipoCompensacion::query()->find($this->valorEfectivo('TipoCompensacionId'));
             if ($tipo?->TipoCompensacionCodigo === self::TIPO_SOBRETIEMPO && (float) $this->valorEfectivo('CompensacionHorariaHorasGeneradas') < 1) {
                 $validator->errors()->add('CompensacionHorariaHorasGeneradas', 'El trabajo fuera de la jornada a compensar es de una hora diaria como mínimo (RIT, Art. 17).');
@@ -82,5 +103,31 @@ class CompensacionHorariaRequest extends CatalogoRequest
                 $validator->errors()->add('AsistenciaDiariaId', 'La asistencia diaria es de otro trabajador.');
             }
         });
+    }
+
+    /**
+     * Con fecha de trabajo, el sistema completa lo que antes se digitaba: autorizada previamente, autorizada por quien la
+     * registra (el jefe), horas en 0 hasta que el dia ocurra (luego salen de la marcacion de salida) y "compensar hasta" =
+     * fin del mes siguiente al trabajo (Art. 17).
+     *
+     * @return array<string,mixed>
+     */
+    public function datos(): array
+    {
+        $datos = $this->validated();
+        $fecha = $datos['CompensacionHorariaFechaTrabajo'] ?? null;
+        if ($fecha === null) {
+            return $datos;
+        }
+        unset($datos['CompensacionHorariaHorasGeneradas']);
+        if ($this->esCreacion()) {
+            $datos['CompensacionHorariaHorasGeneradas'] = 0;
+            $datos['CompensacionHorariaAutorizadoPreviamente'] = true;
+            $datos['CompensacionHorariaAutorizadoPor'] ??= $this->user()?->getAuthIdentifier();
+            $datos['TipoCompensacionId'] ??= TipoCompensacion::query()->where('TipoCompensacionCodigo', self::TIPO_SOBRETIEMPO)->value('TipoCompensacionId');
+        }
+        $datos['CompensacionHorariaFechaLimite'] = CarbonImmutable::parse($fecha)->addMonthNoOverflow()->endOfMonth()->toDateString();
+
+        return $datos;
     }
 }

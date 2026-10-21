@@ -41,6 +41,8 @@ class DatabaseSeeder extends Seeder
         $this->call([
             CatalogosSeeder::class,
             DatosPruebaSeeder::class,
+            // Solo DNI, marcacion facial o manual (RIT, Art. 21): el resto queda inactivo.
+            AlcanceRitSeeder::class,
             // Otra vez al final: ahora que existen microredes y establecimientos, los usuarios predeterminados reciben su ambito.
             UsuariosYPermisosSeeder::class,
         ]);

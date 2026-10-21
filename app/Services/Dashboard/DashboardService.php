@@ -4,6 +4,9 @@ namespace App\Services\Dashboard;
 
 use App\Models\Seguridad\Usuario;
 use App\Services\AutomatizacionService;
+use App\Services\BandejaDeSolicitudesService;
+use App\Services\CalendarioAsistenciaService;
+use App\Services\PersonalSinHorarioService;
 use App\Support\AccesoUsuario;
 use App\Support\HoraLocal;
 use Carbon\CarbonImmutable;
@@ -22,7 +25,8 @@ use Illuminate\Support\Facades\DB;
  *            PORTERIA -> porteria | TRABAJADOR (o cualquiera con vinculo propio) -> personal
  *
  * Responde con una lista de WIDGETS que el frontend dibuja segun su tipo, sin conocer el perfil:
- *   { id, tipo: kpis|dona|barras|lineas|lista, titulo, subtitulo?, ancho: 1|2, ...datos }
+ *   { id, tipo: tareas|kpis|dona|barras|lineas|lista, titulo, subtitulo?, ancho: 1|2, ...datos }
+ * "tareas" es lo que el usuario tiene por hacer (con enlace a donde se hace) y cada indicador lleva el enlace a su detalle.
  * Todo se calcula con consultas agregadas (sin traer filas) y limitado al alcance de quien consulta.
  */
 class DashboardService
@@ -78,7 +82,12 @@ class DashboardService
     /** @var list<int> vinculos propios (perfil personal) */
     private array $propios = [];
 
-    public function __construct(private readonly AutomatizacionService $automatizacion) {}
+    public function __construct(
+        private readonly AutomatizacionService $automatizacion,
+        private readonly BandejaDeSolicitudesService $bandeja,
+        private readonly CalendarioAsistenciaService $calendario,
+        private readonly PersonalSinHorarioService $sinHorario,
+    ) {}
 
     /**
      * @param  array{perfil?:?string,anio?:?int,mes?:?int,microred_id?:?int,eess_id?:?int}  $filtros
@@ -231,15 +240,15 @@ class DashboardService
         $porEstablecimiento = $this->eess === null || count($this->eess) > 1;
 
         $widgets = [
-            $this->kpis('resumen', 'Resumen', array_values(array_filter([
-                $this->kpi('Trabajadores activos', $this->contarVigentes(), 'turquesa', 'users', 'Con vínculo laboral vigente hoy'),
-                $this->kpi('Marcaciones hoy', $this->contarMarcacionesDe($this->hoy), 'verde', 'clock'),
-                $pendientes === null ? null : $this->kpi('Solicitudes por resolver', array_sum($pendientes), 'naranja', 'file', 'Papeletas, licencias, descansos, justificaciones…'),
-                $this->kpi('Cumplimiento de asistencia', $this->porcentaje($mes['efectivo'], $mes['efectivo'] + $mes['faltas_inj'] + $mes['faltas_just']), 'verde', 'check', 'Días asistidos sobre días exigibles del período', '%'),
-                $this->kpi('Tardanzas', $mes['tardanzas'], 'ambar', 'alarm', $mes['minutos_tardanza'].' min descontables en total'),
-                $this->kpi('Faltas injustificadas', $mes['faltas_inj'], 'rojo', 'userx', 'Descuento por planilla (RIT, Art. 22)'),
-                $this->kpi('Con licencia, descanso o vacaciones hoy', $this->ausentesHoy(), 'azul', 'plane'),
-            ])), 2),
+            $this->porHacer($pendientes),
+            $this->kpis('resumen', 'Resumen', [
+                $this->kpi('Trabajadores activos', $this->contarVigentes(), 'turquesa', 'users', 'Con vínculo laboral vigente hoy', enlace: '/personal/trabajadores'),
+                $this->kpi('Marcaciones hoy', $this->contarMarcacionesDe($this->hoy), 'verde', 'clock', 'Entradas y salidas registradas hoy', enlace: '/asistencia/asistencia-diaria'),
+                $this->kpi('Cumplimiento de asistencia', $this->porcentaje($mes['efectivo'], $mes['efectivo'] + $mes['faltas_inj'] + $mes['faltas_just']), 'verde', 'check', 'Días asistidos sobre días exigibles del período', '%', '/consolidacion/gestion?pestana=consolidado'),
+                $this->kpi('Tardanzas', $mes['tardanzas'], 'ambar', 'alarm', $mes['minutos_tardanza'].' min descontables en total', enlace: '/consolidacion/gestion?pestana=consolidado'),
+                $this->kpi('Faltas injustificadas', $mes['faltas_inj'], 'rojo', 'userx', 'Descuento por planilla (RIT, Art. 22)', enlace: '/consolidacion/gestion?pestana=consolidado'),
+                $this->kpi('Con licencia, descanso o vacaciones hoy', $this->ausentesHoy(), 'azul', 'plane', 'Cubiertos: no se les espera hoy', enlace: '/programacion/gestion?pestana=ausencias'),
+            ], 2),
             $this->tendenciaDiaria(),
             $this->distribucionDeEstados(),
         ];
@@ -261,11 +270,12 @@ class DashboardService
         $programados = $this->turnosProgramadosDelMes();
 
         return [
+            $this->porHacer(null),
             $this->kpis('resumen', 'Programación del mes', [
-                $this->kpi('Turnos programados', $programados, 'turquesa', 'calendar', 'En el mes seleccionado'),
-                $this->kpi('Trabajadores sin programación', $this->contarSinProgramacion(), 'rojo', 'userx', 'Con vínculo vigente y ningún turno en el mes'),
-                $this->kpi('Cambios de turno por resolver', $this->contarPendientesDe('Programacion.CambioTurno', 'CambioTurnoEstado', 'VinculoLaboralSolicitanteId'), 'naranja', 'file'),
-                $this->kpi('Vacaciones en el rol del mes', $this->vacacionesDelMes(), 'azul', 'plane', 'Descansos programados que caen en el mes'),
+                $this->kpi('Turnos programados', $programados, 'turquesa', 'calendar', 'En el mes seleccionado', enlace: '/programacion/mensual'),
+                $this->kpi('Trabajadores sin programación', $this->contarSinProgramacion(), 'rojo', 'userx', 'Con vínculo vigente y ningún turno en el mes', enlace: '/programacion/mensual'),
+                $this->kpi('Cambios de turno por resolver', $this->contarPendientesDe('Programacion.CambioTurno', 'CambioTurnoEstado', 'VinculoLaboralSolicitanteId'), 'naranja', 'file', enlace: '/programacion/gestion?pestana=cambios'),
+                $this->kpi('Vacaciones en el rol del mes', $this->vacacionesDelMes(), 'azul', 'plane', 'Descansos programados que caen en el mes', enlace: '/programacion/gestion?pestana=ausencias'),
             ], 2),
             $this->coberturaDiaria(),
             $this->estadoDeLaProgramacion(),
@@ -282,10 +292,10 @@ class DashboardService
 
         return [
             $this->kpis('resumen', 'Mi mes', [
-                $this->kpi('Días asistidos', $mes['efectivo'], 'verde', 'check', 'Del '.$this->desde->format('d/m').' al '.$this->hasta->format('d/m')),
-                $this->kpi('Tardanzas', $mes['tardanzas'], 'ambar', 'alarm', $mes['minutos_tardanza'].' min en total'),
-                $this->kpi('Faltas', $mes['faltas_inj'] + $mes['faltas_just'], 'rojo', 'userx', $mes['faltas_just'].' justificadas'),
-                $this->kpi('Vacaciones disponibles', round($saldo, 1), 'azul', 'plane', 'Días del récord vacacional abierto'),
+                $this->kpi('Días asistidos', $mes['efectivo'], 'verde', 'check', 'Del '.$this->desde->format('d/m').' al '.$this->hasta->format('d/m'), enlace: '/asistencia/asistencia-diaria'),
+                $this->kpi('Tardanzas', $mes['tardanzas'], 'ambar', 'alarm', $mes['minutos_tardanza'].' min en total', enlace: '/asistencia/asistencia-diaria'),
+                $this->kpi('Faltas', $mes['faltas_inj'] + $mes['faltas_just'], 'rojo', 'userx', $mes['faltas_just'].' justificadas', enlace: '/asistencia/asistencia-diaria'),
+                $this->kpi('Vacaciones disponibles', round($saldo, 1), 'azul', 'plane', 'Días del récord vacacional abierto', enlace: '/vacaciones/gestion'),
                 $this->kpi('Horas por compensar', round((float) $horas, 1), 'indigo', 'clock', 'A favor o por devolver (RIT, Art. 17)'),
             ], 2),
             $this->distribucionDeEstados(),
@@ -305,9 +315,9 @@ class DashboardService
 
         return [
             $this->kpis('resumen', 'Hoy', [
-                $this->kpi('Marcaciones de hoy', $this->contarMarcacionesDe($this->hoy), 'verde', 'clock'),
+                $this->kpi('Marcaciones de hoy', $this->contarMarcacionesDe($this->hoy), 'verde', 'clock', enlace: '/asistencia/asistencia-diaria'),
                 $this->kpi('Personas que marcaron', (int) $this->conVinculo(DB::table('Asistencia.Marcacion as m')->whereDate('m.MarcacionFechaHora', $this->hoy->toDateString()), 'm.VinculoLaboralId')->distinct()->count('m.VinculoLaboralId'), 'turquesa', 'users'),
-                $this->kpi('Ocurrencias de hoy', (int) $this->conOcurrencias()->whereDate('o.OcurrenciaPorteriaFechaHora', $this->hoy->toDateString())->count(), 'ambar', 'alarm', 'Registradas en portería'),
+                $this->kpi('Ocurrencias de hoy', (int) $this->conOcurrencias()->whereDate('o.OcurrenciaPorteriaFechaHora', $this->hoy->toDateString())->count(), 'ambar', 'alarm', 'Registradas en portería', enlace: '/solicitudes/ocurrencias-porteria'),
             ], 2),
             $this->grafico('barras', 'por_hora', 'Marcaciones por hora (hoy)', [
                 'categorias' => array_map(fn ($h) => sprintf('%02d h', $h), $horas),
@@ -316,7 +326,7 @@ class DashboardService
             $this->lista('ultimas', 'Últimas marcaciones', ['Hora', 'Trabajador', 'Tipo'], $this->conVinculo(DB::table('Asistencia.Marcacion as m'), 'm.VinculoLaboralId')->join('Personal.Trabajador as t', 't.TrabajadorId', '=', 'vl.TrabajadorId')
                 ->whereDate('m.MarcacionFechaHora', $this->hoy->toDateString())->orderByDesc('m.MarcacionFechaHora')->limit(10)
                 ->get(['m.MarcacionFechaHora as fecha', 't.TrabajadorNombreCompleto as nombre', 'm.MarcacionTipo as tipo'])
-                ->map(fn ($r) => [substr((string) $r->fecha, 11, 5), $this->nombre($r->nombre), $this->legible($r->tipo)])->all(), 'Aún no hay marcaciones hoy.', '/asistencia/marcaciones'),
+                ->map(fn ($r) => [substr((string) $r->fecha, 11, 5), $this->nombre($r->nombre), $this->legible($r->tipo)])->all(), 'Aún no hay marcaciones hoy.', '/asistencia/asistencia-diaria'),
             $this->lista('ocurrencias', 'Ocurrencias de hoy', ['Hora', 'Tipo', 'Detalle'], $this->conOcurrencias()->whereDate('o.OcurrenciaPorteriaFechaHora', $this->hoy->toDateString())->orderByDesc('o.OcurrenciaPorteriaFechaHora')->limit(8)
                 ->get(['o.OcurrenciaPorteriaFechaHora as fecha', 'o.OcurrenciaPorteriaTipo as tipo', 'o.OcurrenciaPorteriaDescripcion as detalle'])
                 ->map(fn ($r) => [substr((string) $r->fecha, 11, 5), $this->legible($r->tipo), (string) $r->detalle])->all(), 'Sin ocurrencias hoy.', '/solicitudes/ocurrencias-porteria'),
@@ -462,20 +472,22 @@ class DashboardService
         return $this->acceso->tiene('SOLICITUDES_VER');
     }
 
-    /** @return array<string,int> */
+    /**
+     * Pendientes por tipo, contados igual que la bandeja de solicitudes (mismos tipos y alcance), limitados al filtro.
+     *
+     * @return array<string,int>
+     */
     private function pendientes(): array
     {
-        return [
-            'Papeletas' => $this->contarPendientesDe('Solicitudes.Papeleta', 'PapeletaEstado', 'VinculoLaboralId'),
-            'Licencias' => $this->contarPendientesDe('Solicitudes.Licencia', 'LicenciaEstado', 'VinculoLaboralId'),
-            'Descansos médicos' => $this->contarPendientesDe('Solicitudes.DescansoMedico', 'DescansoMedicoEstado', 'VinculoLaboralId'),
-            'Justificaciones' => $this->contarPendientesDe('Asistencia.JustificacionFalta', 'JustificacionFaltaEstado', 'VinculoLaboralId'),
-            'Cambios de turno' => $this->contarPendientesDe('Programacion.CambioTurno', 'CambioTurnoEstado', 'VinculoLaboralSolicitanteId'),
-            'Vacaciones' => (int) $this->conVinculo(DB::table('Vacaciones.GoceVacacional as s')
-                ->join('Vacaciones.RolVacacional as r', 'r.RolVacacionalId', '=', 's.RolVacacionalId')
-                ->join('Vacaciones.PeriodoVacacional as p', 'p.PeriodoVacacionalId', '=', 'r.PeriodoVacacionalId')
-                ->where('s.GoceVacacionalEstado', 'PENDIENTE'), 'p.VinculoLaboralId')->count(),
-        ];
+        $porTipo = [];
+        foreach ($this->bandeja->listar($this->usuario)['solicitudes'] as $s) {
+            if ($this->eess === null || in_array($s['eess_id'], $this->eess, true)) {
+                $porTipo[$s['tipo_nombre']] = ($porTipo[$s['tipo_nombre']] ?? 0) + 1;
+            }
+        }
+        arsort($porTipo);
+
+        return $porTipo;
     }
 
     private function contarPendientesDe(string $tabla, string $columnaEstado, string $columnaVinculo): int
@@ -598,7 +610,7 @@ class DashboardService
         $casos = $this->automatizacion->faltasReiteradas($this->eess);
 
         return $this->lista('alertas_faltas', 'Faltas reiteradas (RIT, Art. 23)', ['Trabajador', 'Establecimiento', 'Situación'], array_map(fn ($c) => [$c['nombre'], $c['eess'], $c['motivo']], array_slice($casos, 0, 8)),
-            'Nadie supera los límites de faltas injustificadas.', '/disciplina/expedientes-pad', count($casos), 2);
+            'Nadie supera los límites de faltas injustificadas.', '/disciplina/gestion?pestana=pad', count($casos), 2);
     }
 
     // ------------------------------------------------------------------ seguridad (solo con SEGURIDAD_AUDITORIA)
@@ -617,20 +629,17 @@ class DashboardService
 
         return $this->lista('proximos_turnos', 'Mis próximos turnos', ['Día', 'Turno', 'Horario'],
             $filas->map(fn ($f) => [CarbonImmutable::parse($f->fecha)->locale('es')->isoFormat('ddd D MMM'), $f->turno, substr((string) $f->entrada, 0, 5).' – '.substr((string) $f->salida, 0, 5)])->all(),
-            'No tienes turnos programados en los próximos 14 días.', '/programacion/calendario');
+            'No tienes turnos programados en los próximos 14 días.', '/asistencia/asistencia-diaria');
     }
 
     /** @return array<string,mixed> */
     private function misSolicitudes(): array
     {
-        $ids = $this->propios === [] ? [0] : $this->propios;
-        $papeletas = DB::table('Solicitudes.Papeleta')->whereIn('VinculoLaboralId', $ids)->get(['PapeletaFecha as fecha', 'PapeletaEstado as estado'])->map(fn ($r) => ['Papeleta', $r->fecha, $r->estado]);
-        $licencias = DB::table('Solicitudes.Licencia')->whereIn('VinculoLaboralId', $ids)->get(['LicenciaFechaInicio as fecha', 'LicenciaEstado as estado'])->map(fn ($r) => ['Licencia', $r->fecha, $r->estado]);
-        $justificaciones = DB::table('Asistencia.JustificacionFalta')->whereIn('VinculoLaboralId', $ids)->get(['JustificacionFaltaFechaInicio as fecha', 'JustificacionFaltaEstado as estado'])->map(fn ($r) => ['Justificación', $r->fecha, $r->estado]);
-        $filas = $papeletas->concat($licencias)->concat($justificaciones)->sortByDesc(fn ($r) => (string) $r[1])->take(6)
-            ->map(fn ($r) => [$r[0], $this->fecha($r[1]), ucfirst(strtolower((string) $r[2]))])->values()->all();
+        // Las mismas de "Mis solicitudes" (la bandeja del trabajador): todos los tipos, las pendientes primero.
+        $todas = collect($this->bandeja->listar($this->usuario, 'TODOS')['solicitudes'])->filter(fn ($s) => in_array($s['vinculo_id'], $this->propios, true));
+        $filas = $todas->take(6)->map(fn ($s) => [$s['tipo_nombre'], $this->fecha($s['fecha']), ucfirst(strtolower($s['estado']))])->values()->all();
 
-        return $this->lista('mis_solicitudes', 'Mis solicitudes', ['Trámite', 'Fecha', 'Estado'], $filas, 'No has registrado solicitudes.', '/solicitudes/papeletas');
+        return $this->lista('mis_solicitudes', 'Mis solicitudes', ['Trámite', 'Fecha', 'Estado'], $filas, 'No tienes solicitudes registradas.', '/solicitudes/bandeja', $todas->count());
     }
 
     /** @return array<string,mixed> */
@@ -639,7 +648,103 @@ class DashboardService
         $filas = $this->conVinculo(DB::table('Asistencia.Marcacion as m'), 'm.VinculoLaboralId')->orderByDesc('m.MarcacionFechaHora')->limit(8)->get(['m.MarcacionFechaHora as fecha', 'm.MarcacionTipo as tipo', 'm.MarcacionOrigen as origen']);
 
         return $this->lista('mis_marcaciones', 'Mis últimas marcaciones', ['Fecha y hora', 'Tipo', 'Origen'], $filas->map(fn ($f) => [substr((string) $f->fecha, 0, 16), $this->legible($f->tipo), $this->legible((string) $f->origen)])->all(),
-            'Aún no tienes marcaciones.', '/asistencia/marcaciones');
+            'Aún no tienes marcaciones.', '/asistencia/asistencia-diaria');
+    }
+
+    // ------------------------------------------------------------------ por hacer
+
+    /**
+     * "Por hacer": lo que espera al usuario, cada cosa con su cantidad y el enlace a donde se resuelve. Solo aparece lo que
+     * tiene algo pendiente y lo que su rol puede ver.
+     *
+     * @param  array<string,int>|null  $pendientes  solicitudes por tipo (null = no ve solicitudes)
+     * @return array<string,mixed>
+     */
+    private function porHacer(?array $pendientes): array
+    {
+        $tareas = [];
+        if ($pendientes && array_sum($pendientes) > 0) {
+            $detalle = implode(' · ', array_map(fn (string $tipo, int $n) => "{$n} {$tipo}", array_keys(array_slice($pendientes, 0, 3, true)), array_slice($pendientes, 0, 3)));
+            $tareas[] = $this->tarea('Solicitudes por resolver', array_sum($pendientes), 'naranja', 'file', mb_strtolower($detalle), '/solicitudes/bandeja');
+        }
+        if ($this->acceso->tiene('ASISTENCIA_VER') && ($sinMarcar = $this->sinMarcaDeEntrada()) > 0) {
+            $tareas[] = $this->tarea('En turno sin marca de entrada', $sinMarcar, 'ambar', 'clock', 'Su turno de hoy ya empezó y aún no registran entrada', '/asistencia/asistencia-diaria');
+        }
+        if ($this->acceso->tiene('PROGRAMACION_VER') && ($sinPublicar = $this->programacionSinPublicar()) > 0) {
+            $siguiente = $this->hoy->startOfMonth()->addMonth();
+            $tareas[] = $this->tarea('Programación de '.mb_strtolower(CalendarioAsistenciaService::MESES[$siguiente->month]).' sin publicar', $sinPublicar, 'azul', 'calendar',
+                ($sinPublicar === 1 ? 'establecimiento aún no la publica' : 'establecimientos aún no la publican').' (RIT, Art. 16)', '/programacion/mensual');
+        }
+        if ($this->perfil !== 'personal' && $this->acceso->tiene('PERSONAL_VER') && ($sinHorario = $this->sinHorario->cantidad($this->eess)) > 0) {
+            $tareas[] = $this->tarea('Personal sin horario', $sinHorario, 'turquesa', 'users', 'Tienen vínculo vigente pero aún no tienen horario fijo ni programación (RIT, Art. 16)', '/personal/trabajadores?pendiente=horario');
+        }
+        if ($this->acceso->tiene('REPORTES_VER') && ($cierre = $this->periodoPorCerrar())) {
+            $tareas[] = $this->tarea("Cierre de {$cierre['etiqueta']}", $cierre['cantidad'], 'indigo', 'check', $cierre['detalle'], '/consolidacion/cierre');
+        }
+
+        return ['id' => 'por_hacer', 'tipo' => 'tareas', 'titulo' => 'Por hacer', 'ancho' => 2, 'items' => $tareas, 'vacio' => 'Todo al día: no tienes pendientes.'];
+    }
+
+    /** @return array<string,mixed> */
+    private function tarea(string $titulo, int $cantidad, string $tono, string $icono, string $detalle, string $enlace): array
+    {
+        return ['titulo' => $titulo, 'cantidad' => $cantidad, 'tono' => $tono, 'icono' => $icono, 'detalle' => $detalle, 'enlace' => $enlace];
+    }
+
+    /** Trabajadores cuyo turno de hoy ya empezo, sin marca de entrada hoy y sin licencia, descanso ni vacaciones. */
+    private function sinMarcaDeEntrada(): int
+    {
+        $hoy = $this->hoy->toDateString();
+        $ids = $this->vigentes($this->conVinculo(DB::table('Personal.VinculoLaboral as v0'), 'v0.VinculoLaboralId'))->distinct()->pluck('vl.VinculoLaboralId')->map(fn ($id) => (int) $id)->all();
+        if ($ids === []) {
+            return 0;
+        }
+        $ahora = HoraLocal::ahora()->format('H:i');
+        $empezaron = $this->calendario->turnosEsperados($ids, $this->hoy, $this->hoy)
+            ->filter(fn (array $turnos) => collect($turnos)->contains(fn (array $t) => $t['entrada'] <= $ahora))
+            ->keys()->map(fn (string $clave) => (int) explode('|', $clave)[0]);
+        $marcaron = DB::table('Asistencia.Marcacion')->whereIn('VinculoLaboralId', $ids)->whereDate('MarcacionFechaHora', $hoy)->where('MarcacionTipo', 'ENTRADA')
+            ->distinct()->pluck('VinculoLaboralId')->map(fn ($id) => (int) $id);
+        $cubiertos = DB::table('Asistencia.AsistenciaDiaria as ad')->join('Asistencia.EstadoAsistencia as ea', 'ea.EstadoAsistenciaId', '=', 'ad.EstadoAsistenciaId')
+            ->whereIn('ad.VinculoLaboralId', $ids)->whereDate('ad.AsistenciaDiariaFecha', $hoy)->whereIn('ea.EstadoAsistenciaCodigo', explode(',', str_replace("'", '', self::ESTADOS_AUTORIZADOS)))
+            ->pluck('ad.VinculoLaboralId')->map(fn ($id) => (int) $id);
+
+        return $empezaron->diff($marcaron)->diff($cubiertos)->count();
+    }
+
+    /** Establecimientos (con personal vigente) sin la programacion del mes siguiente publicada. */
+    private function programacionSinPublicar(): int
+    {
+        $siguiente = $this->hoy->startOfMonth()->addMonth();
+        $conPersonal = $this->vigentes($this->conVinculo(DB::table('Personal.VinculoLaboral as v0'), 'v0.VinculoLaboralId'))->distinct()->pluck('vl.EessId');
+        $publicados = DB::table('Programacion.ProgramacionPeriodo')->where('ProgramacionPeriodoAnio', $siguiente->year)->where('ProgramacionPeriodoMes', $siguiente->month)
+            ->whereIn('ProgramacionPeriodoEstado', ['PUBLICADA', 'CERRADA'])->pluck('EessId');
+
+        return $conPersonal->diff($publicados)->count();
+    }
+
+    /** @return array{etiqueta:string,cantidad:int,detalle:string}|null  el ultimo mes terminado que sigue sin cerrar */
+    private function periodoPorCerrar(): ?array
+    {
+        $periodo = DB::table('Consolidacion.PeriodoAsistencia')->where('PeriodoAsistenciaEstado', '<>', 'CERRADO')
+            ->whereDate('PeriodoAsistenciaFechaFin', '<', $this->hoy->toDateString())->orderByDesc('PeriodoAsistenciaFechaFin')->first();
+        if ($periodo === null) {
+            return null;
+        }
+        $consolidados = DB::table('Consolidacion.ConsolidadoAsistencia as c')->where('c.PeriodoAsistenciaId', $periodo->PeriodoAsistenciaId);
+        $consolidados = $this->conVinculo($consolidados, 'c.VinculoLaboralId');
+        $total = (clone $consolidados)->count();
+        $porRevisar = (clone $consolidados)->whereIn('c.ConsolidadoAsistenciaEstado', ['GENERADO', 'OBSERVADO'])->count();
+
+        return [
+            'etiqueta' => mb_strtolower(CalendarioAsistenciaService::MESES[(int) $periodo->PeriodoAsistenciaMes]).' '.$periodo->PeriodoAsistenciaAnio,
+            'cantidad' => $porRevisar ?: 1,
+            'detalle' => match (true) {
+                $total === 0 => 'Aún no se genera el consolidado del mes',
+                $porRevisar > 0 => 'consolidados esperan conformidad antes de cerrar el período',
+                default => 'Todo tiene conformidad: falta cerrar el período',
+            },
+        ];
     }
 
     // ------------------------------------------------------------------ construccion de widgets y utilidades
@@ -651,9 +756,9 @@ class DashboardService
     }
 
     /** @return array<string,mixed> */
-    private function kpi(string $etiqueta, int|float $valor, string $tono, string $icono, ?string $detalle = null, string $unidad = ''): array
+    private function kpi(string $etiqueta, int|float $valor, string $tono, string $icono, ?string $detalle = null, string $unidad = '', ?string $enlace = null): array
     {
-        return ['etiqueta' => $etiqueta, 'valor' => $valor, 'tono' => $tono, 'icono' => $icono, 'detalle' => $detalle, 'unidad' => $unidad];
+        return ['etiqueta' => $etiqueta, 'valor' => $valor, 'tono' => $tono, 'icono' => $icono, 'detalle' => $detalle, 'unidad' => $unidad, 'enlace' => $enlace];
     }
 
     /** @param  array<string,mixed>  $datos */

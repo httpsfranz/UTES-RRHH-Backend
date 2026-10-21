@@ -9,6 +9,8 @@ use App\Http\Controllers\Api\AuditoriaController;
 // Biometria
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\AutorizacionMetodoController;
+use App\Http\Controllers\Api\BandejaDeSolicitudesController;
+use App\Http\Controllers\Api\BiometriaController;
 // Compensaciones
 use App\Http\Controllers\Api\CalendarioNoLaborableController;
 use App\Http\Controllers\Api\CambioTurnoController;
@@ -16,6 +18,7 @@ use App\Http\Controllers\Api\CambioTurnoController;
 use App\Http\Controllers\Api\CargaAsistenciaManualController;
 use App\Http\Controllers\Api\CargaProgramacionController;
 use App\Http\Controllers\Api\CargoController;
+use App\Http\Controllers\Api\CierreDelMesController;
 use App\Http\Controllers\Api\ColegiaturaController;
 use App\Http\Controllers\Api\ColegiaturaTipoController;
 use App\Http\Controllers\Api\CompensacionHorariaController;
@@ -26,32 +29,34 @@ use App\Http\Controllers\Api\ConsentimientoBiometricoController;
 use App\Http\Controllers\Api\ConsolidadoAsistenciaController;
 use App\Http\Controllers\Api\ConstatacionDomiciliariaController;
 use App\Http\Controllers\Api\ConsultaDniController;
+use App\Http\Controllers\Api\ContadoresDelMenuController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DescansoMedicoController;
 use App\Http\Controllers\Api\DetalleConsolidadoController;
 use App\Http\Controllers\Api\DetalleLiquidacionController;
 use App\Http\Controllers\Api\DispositivoMarcacionController;
-use App\Http\Controllers\Api\DocumentoSustentoController;
 // Consolidacion
-use App\Http\Controllers\Api\EstablecimientoSaludController;
+use App\Http\Controllers\Api\DocumentoSustentoController;
 // Disciplina
-use App\Http\Controllers\Api\EstadoAsistenciaController;
+use App\Http\Controllers\Api\EstablecimientoSaludController;
 // Organizacion
+use App\Http\Controllers\Api\EstadoAsistenciaController;
 use App\Http\Controllers\Api\ExpedientePadController;
 use App\Http\Controllers\Api\GoceVacacionalController;
 use App\Http\Controllers\Api\GrupoOcupacionalController;
-use App\Http\Controllers\Api\HorarioController;
 // Personal
+use App\Http\Controllers\Api\HorarioController;
 use App\Http\Controllers\Api\HorarioDetalleController;
 use App\Http\Controllers\Api\InformeGuardiaComunitariaController;
 use App\Http\Controllers\Api\JustificacionFaltaController;
 use App\Http\Controllers\Api\LicenciaController;
 use App\Http\Controllers\Api\LiquidacionDescuentoController;
-use App\Http\Controllers\Api\LogIntegracionController;
 // Programacion
+use App\Http\Controllers\Api\LogIntegracionController;
 use App\Http\Controllers\Api\MarcacionController;
-use App\Http\Controllers\Api\MetodoMarcacionController;
+use App\Http\Controllers\Api\MarcadorFacialController;
 // Seguridad
+use App\Http\Controllers\Api\MetodoMarcacionController;
 use App\Http\Controllers\Api\MicroredController;
 use App\Http\Controllers\Api\MotivoPapeletaController;
 use App\Http\Controllers\Api\NotificacionController;
@@ -67,6 +72,7 @@ use App\Http\Controllers\Api\PermisoController;
 use App\Http\Controllers\Api\PlantillaBiometricaController;
 use App\Http\Controllers\Api\ProfesionController;
 use App\Http\Controllers\Api\ProgramacionCalendarioController;
+use App\Http\Controllers\Api\ProgramacionMensualController;
 use App\Http\Controllers\Api\ProgramacionPeriodoController;
 use App\Http\Controllers\Api\ProgramacionTrabajadorController;
 use App\Http\Controllers\Api\RegimenLaboralController;
@@ -84,6 +90,7 @@ use App\Http\Controllers\Api\TipoEstablecimientoController;
 use App\Http\Controllers\Api\TipoFaltaDisciplinariaController;
 use App\Http\Controllers\Api\TipoJornadaController;
 use App\Http\Controllers\Api\TipoLicenciaController;
+use App\Http\Controllers\Api\TipoNotificacionController;
 use App\Http\Controllers\Api\TipoPapeletaController;
 use App\Http\Controllers\Api\TipoPeriodoProgramacionController;
 use App\Http\Controllers\Api\TipoResponsabilidadController;
@@ -99,19 +106,27 @@ use App\Http\Controllers\Api\VinculoLaboralController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
+/* ---- Marcador facial (kiosco, proyecto aparte): se autentica con codigo y clave de dispositivo, no con sesion ---- */
+Route::middleware(['dispositivo', 'throttle:60,1'])->prefix('marcador-facial')->group(function () {
+    Route::get('estado', [MarcadorFacialController::class, 'estado']);
+    Route::post('marcar', [MarcadorFacialController::class, 'marcar']);
+});
+
 /* ---- Autenticacion ---- */
 Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'sesion'])->group(function () {
     Route::get('auth/me', [AuthController::class, 'me']);
     Route::post('auth/logout', [AuthController::class, 'logout']);
+    Route::post('auth/cambiar-password', [AuthController::class, 'cambiarPassword'])->middleware('throttle:10,1');
 });
 
 /* ---- Todo lo demas exige sesion y el permiso del modulo (App\Support\PermisosDeRuta) ---- */
-Route::middleware(['auth:sanctum', 'permiso'])->group(function () {
+Route::middleware(['auth:sanctum', 'sesion', 'permiso'])->group(function () {
     Route::get('/user', function (Request $request) {
         return $request->user();
     });
     Route::get('dashboard', [DashboardController::class, 'resumen']);
+    Route::get('menu-pendientes', ContadoresDelMenuController::class);
 
     /* ---- Asistencia ---- */
     Route::apiResource('estados-asistencia', EstadoAsistenciaController::class)
@@ -132,6 +147,7 @@ Route::middleware(['auth:sanctum', 'permiso'])->group(function () {
         ->parameters(['consentimientos-biometricos' => 'consentimiento'])
         ->only(['index', 'show', 'store']);
 
+    Route::get('autorizaciones-metodo/resumen', [BiometriaController::class, 'resumen']);
     Route::apiResource('autorizaciones-metodo', AutorizacionMetodoController::class)
         ->parameters(['autorizaciones-metodo' => 'autorizacion']);
 
@@ -244,6 +260,7 @@ Route::middleware(['auth:sanctum', 'permiso'])->group(function () {
         ->parameters(['tipos-periodo-programacion' => 'tipo']);
 
     /* ---- Seguridad ---- */
+    Route::get('auditoria/exportar', [AuditoriaController::class, 'exportar']);
     // Solo lectura: nadie crea/edita/borra un registro de auditoria via API.
     Route::apiResource('auditoria', AuditoriaController::class)
         ->parameters(['auditoria' => 'auditoria'])
@@ -252,6 +269,8 @@ Route::middleware(['auth:sanctum', 'permiso'])->group(function () {
     Route::apiResource('permisos', PermisoController::class)
         ->parameters(['permisos' => 'permiso']);
 
+    Route::post('usuarios/{usuario}/bloquear', [UsuarioController::class, 'bloquear'])->whereNumber('usuario');
+    Route::post('usuarios/{usuario}/desbloquear', [UsuarioController::class, 'desbloquear'])->whereNumber('usuario');
     Route::apiResource('usuarios', UsuarioController::class)
         ->parameters(['usuarios' => 'usuario']);
 
@@ -303,18 +322,35 @@ Route::middleware(['auth:sanctum', 'permiso'])->group(function () {
         ->parameters(['marcaciones' => 'marcacion']);
 
     Route::post('asistencia-diaria/calcular', [AsistenciaDiariaController::class, 'calcular']);
+    Route::post('asistencia-diaria/marcar', [AsistenciaCalendarioController::class, 'marcar']);
     Route::get('asistencia-diaria/calendario/pdf', [AsistenciaCalendarioController::class, 'pdf']);
     Route::get('asistencia-diaria/calendario', [AsistenciaCalendarioController::class, 'mostrar']);
     Route::get('programacion-calendario/turnos/pdf', [ProgramacionCalendarioController::class, 'turnosPdf']);
     Route::get('programacion-calendario/ausencias/pdf', [ProgramacionCalendarioController::class, 'ausenciasPdf']);
     Route::get('programacion-calendario/turnos', [ProgramacionCalendarioController::class, 'turnos']);
+    Route::get('cierre-mes', [CierreDelMesController::class, 'index']);
+    Route::post('cierre-mes/conformidad', [CierreDelMesController::class, 'conformidad']);
+    Route::post('cierre-mes/liquidaciones', [CierreDelMesController::class, 'liquidaciones']);
+    Route::get('bandeja-solicitudes', [BandejaDeSolicitudesController::class, 'index']);
+    Route::get('programacion-mensual', [ProgramacionMensualController::class, 'index']);
+    Route::put('programacion-mensual/celda', [ProgramacionMensualController::class, 'celda']);
+    Route::post('programacion-mensual/copiar', [ProgramacionMensualController::class, 'copiar']);
+    Route::get('programacion-mensual/plantilla', [ProgramacionMensualController::class, 'plantilla']);
+    Route::post('programacion-mensual/importar', [ProgramacionMensualController::class, 'importar']);
     Route::get('programacion-calendario/ausencias', [ProgramacionCalendarioController::class, 'ausencias']);
     Route::apiResource('asistencia-diaria', AsistenciaDiariaController::class)
         ->parameters(['asistencia-diaria' => 'asistencia']);
 
+    Route::get('cargas-asistencia-manual/plantilla', [CargaAsistenciaManualController::class, 'plantilla']);
+    Route::post('cargas-asistencia-manual/importar', [CargaAsistenciaManualController::class, 'importar']);
     Route::apiResource('cargas-asistencia-manual', CargaAsistenciaManualController::class)
         ->parameters(['cargas-asistencia-manual' => 'carga']);
 
+    Route::get('notificaciones/bandeja', [NotificacionController::class, 'bandeja']);
+    Route::post('notificaciones/leer-todas', [NotificacionController::class, 'leerTodas']);
+    Route::post('notificaciones/{notificacion}/leer', [NotificacionController::class, 'leer'])->whereNumber('notificacion');
+    Route::post('notificaciones/{notificacion}/reintentar', [NotificacionController::class, 'reintentar'])->whereNumber('notificacion');
+    Route::apiResource('tipos-notificacion', TipoNotificacionController::class)->parameters(['tipos-notificacion' => 'tipo']);
     Route::apiResource('notificaciones', NotificacionController::class)
         ->parameters(['notificaciones' => 'notificacion']);
 
@@ -363,15 +399,21 @@ Route::middleware(['auth:sanctum', 'permiso'])->group(function () {
     Route::apiResource('usuarios-ambitos', UsuarioAmbitoController::class)
         ->parameters(['usuarios-ambitos' => 'ambito']);
 
+    Route::post('sesiones-acceso/{sesion}/revocar', [SesionAccesoController::class, 'revocar'])->whereNumber('sesion');
     Route::apiResource('sesiones-acceso', SesionAccesoController::class)
         ->parameters(['sesiones-acceso' => 'sesion'])
         ->only(['index', 'show']);
 
     /* ---- Consolidacion, compensaciones, vacaciones y disciplina ---- */
     Route::post('consolidados-asistencia/generar', [ConsolidadoAsistenciaController::class, 'generar']);
+    Route::get('consolidados-asistencia/exportar', [ConsolidadoAsistenciaController::class, 'exportar']);
+    Route::get('consolidados-asistencia/{consolidado}/incidencias', [ConsolidadoAsistenciaController::class, 'incidencias'])->whereNumber('consolidado');
+    Route::post('consolidados-asistencia/{consolidado}/observar', [ConsolidadoAsistenciaController::class, 'observar'])->whereNumber('consolidado');
+    Route::post('consolidados-asistencia/{consolidado}/aprobar', [ConsolidadoAsistenciaController::class, 'aprobar'])->whereNumber('consolidado');
     Route::apiResource('consolidados-asistencia', ConsolidadoAsistenciaController::class)
         ->parameters(['consolidados-asistencia' => 'consolidado']);
 
+    Route::get('compensaciones-horarias/candidatas', [CompensacionHorariaController::class, 'candidatas']);
     Route::post('compensaciones-horarias/{compensacion}/aprobar', [CompensacionHorariaController::class, 'aprobar'])->whereNumber('compensacion');
     Route::post('compensaciones-horarias/{compensacion}/devolver', [CompensacionHorariaController::class, 'devolver'])->whereNumber('compensacion');
     Route::apiResource('compensaciones-horarias', CompensacionHorariaController::class)
@@ -383,6 +425,7 @@ Route::middleware(['auth:sanctum', 'permiso'])->group(function () {
     Route::apiResource('expedientes-pad', ExpedientePadController::class)
         ->parameters(['expedientes-pad' => 'expediente']);
 
+    Route::post('supervisiones-inopinadas/{supervision}/iniciar-pad', [SupervisionInopinadaController::class, 'iniciarPad'])->whereNumber('supervision');
     Route::apiResource('supervisiones-inopinadas', SupervisionInopinadaController::class)
         ->parameters(['supervisiones-inopinadas' => 'supervision']);
 

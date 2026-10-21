@@ -44,7 +44,8 @@ class VaciaEsquemasDelSistema
             SQL);
 
         DB::unprepared(self::porCadaTabla($tablas, 'ALTER TABLE %s NOCHECK CONSTRAINT ALL;'));
-        DB::unprepared(self::porCadaTabla($tablas, 'DELETE FROM %s;'));
+        // La auditoria es inmutable (trigger TR_Auditoria_Inmutable, V005): el reinicio declara la purga en la sesion.
+        DB::unprepared("EXEC sp_set_session_context N'purga_auditoria', 1;\n".self::porCadaTabla($tablas, 'DELETE FROM %s;')."\nEXEC sp_set_session_context N'purga_auditoria', 0;");
 
         $conIdentidad = DB::select(<<<SQL
             SELECT s.name AS esquema, t.name AS tabla

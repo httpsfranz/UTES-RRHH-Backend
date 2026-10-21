@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\PermisoRequest;
 use App\Http\Resources\PermisoResource;
 use App\Models\Seguridad\Permiso;
+use App\Support\ResguardoDeAdministracion;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -48,7 +49,7 @@ class PermisoController extends Controller
     // PUT|PATCH /api/permisos/{permiso}
     public function update(PermisoRequest $request, Permiso $permiso)
     {
-        $permiso->update($request->validated());
+        ResguardoDeAdministracion::proteger($request->user(), fn () => $permiso->update($request->validated()));
 
         return new PermisoResource($permiso->fresh());
     }
@@ -57,7 +58,7 @@ class PermisoController extends Controller
     public function destroy(Permiso $permiso): JsonResponse
     {
         // BAJA LOGICA, no DELETE fisico: Seguridad.RolPermiso tiene una FK hacia esta tabla.
-        $permiso->update(['PermisoEstado' => 0]);
+        ResguardoDeAdministracion::proteger(request()->user(), fn () => $permiso->update(['PermisoEstado' => 0]));
 
         return response()->json(['mensaje' => 'Permiso desactivado.'], 200);
     }

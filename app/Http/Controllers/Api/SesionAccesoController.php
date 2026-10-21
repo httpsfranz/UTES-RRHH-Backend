@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\SesionAccesoResource;
 use App\Models\Seguridad\SesionAcceso;
+use App\Services\SeguridadDeCuentaService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class SesionAccesoController extends Controller
@@ -45,5 +47,14 @@ class SesionAccesoController extends Controller
     public function show(SesionAcceso $sesion)
     {
         return new SesionAccesoResource($sesion->load(self::RELACIONES));
+    }
+
+    // POST /api/sesiones-acceso/{sesion}/revocar   cierra una sesion abierta (su token deja de servir de inmediato)
+    public function revocar(Request $request, SesionAcceso $sesion, SeguridadDeCuentaService $seguridad): JsonResponse
+    {
+        abort_if($sesion->SesionAccesoFechaFin !== null, 422, 'La sesión ya está cerrada.');
+        $seguridad->cerrar($sesion, 'REVOCADA', $request->user()->UsuarioId);
+
+        return (new SesionAccesoResource($sesion->fresh()->load(self::RELACIONES)))->response();
     }
 }

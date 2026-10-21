@@ -53,10 +53,12 @@ class Nivel0CrudTest extends CrudModulosTestCase
 
         $this->postJson('/api/calendario-no-laborable', $payload + ['MicroredId' => $microred])
             ->assertCreated()->assertJsonPath('data.microred_id', $microred);
-        // Misma fecha para toda la Red (NULL) y para una microred: son filas distintas.
-        $this->postJson('/api/calendario-no-laborable', $payload)->assertCreated()->assertJsonPath('data.microred_id', null);
+        // El mismo dia para la microred otra vez, o para toda la Red, seria el mismo dia registrado dos veces.
         $this->postJson('/api/calendario-no-laborable', $payload + ['MicroredId' => $microred])->assertStatus(422);
         $this->postJson('/api/calendario-no-laborable', $payload)->assertStatus(422);
+        // Otra microred, en cambio, si puede tener ese dia.
+        $otra = $this->postJson('/api/microredes', ['MicroredCodigo' => 'ZZ-CA2', 'MicroredNombre' => 'Microred Calendario ZZ2'])->json('data.id');
+        $this->postJson('/api/calendario-no-laborable', $payload + ['MicroredId' => $otra])->assertCreated();
     }
 
     public function test_periodo_no_se_puede_repetir_ni_invertir_fechas_al_editar(): void

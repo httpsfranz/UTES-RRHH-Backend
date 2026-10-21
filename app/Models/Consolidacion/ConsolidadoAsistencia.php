@@ -31,6 +31,9 @@ class ConsolidadoAsistencia extends Model
         'ConsolidadoAsistenciaMinutosExtra',
         'ConsolidadoAsistenciaFechaGeneracion',
         'ConsolidadoAsistenciaEstado',
+        'ConsolidadoAsistenciaObservacion',
+        'ConsolidadoAsistenciaRevisadoPor',
+        'ConsolidadoAsistenciaFechaRevision',
     ];
 
     protected $casts = [

@@ -24,6 +24,10 @@ class UsuarioRol extends Model
         'UsuarioRolFechaInicio',
         'UsuarioRolFechaFin',
         'UsuarioRolEstado',
+        'UsuarioRolAsignadoPor',
+        'UsuarioRolFechaAsignacion',
+        'UsuarioRolRevocadoPor',
+        'UsuarioRolFechaRevocacion',
     ];
 
     protected $casts = [

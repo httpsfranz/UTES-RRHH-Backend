@@ -30,43 +30,43 @@ class SolicitudService
     private const CONFIG = [
         Papeleta::class => [
             'estado' => 'PapeletaEstado', 'usuario' => 'UsuarioAutorizacionId', 'fecha' => 'PapeletaFechaResolucion',
-            'nota' => 'PapeletaObservacion', 'registrante' => 'UsuarioRegistroId', 'enlace' => '/solicitudes/papeletas', 'nombre' => 'papeleta',
+            'nota' => 'PapeletaObservacion', 'registrante' => 'UsuarioRegistroId', 'enlace' => '/solicitudes/registro?pestana=papeletas', 'nombre' => 'papeleta',
         ],
         Licencia::class => [
             'estado' => 'LicenciaEstado', 'usuario' => null, 'fecha' => null,
-            'nota' => null, 'registrante' => 'UsuarioRegistroId', 'enlace' => '/solicitudes/licencias', 'nombre' => 'licencia',
+            'nota' => null, 'registrante' => 'UsuarioRegistroId', 'enlace' => '/solicitudes/registro?pestana=licencias', 'nombre' => 'licencia',
         ],
         DescansoMedico::class => [
             'estado' => 'DescansoMedicoEstado', 'usuario' => null, 'fecha' => null,
-            'nota' => 'DescansoMedicoObservacion', 'registrante' => null, 'enlace' => '/solicitudes/descansos-medicos', 'nombre' => 'descanso médico',
+            'nota' => 'DescansoMedicoObservacion', 'registrante' => null, 'enlace' => '/solicitudes/registro?pestana=descansos', 'nombre' => 'descanso médico',
         ],
         InformeGuardiaComunitaria::class => [
             'estado' => 'InformeGuardiaComunitariaEstado', 'usuario' => null, 'fecha' => null,
-            'nota' => null, 'registrante' => null, 'enlace' => '/programacion/guardia-comunitaria', 'nombre' => 'informe de guardia comunitaria',
+            'nota' => null, 'registrante' => null, 'enlace' => '/programacion/gestion?pestana=guardias', 'nombre' => 'informe de guardia comunitaria',
         ],
         ConstatacionDomiciliaria::class => [
             'estado' => 'ConstatacionDomiciliariaEstado', 'usuario' => null, 'fecha' => null,
-            'nota' => null, 'registrante' => 'UsuarioRegistroId', 'enlace' => '/solicitudes/constatacion-domiciliaria', 'nombre' => 'constatación domiciliaria',
+            'nota' => null, 'registrante' => 'UsuarioRegistroId', 'enlace' => '/solicitudes/registro?pestana=constataciones', 'nombre' => 'constatación domiciliaria',
         ],
         SupervisionInopinada::class => [
             'estado' => 'SupervisionInopinadaEstado', 'usuario' => null, 'fecha' => null,
-            'nota' => null, 'registrante' => null, 'enlace' => '/disciplina/supervisiones', 'nombre' => 'supervisión inopinada',
+            'nota' => null, 'registrante' => null, 'enlace' => '/disciplina/gestion?pestana=supervisiones', 'nombre' => 'supervisión inopinada',
         ],
         CargaProgramacion::class => [
             'estado' => 'CargaProgramacionEstado', 'usuario' => null, 'fecha' => null,
-            'nota' => null, 'registrante' => null, 'enlace' => '/programacion/carga', 'nombre' => 'carga de programación',
+            'nota' => null, 'registrante' => null, 'enlace' => '/programacion/gestion?pestana=programaciones', 'nombre' => 'carga de programación',
         ],
         CambioTurno::class => [
             'estado' => 'CambioTurnoEstado', 'usuario' => 'UsuarioAprobacionId', 'fecha' => 'CambioTurnoFechaResolucion',
-            'nota' => 'CambioTurnoObservacion', 'registrante' => 'UsuarioRegistroId', 'enlace' => '/programacion/cambios-turno', 'nombre' => 'solicitud de cambio de turno',
+            'nota' => 'CambioTurnoObservacion', 'registrante' => 'UsuarioRegistroId', 'enlace' => '/programacion/gestion?pestana=cambios', 'nombre' => 'solicitud de cambio de turno',
         ],
         AjusteMarcacion::class => [
             'estado' => 'AjusteMarcacionEstado', 'usuario' => null, 'fecha' => null,
-            'nota' => null, 'registrante' => 'UsuarioId', 'enlace' => '/asistencia/ajustes', 'nombre' => 'solicitud de ajuste de marcación',
+            'nota' => null, 'registrante' => 'UsuarioId', 'enlace' => '/solicitudes/registro?pestana=ajustes', 'nombre' => 'solicitud de ajuste de marcación',
         ],
         GoceVacacional::class => [
             'estado' => 'GoceVacacionalEstado', 'usuario' => null, 'fecha' => null,
-            'nota' => null, 'registrante' => null, 'enlace' => '/vacaciones/goce', 'nombre' => 'solicitud de goce vacacional',
+            'nota' => null, 'registrante' => null, 'enlace' => '/vacaciones/gestion', 'nombre' => 'solicitud de goce vacacional',
         ],
     ];
 

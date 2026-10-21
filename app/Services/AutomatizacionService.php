@@ -132,7 +132,7 @@ class AutomatizacionService
             foreach ($destinatarios as $usuarioId) {
                 $yaAvisado = DB::table('Soporte.Notificacion')->where(['UsuarioId' => $usuarioId, 'NotificacionTipo' => self::TIPO_ALERTA_FALTAS, 'NotificacionTitulo' => $titulo, 'NotificacionMensaje' => $mensaje])->exists();
                 if (! $yaAvisado) {
-                    $this->notificaciones->notificar($usuarioId, self::TIPO_ALERTA_FALTAS, $titulo, $mensaje, '/disciplina/expedientes-pad');
+                    $this->notificaciones->notificar($usuarioId, self::TIPO_ALERTA_FALTAS, $titulo, $mensaje, '/disciplina/gestion?pestana=pad');
                     $creados++;
                 }
             }

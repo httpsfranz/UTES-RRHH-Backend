@@ -435,7 +435,8 @@ class Nivel2CrudTest extends CrudModulosTestCase
         $r = $this->getJson('/api/plantillas-biometricas?por_pagina=100')->assertOk();
         $this->assertCount(10, $r->json('data'));
         $this->getJson('/api/plantillas-biometricas?tipo=HUELLA')->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.trabajador.numero_documento', '70000002');
-        $this->getJson('/api/plantillas-biometricas?estado=0')->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.trabajador.numero_documento', '70000012');
+        // Inactivas: la revocada (70000012) y la de huella, que AlcanceRitSeeder desactiva (RIT, Art. 21: solo facial).
+        $this->getJson('/api/plantillas-biometricas?estado=0')->assertOk()->assertJsonCount(2, 'data');
         $this->getJson('/api/plantillas-biometricas?buscar=001234567')->assertOk()->assertJsonPath('data.0.tiene_referencia', false);
         $this->assertSame(0, DB::table('Biometria.PlantillaBiometrica')->where('PlantillaBiometricaEstado', 1)
             ->whereNotIn('TrabajadorId', DB::table('Biometria.ConsentimientoBiometrico')->where('ConsentimientoBiometricoAceptado', 1)->select('TrabajadorId'))->count());
@@ -538,8 +539,9 @@ class Nivel2CrudTest extends CrudModulosTestCase
 
     public function test_filtros_y_datos_sembrados_de_autorizaciones(): void
     {
-        $this->getJson('/api/autorizaciones-metodo?vigente=1&por_pagina=100')->assertOk()->assertJsonCount(3, 'data');
-        $this->getJson('/api/autorizaciones-metodo?vigente=0&por_pagina=100')->assertOk()->assertJsonCount(2, 'data');   // vencida y revocada
+        // Solo las de registro manual quedan activas (AlcanceRitSeeder): la de huella pasa a no vigente.
+        $this->getJson('/api/autorizaciones-metodo?vigente=1&por_pagina=100')->assertOk()->assertJsonCount(2, 'data');
+        $this->getJson('/api/autorizaciones-metodo?vigente=0&por_pagina=100')->assertOk()->assertJsonCount(3, 'data');   // vencida, revocada y la de huella
         $this->getJson('/api/autorizaciones-metodo?buscar=Huella')->assertOk()->assertJsonPath('data.0.trabajador.numero_documento', '70000002');
         $this->getJson('/api/autorizaciones-metodo?metodo_marcacion_id='.$this->metodo('MANUAL').'&por_pagina=100')->assertOk()->assertJsonCount(2, 'data');
     }

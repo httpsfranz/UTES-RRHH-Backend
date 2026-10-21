@@ -20,13 +20,13 @@ class PermisosDeRuta
         'ORGANIZACION' => ['microredes', 'establecimientos', 'tipos-establecimiento', 'responsables-eess', 'tipos-responsabilidad'],
         'PERSONAL' => ['trabajadores', 'vinculos-laborales', 'asignaciones-horario', 'cargos', 'grupos-ocupacionales', 'profesiones', 'colegiaturas', 'tipos-colegiatura', 'condiciones-laborales', 'regimenes-laborales', 'tipos-documento-identidad', 'consulta-dni'],
         'ASISTENCIA' => ['marcaciones', 'asistencia-diaria', 'ajustes-marcacion', 'cargas-asistencia-manual', 'justificaciones-falta', 'conceptos-justificacion', 'estados-asistencia'],
-        'PROGRAMACION' => ['programaciones-periodo', 'programaciones-trabajador', 'turnos-programados', 'cambios-turno', 'tipos-cambio-turno', 'tipos-periodo-programacion', 'cargas-programacion', 'informes-guardia-comunitaria', 'programacion-calendario'],
+        'PROGRAMACION' => ['programaciones-periodo', 'programaciones-trabajador', 'turnos-programados', 'cambios-turno', 'tipos-cambio-turno', 'tipos-periodo-programacion', 'cargas-programacion', 'informes-guardia-comunitaria', 'programacion-calendario', 'programacion-mensual'],
         'SOLICITUDES' => ['papeletas', 'tipos-papeleta', 'motivos-papeleta', 'licencias', 'tipos-licencia', 'descansos-medicos', 'constataciones-domiciliarias', 'ocurrencias-porteria', 'goces-vacacionales', 'periodos-vacacionales', 'roles-vacacionales', 'documentos-sustento'],
         'CONFIGURACION' => ['turnos', 'horarios', 'horarios-detalle', 'tipos-jornada', 'parametros-jornada', 'tablas-tolerancia', 'tramos-tolerancia', 'calendario-no-laborable',
             'dispositivos-marcacion', 'metodos-marcacion', 'plantillas-biometricas', 'autorizaciones-metodo', 'consentimientos-biometricos'],
-        'REPORTES' => ['periodos-asistencia', 'consolidados-asistencia', 'detalles-consolidado', 'liquidaciones-descuento', 'detalles-liquidacion', 'compensaciones-horarias', 'tipos-compensacion', 'conceptos-descuento',
+        'REPORTES' => ['periodos-asistencia', 'cierre-mes', 'consolidados-asistencia', 'detalles-consolidado', 'liquidaciones-descuento', 'detalles-liquidacion', 'compensaciones-horarias', 'tipos-compensacion', 'conceptos-descuento',
             'expedientes-pad', 'supervisiones-inopinadas', 'tipos-falta-disciplinaria'],
-        'SEGURIDAD' => ['usuarios', 'usuarios-roles', 'usuarios-ambitos', 'roles', 'roles-permisos', 'permisos', 'sesiones-acceso'],
+        'SEGURIDAD' => ['usuarios', 'usuarios-roles', 'usuarios-ambitos', 'roles', 'roles-permisos', 'permisos', 'sesiones-acceso', 'tipos-notificacion'],
     ];
 
     /** Recursos cuya lectura solo exige autenticacion (listas de apoyo de los formularios). */
@@ -45,8 +45,13 @@ class PermisosDeRuta
 
     /** Accion de flujo (ultimo segmento de la ruta) => permiso. 'recurso' restringe la accion a esos recursos. */
     public const ACCIONES = [
-        'aprobar' => ['ajustes-marcacion' => 'ASISTENCIA_APROBAR', 'justificaciones-falta' => 'ASISTENCIA_APROBAR', 'liquidaciones-descuento' => 'REPORTES_EDITAR', '*' => 'SOLICITUDES_APROBAR'],
+        'aprobar' => ['ajustes-marcacion' => 'ASISTENCIA_APROBAR', 'justificaciones-falta' => 'ASISTENCIA_APROBAR', 'liquidaciones-descuento' => 'REPORTES_EDITAR', 'consolidados-asistencia' => 'ASISTENCIA_APROBAR', '*' => 'SOLICITUDES_APROBAR'],
         'rechazar' => ['ajustes-marcacion' => 'ASISTENCIA_APROBAR', 'justificaciones-falta' => 'ASISTENCIA_APROBAR', '*' => 'SOLICITUDES_APROBAR'],
+        'observar' => ['*' => 'ASISTENCIA_APROBAR'],
+        'revocar' => ['*' => 'SEGURIDAD_EDITAR'],
+        'bloquear' => ['*' => 'SEGURIDAD_EDITAR'],
+        'desbloquear' => ['*' => 'SEGURIDAD_EDITAR'],
+        'iniciar-pad' => ['*' => 'REPORTES_EDITAR'],
         'publicar' => ['*' => 'PROGRAMACION_APROBAR'],
         'cerrar' => ['*' => 'PROGRAMACION_APROBAR'],
         'cumplir' => ['*' => 'PROGRAMACION_EDITAR'],
@@ -55,6 +60,9 @@ class PermisosDeRuta
         'reprogramar' => ['*' => 'SOLICITUDES_EDITAR'],
         'generar' => ['*' => 'REPORTES_EDITAR'],
         'calcular' => ['*' => 'ASISTENCIA_EDITAR'],
+        'marcar' => ['*' => 'ASISTENCIA_MARCAR'],
+        'conformidad' => ['*' => 'ASISTENCIA_APROBAR'],
+        'liquidaciones' => ['*' => 'REPORTES_EDITAR'],
     ];
 
     /** Rutas con permiso propio (recurso => permiso para cualquier metodo). */
@@ -74,11 +82,14 @@ class PermisosDeRuta
         $metodo = strtoupper($metodo);
         $lectura = in_array($metodo, ['GET', 'HEAD'], true);
 
-        if ($recurso === 'user' || $recurso === 'dashboard') {
+        if ($recurso === 'user' || $recurso === 'dashboard' || $recurso === 'menu-pendientes' || ($recurso === 'bandeja-solicitudes' && $lectura)) {
             return null;
         }
         if ($recurso === 'notificaciones' && ! $lectura) {
-            return in_array($metodo, ['PUT', 'PATCH'], true) ? null : 'SEGURIDAD_EDITAR';
+            // La bandeja propia (marcar leidas) es de cualquier usuario; reintentar un correo o crear avisos, del administrador.
+            $propia = in_array($metodo, ['PUT', 'PATCH'], true) || ($segmentos[1] ?? null) === 'leer-todas' || end($segmentos) === 'leer';
+
+            return $propia ? null : 'SEGURIDAD_EDITAR';
         }
         if (isset(self::ESPECIALES[$recurso])) {
             if ($recurso === 'parametros-sistema' && $lectura) {
@@ -94,6 +105,9 @@ class PermisosDeRuta
         }
         if ($recurso === 'asistencia-diaria' && ($segmentos[1] ?? null) === 'calcular') {
             return 'ASISTENCIA_EDITAR';
+        }
+        if ($lectura && end($segmentos) === 'exportar' && $recurso !== 'auditoria') {
+            return 'REPORTES_EXPORTAR';
         }
         if ($recurso === 'consolidados-asistencia' && ($segmentos[1] ?? null) === 'generar') {
             return 'REPORTES_EDITAR';

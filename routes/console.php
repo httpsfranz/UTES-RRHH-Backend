@@ -14,3 +14,5 @@ Schedule::command('asistencia:calcular --dias=2')->hourly()->timezone('America/L
 Schedule::command('asistencia:calcular --dias=10')->dailyAt('02:00')->timezone('America/Lima')->withoutOverlapping();
 Schedule::command('consolidado:actualizar')->dailyAt('02:30')->timezone('America/Lima')->withoutOverlapping();
 Schedule::command('sistema:mantenimiento')->dailyAt('03:00')->timezone('America/Lima')->withoutOverlapping();
+// Correos de notificaciones: reintenta los pendientes (hasta 3 intentos; luego quedan FALLIDO con el error).
+Schedule::command('notificaciones:enviar')->everyMinute()->withoutOverlapping();

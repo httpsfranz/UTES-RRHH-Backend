@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\NotificacionRequest;
 use App\Http\Resources\NotificacionResource;
 use App\Models\Soporte\Notificacion;
+use App\Services\NotificacionService;
 use App\Support\AccesoUsuario;
+use App\Support\HoraLocal;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -76,6 +78,47 @@ class NotificacionController extends Controller
         $notificacion->delete();
 
         return response()->json(['mensaje' => 'Notificación eliminada.'], 200);
+    }
+
+    // GET /api/notificaciones/bandeja   las ultimas notificaciones del usuario de la sesion y cuantas no ha leido (campana)
+    public function bandeja(Request $request): JsonResponse
+    {
+        $propias = Notificacion::query()->where('UsuarioId', $request->user()->UsuarioId);
+
+        return response()->json([
+            'no_leidas' => (clone $propias)->where('NotificacionLeida', 0)->count(),
+            'data' => NotificacionResource::collection((clone $propias)->orderBy('NotificacionLeida')->orderByDesc('NotificacionFecha')->orderByDesc('NotificacionId')->limit(15)->get()),
+        ]);
+    }
+
+    // POST /api/notificaciones/{notificacion}/leer
+    public function leer(Request $request, Notificacion $notificacion): JsonResponse
+    {
+        abort_unless((int) $notificacion->UsuarioId === (int) $request->user()->UsuarioId, 403, 'Solo puedes marcar tus propias notificaciones.');
+        if (! $notificacion->NotificacionLeida) {
+            $notificacion->update(['NotificacionLeida' => true, 'NotificacionFechaLectura' => HoraLocal::ahora()]);
+        }
+
+        return (new NotificacionResource($notificacion->fresh()))->response();
+    }
+
+    // POST /api/notificaciones/leer-todas
+    public function leerTodas(Request $request): JsonResponse
+    {
+        $marcadas = Notificacion::query()->where('UsuarioId', $request->user()->UsuarioId)->where('NotificacionLeida', 0)
+            ->update(['NotificacionLeida' => 1, 'NotificacionFechaLectura' => HoraLocal::ahora()]);
+
+        return response()->json(['mensaje' => "{$marcadas} notificación(es) marcadas como leídas."]);
+    }
+
+    // POST /api/notificaciones/{notificacion}/reintentar   vuelve a intentar el correo de una notificacion FALLIDA
+    public function reintentar(Notificacion $notificacion, NotificacionService $servicio): JsonResponse
+    {
+        abort_unless($notificacion->NotificacionCorreoEstado === 'FALLIDO', 422, 'Solo se reintenta un correo que falló.');
+        $notificacion->update(['NotificacionCorreoEstado' => 'PENDIENTE', 'NotificacionCorreoIntentos' => 0]);
+        $servicio->enviarCorreo($notificacion->NotificacionId);
+
+        return (new NotificacionResource($notificacion->fresh()->load(self::RELACIONES)))->response();
     }
 
     /** Quien tiene SEGURIDAD_VER administra las notificaciones de todos; los demas solo ven y marcan las suyas. */

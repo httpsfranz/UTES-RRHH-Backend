@@ -263,6 +263,16 @@ abstract class CrudModulosTestCase extends TestCase
             return;
         }
 
+        // Modulos que se desactivan con PATCH y solo se eliminan (fisicamente) ya inactivos, p. ej. los roles.
+        if ($columna = ($spec['eliminaSoloInactivo'] ?? null)) {
+            $this->deleteJson("{$spec['endpoint']}/{$id}")->assertStatus(422);
+            $this->patchJson("{$spec['endpoint']}/{$id}", [$columna => false])->assertOk();
+            $this->deleteJson("{$spec['endpoint']}/{$id}")->assertOk()->assertJsonStructure(['mensaje']);
+            $this->assertNull(DB::table($spec['table'])->where($spec['pk'], $id)->first(), 'Inactivo y sin historial: se elimina.');
+
+            return;
+        }
+
         $this->deleteJson("{$spec['endpoint']}/{$id}")->assertOk()->assertJsonStructure(['mensaje']);
 
         $fila = DB::table($spec['table'])->where($spec['pk'], $id)->first();

@@ -4,6 +4,7 @@ namespace Database\Seeders\Concerns;
 
 use App\Models\Programacion\ProgramacionTrabajador;
 use App\Services\CalculoAsistenciaService;
+use App\Support\HoraLocal;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
@@ -525,6 +526,8 @@ trait VolumenAsistencia
 
     private function volumenMarcaciones(): void
     {
+        // Las marcas se arman como hora local de Lima convertida con strtotime: "ahora" se compara en la misma escala.
+        $ahora = strtotime(HoraLocal::ahora()->toDateTimeString());
         $metodoRostro = (int) DB::table('Biometria.MetodoMarcacion')->where('MetodoMarcacionCodigo', 'ROSTRO')->value('MetodoMarcacionId');
         $metodoManual = (int) DB::table('Biometria.MetodoMarcacion')->where('MetodoMarcacionCodigo', 'MANUAL')->value('MetodoMarcacionId');
         $dispositivos = DB::table('Biometria.DispositivoMarcacion')->where('DispositivoMarcacionEstado', 1)->whereNotNull('EessId')->orderBy('DispositivoMarcacionId')->get(['DispositivoMarcacionId', 'EessId'])->groupBy('EessId');
@@ -600,7 +603,8 @@ trait VolumenAsistencia
 
                 $manual = $dispositivo === null;
                 foreach ([['ENTRADA', $marcaEntrada], ['SALIDA', $marcaSalida]] as [$tipo, $momento]) {
-                    if ($momento === null) {
+                    // Ninguna marca "del futuro": lo que aun no ocurrio se marcara desde el control de asistencia.
+                    if ($momento === null || $momento > $ahora) {
                         continue;
                     }
                     $cargaId = $manual ? ($cargas[$p['eess_id']][$mes] ?? null) : null;

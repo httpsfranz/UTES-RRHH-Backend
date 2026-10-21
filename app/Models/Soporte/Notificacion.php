@@ -27,9 +27,17 @@ class Notificacion extends Model
         'NotificacionEnlace',
         'NotificacionFecha',
         'NotificacionLeida',
+        'NotificacionFechaLectura',
+        'NotificacionCorreoEstado',
+        'NotificacionCorreoIntentos',
+        'NotificacionCorreoFechaEnvio',
+        'NotificacionCorreoError',
     ];
 
     protected $casts = [
+        'NotificacionFechaLectura' => 'datetime',
+        'NotificacionCorreoFechaEnvio' => 'datetime',
+        'NotificacionCorreoIntentos' => 'integer',
         'NotificacionId' => 'integer',
         'UsuarioId' => 'integer',
         'NotificacionFecha' => 'datetime',

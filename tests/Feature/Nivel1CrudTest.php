@@ -69,6 +69,8 @@ class Nivel1CrudTest extends CrudModulosTestCase
         $spec = $this->spec('trabajadores');
         $ce = $this->id('Personal.TipoDocumentoIdentidad', 'TipoDocumentoIdentidadId', ['TipoDocumentoIdentidadCodigo' => 'CE']);
         $pas = $this->id('Personal.TipoDocumentoIdentidad', 'TipoDocumentoIdentidadId', ['TipoDocumentoIdentidadCodigo' => 'PAS']);
+        // La Red solo usa DNI (AlcanceRitSeeder desactiva los demas); la regla de formato por tipo sigue vigente si se reactivan.
+        DB::table('Personal.TipoDocumentoIdentidad')->whereIn('TipoDocumentoIdentidadCodigo', ['CE', 'PAS'])->update(['TipoDocumentoIdentidadEstado' => 1]);
 
         // Carne de extranjeria: solo digitos, de 9 a 12.
         $this->postJson($spec['endpoint'], $this->payload($spec, ['TipoDocumentoIdentidadId' => $ce, 'TrabajadorNumeroDocumento' => '12345678']))
@@ -89,6 +91,8 @@ class Nivel1CrudTest extends CrudModulosTestCase
     {
         $spec = $this->spec('trabajadores');
         $pas = $this->id('Personal.TipoDocumentoIdentidad', 'TipoDocumentoIdentidadId', ['TipoDocumentoIdentidadCodigo' => 'PAS']);
+        // La Red solo usa DNI (AlcanceRitSeeder desactiva los demas); la regla de formato por tipo sigue vigente si se reactivan.
+        DB::table('Personal.TipoDocumentoIdentidad')->whereIn('TipoDocumentoIdentidadCodigo', ['CE', 'PAS'])->update(['TipoDocumentoIdentidadEstado' => 1]);
 
         $this->crear($spec); // DNI 79999901
         $this->postJson($spec['endpoint'], $this->payload($spec, ['TipoDocumentoIdentidadId' => $pas, 'TrabajadorNumeroDocumento' => '79999901']))

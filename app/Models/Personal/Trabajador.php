@@ -65,4 +65,10 @@ class Trabajador extends Model
     {
         return $this->hasMany(VinculoLaboral::class, 'TrabajadorId', 'TrabajadorId')->vigentes();
     }
+
+    /** Colegiaturas activas, con su colegio (se registran dentro del formulario del trabajador). */
+    public function colegiaturas(): HasMany
+    {
+        return $this->hasMany(Colegiatura::class, 'TrabajadorId', 'TrabajadorId')->where('ColegiaturaEstado', 1);
+    }
 }

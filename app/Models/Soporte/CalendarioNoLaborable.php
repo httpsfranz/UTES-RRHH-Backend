@@ -2,9 +2,9 @@
 
 namespace App\Models\Soporte;
 
+use App\Models\Organizacion\Microred;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use App\Models\Organizacion\Microred;
 
 class CalendarioNoLaborable extends Model
 {
@@ -18,7 +18,7 @@ class CalendarioNoLaborable extends Model
 
     public $timestamps = false;
 
-    // No tiene columna de Estado: no hay baja logica posible para esta tabla.
+    // CalendarioNoLaborableEstado (V006): un dia inactivo ya no cuenta para la asistencia ni los calendarios.
     protected $fillable = [
         'MicroredId',
         'CalendarioNoLaborableFecha',
@@ -26,11 +26,12 @@ class CalendarioNoLaborable extends Model
         'CalendarioNoLaborableDescripcion',
         'CalendarioNoLaborableCompensable',
         'CalendarioNoLaborableNormaSustento',
+        'CalendarioNoLaborableEstado',
     ];
 
     protected $casts = [
-        'MicroredId'                       => 'integer',
-        'CalendarioNoLaborableFecha'       => 'date',
+        'MicroredId' => 'integer',
+        'CalendarioNoLaborableFecha' => 'date',
         'CalendarioNoLaborableCompensable' => 'boolean',
     ];
 

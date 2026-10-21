@@ -37,6 +37,7 @@ class UsuariosYPermisosSeeder extends Seeder
     private const EXTRAS = [
         'ASISTENCIA_JUSTIFICAR' => ['ASISTENCIA', 'Justificar faltas', 'Registrar justificaciones de inasistencia'],
         'ASISTENCIA_APROBAR' => ['ASISTENCIA', 'Aprobar asistencia', 'Validar marcaciones y justificaciones'],
+        'ASISTENCIA_MARCAR' => ['ASISTENCIA', 'Marcar asistencia manual', 'Registrar la entrada y la salida del personal con la hora del sistema (control manual, RIT Art. 21)'],
         'SOLICITUDES_APROBAR' => ['SOLICITUDES', 'Aprobar solicitudes', 'Aprobar papeletas, licencias y descansos'],
         'PROGRAMACION_APROBAR' => ['PROGRAMACION', 'Aprobar programación', 'Publicar y cerrar la programación de turnos (jefe del establecimiento)'],
         'REPORTES_EXPORTAR' => ['REPORTES', 'Exportar reportes', 'Descargar reportes en Excel y PDF'],
@@ -47,13 +48,13 @@ class UsuariosYPermisosSeeder extends Seeder
     /** @var array<string,list<string>> */
     private const MATRIZ = [
         'RRHH_RED' => [
-            'ORGANIZACION_VER', 'ORGANIZACION_EDITAR', 'PERSONAL_VER', 'PERSONAL_EDITAR', 'ASISTENCIA_VER', 'ASISTENCIA_EDITAR', 'ASISTENCIA_JUSTIFICAR', 'ASISTENCIA_APROBAR',
+            'ORGANIZACION_VER', 'ORGANIZACION_EDITAR', 'PERSONAL_VER', 'PERSONAL_EDITAR', 'ASISTENCIA_VER', 'ASISTENCIA_EDITAR', 'ASISTENCIA_JUSTIFICAR', 'ASISTENCIA_APROBAR', 'ASISTENCIA_MARCAR',
             'PROGRAMACION_VER', 'PROGRAMACION_EDITAR', 'PROGRAMACION_APROBAR', 'SOLICITUDES_VER', 'SOLICITUDES_EDITAR', 'SOLICITUDES_APROBAR', 'CONFIGURACION_VER', 'CONFIGURACION_EDITAR',
             'REPORTES_VER', 'REPORTES_EDITAR', 'REPORTES_EXPORTAR',
         ],
         'JEFE_MICRORED' => ['ORGANIZACION_VER', 'PERSONAL_VER', 'ASISTENCIA_VER', 'ASISTENCIA_APROBAR', 'SOLICITUDES_VER', 'SOLICITUDES_APROBAR', 'PROGRAMACION_VER', 'REPORTES_VER', 'REPORTES_EXPORTAR'],
         'RESP_EESS' => [
-            'ORGANIZACION_VER', 'PERSONAL_VER', 'ASISTENCIA_VER', 'ASISTENCIA_EDITAR', 'ASISTENCIA_JUSTIFICAR', 'ASISTENCIA_APROBAR', 'SOLICITUDES_VER', 'SOLICITUDES_EDITAR', 'SOLICITUDES_APROBAR',
+            'ORGANIZACION_VER', 'PERSONAL_VER', 'ASISTENCIA_VER', 'ASISTENCIA_EDITAR', 'ASISTENCIA_JUSTIFICAR', 'ASISTENCIA_APROBAR', 'ASISTENCIA_MARCAR', 'SOLICITUDES_VER', 'SOLICITUDES_EDITAR', 'SOLICITUDES_APROBAR',
             'PROGRAMACION_VER', 'PROGRAMACION_EDITAR', 'PROGRAMACION_APROBAR', 'REPORTES_VER', 'REPORTES_EXPORTAR',
         ],
         'PROGRAMADOR' => ['PERSONAL_VER', 'ASISTENCIA_VER', 'PROGRAMACION_VER', 'PROGRAMACION_EDITAR'],
@@ -129,7 +130,8 @@ class UsuariosYPermisosSeeder extends Seeder
             $usuarioId = DB::table('Seguridad.Usuario')->where('UsuarioNombre', $nombre)->value('UsuarioId');
             if ($usuarioId === null) {
                 $dni = '9900000'.$indice;
-                $trabajadorId = DB::table('Personal.Trabajador')->where('TrabajadorNumeroDocumento', $dni)->value('TrabajadorId')
+                $trabajadorId = ($rol === 'TRABAJADOR' ? $this->trabajadorConDatos($eess) : null)
+                    ?? DB::table('Personal.Trabajador')->where('TrabajadorNumeroDocumento', $dni)->value('TrabajadorId')
                     ?? DB::table('Personal.Trabajador')->insertGetId([
                         'TipoDocumentoIdentidadId' => $documento, 'TrabajadorNumeroDocumento' => $dni, 'TrabajadorNombres' => $nombres,
                         'TrabajadorApellidoPaterno' => $apellido, 'TrabajadorApellidoMaterno' => 'Predeterminado',
@@ -154,6 +156,26 @@ class UsuariosYPermisosSeeder extends Seeder
                 DB::table('Seguridad.UsuarioAmbito')->insert(['UsuarioId' => $usuarioId] + $alcance);
             }
         }
+    }
+
+    /**
+     * El usuario de demostracion "trabajador" es una persona real del establecimiento (con vinculo vigente, turnos y
+     * asistencia de los datos de prueba): asi su inicio y su asistencia muestran algo. Null = no hay datos de prueba.
+     */
+    private function trabajadorConDatos(?int $eess): ?int
+    {
+        if ($eess === null) {
+            return null;
+        }
+
+        return DB::table('Personal.VinculoLaboral as v')
+            ->where('v.EessId', $eess)
+            ->where('v.VinculoLaboralEstado', 1)
+            ->whereNull('v.VinculoLaboralFechaFin')
+            ->whereExists(fn ($q) => $q->from('Asistencia.AsistenciaDiaria as a')->whereColumn('a.VinculoLaboralId', 'v.VinculoLaboralId'))
+            ->whereNotExists(fn ($q) => $q->from('Seguridad.Usuario as u')->whereColumn('u.TrabajadorId', 'v.TrabajadorId'))
+            ->orderBy('v.VinculoLaboralId')
+            ->value('v.TrabajadorId');
     }
 
     private function clave(): string

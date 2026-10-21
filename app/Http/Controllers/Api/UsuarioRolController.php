@@ -6,6 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\UsuarioRolRequest;
 use App\Http\Resources\UsuarioRolResource;
 use App\Models\Seguridad\UsuarioRol;
+use App\Support\HoraLocal;
+use App\Support\RegistroAuditoria;
+use App\Support\ResguardoDeAdministracion;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -45,7 +48,9 @@ class UsuarioRolController extends Controller
     // POST /api/usuarios-roles
     public function store(UsuarioRolRequest $request): JsonResponse
     {
-        $asignacion = UsuarioRol::create($request->datos());
+        // Quien asigna es el usuario de la sesion (no se envia).
+        $asignacion = UsuarioRol::create($request->datos() + ['UsuarioRolAsignadoPor' => $request->user()?->UsuarioId, 'UsuarioRolFechaAsignacion' => HoraLocal::ahora()]);
+        RegistroAuditoria::evento('PERMISOS', 'Seguridad', 'UsuarioRol', (string) $asignacion->UsuarioRolId, 'Asignó un rol al usuario '.$asignacion->UsuarioId.'.');
 
         return (new UsuarioRolResource($asignacion->fresh()->load(self::RELACIONES)))
             ->response()
@@ -61,7 +66,15 @@ class UsuarioRolController extends Controller
     // PUT|PATCH /api/usuarios-roles/{asignacion}
     public function update(UsuarioRolRequest $request, UsuarioRol $asignacion)
     {
-        $asignacion->update($request->datos());
+        $datos = $request->datos();
+        $estado = $datos['UsuarioRolEstado'] ?? null;
+        if ($estado !== null && (bool) $estado !== (bool) $asignacion->UsuarioRolEstado) {
+            $datos += (bool) $estado
+                ? ['UsuarioRolAsignadoPor' => $request->user()?->UsuarioId, 'UsuarioRolFechaAsignacion' => HoraLocal::ahora(), 'UsuarioRolRevocadoPor' => null, 'UsuarioRolFechaRevocacion' => null]
+                : ['UsuarioRolRevocadoPor' => $request->user()?->UsuarioId, 'UsuarioRolFechaRevocacion' => HoraLocal::ahora()];
+            RegistroAuditoria::evento('PERMISOS', 'Seguridad', 'UsuarioRol', (string) $asignacion->UsuarioRolId, ((bool) $estado ? 'Reactivó' : 'Revocó').' el rol del usuario '.$asignacion->UsuarioId.'.');
+        }
+        ResguardoDeAdministracion::proteger($request->user(), fn () => $asignacion->update($datos));
 
         return new UsuarioRolResource($asignacion->fresh()->load(self::RELACIONES));
     }
@@ -69,8 +82,9 @@ class UsuarioRolController extends Controller
     // DELETE /api/usuarios-roles/{asignacion}
     public function destroy(UsuarioRol $asignacion): JsonResponse
     {
-        // BAJA LOGICA, no DELETE fisico: el historial se conserva.
-        $asignacion->update(['UsuarioRolEstado' => false]);
+        // BAJA LOGICA (revocacion), no DELETE fisico: el historial se conserva con quien revoco y cuando.
+        ResguardoDeAdministracion::proteger(request()->user(), fn () => $asignacion->update(['UsuarioRolEstado' => false, 'UsuarioRolRevocadoPor' => request()->user()?->UsuarioId, 'UsuarioRolFechaRevocacion' => HoraLocal::ahora()]));
+        RegistroAuditoria::evento('PERMISOS', 'Seguridad', 'UsuarioRol', (string) $asignacion->UsuarioRolId, 'Revocó el rol del usuario '.$asignacion->UsuarioId.'.');
 
         return response()->json(['mensaje' => 'Rol del usuario desactivado.'], 200);
     }

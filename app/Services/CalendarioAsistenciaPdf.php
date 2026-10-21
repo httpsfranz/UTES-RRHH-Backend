@@ -20,7 +20,12 @@ class CalendarioAsistenciaPdf
     {
         $titulo = preg_replace('/[^A-Za-z0-9]+/', '-', Str::ascii(ucfirst(mb_strtolower((string) ($calendario['titulo'] ?? 'Asistencia')))));
 
-        return sprintf('%s_%s_%d-%02d.pdf', trim($titulo, '-'), preg_replace('/[^A-Za-z0-9_-]+/', '-', (string) $calendario['eess']['codigo']), $calendario['periodo']['anio'], $calendario['periodo']['mes']);
+        $codigo = preg_replace('/[^A-Za-z0-9_-]+/', '-', (string) $calendario['eess']['codigo']);
+        if (($calendario['periodo']['vista'] ?? 'mes') !== 'mes') {
+            return sprintf('%s_%s_%s.pdf', trim($titulo, '-'), $codigo, $calendario['periodo']['desde']);
+        }
+
+        return sprintf('%s_%s_%d-%02d.pdf', trim($titulo, '-'), $codigo, $calendario['periodo']['anio'], $calendario['periodo']['mes']);
     }
 
     /** Logo institucional como data URI (dompdf no abre recursos remotos); null si el archivo no esta. */

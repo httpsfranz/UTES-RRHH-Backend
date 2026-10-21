@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Support\AccesoUsuario;
 use App\Support\PermisosDeRuta;
+use App\Support\RegistroAuditoria;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -29,15 +30,25 @@ class VerificarPermiso
         }
         $acceso = AccesoUsuario::de($usuario);
         if ($permiso !== null && ! $acceso->tiene($permiso)) {
+            $this->registrarDenegado($request, "Sin el permiso {$permiso}.");
+
             return response()->json(['message' => 'No tienes permiso para realizar esta operación.'], 403);
         }
         if ($permiso !== null && $acceso->propio && ! in_array($segmentos[0] ?? '', PermisosDeRuta::RECURSOS_PROPIOS, true)) {
+            $this->registrarDenegado($request, 'Información fuera de su alcance (solo consulta lo propio).');
+
             return response()->json(['message' => 'No tienes permiso para consultar esta información.'], 403);
         }
 
         $this->fijarUsuarioActuante($request, $segmentos, (int) $usuario->UsuarioId);
 
         return $next($request);
+    }
+
+    /** Evento de seguridad: acceso denegado, con la ruta que se intento. */
+    private function registrarDenegado(Request $request, string $motivo): void
+    {
+        RegistroAuditoria::evento('ACCESO_DENEGADO', 'Seguridad', 'Ruta', null, $request->method().' /'.$request->path().' · '.$motivo, 'DENEGADO');
     }
 
     /** @param  list<string>  $segmentos */

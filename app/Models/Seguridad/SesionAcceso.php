@@ -24,6 +24,11 @@ class SesionAcceso extends Model
         'SesionAccesoFechaFin',
         'SesionAccesoDireccionIp',
         'SesionAccesoResultado',
+        'SesionAccesoUltimaActividad',
+        'SesionAccesoExpiraEn',
+        'SesionAccesoMotivoCierre',
+        'SesionAccesoRevocadaPor',
+        'SesionAccesoAgente',
     ];
 
     protected $casts = [
@@ -31,6 +36,8 @@ class SesionAcceso extends Model
         'UsuarioId' => 'integer',
         'SesionAccesoFechaInicio' => 'datetime',
         'SesionAccesoFechaFin' => 'datetime',
+        'SesionAccesoUltimaActividad' => 'datetime',
+        'SesionAccesoExpiraEn' => 'datetime',
     ];
 
     public function usuario(): BelongsTo

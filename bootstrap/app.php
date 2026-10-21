@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Middleware\DispositivoDeMarcacion;
+use App\Http\Middleware\SesionActiva;
 use App\Http\Middleware\VerificarPermiso;
 use App\Support\ErroresDeBaseDeDatos;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -18,7 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->alias(['permiso' => VerificarPermiso::class]);
+        $middleware->alias(['permiso' => VerificarPermiso::class, 'sesion' => SesionActiva::class, 'dispositivo' => DispositivoDeMarcacion::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

@@ -6,13 +6,21 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\CargaAsistenciaManualRequest;
 use App\Http\Resources\CargaAsistenciaManualResource;
 use App\Models\Asistencia\CargaAsistenciaManual;
+use App\Models\Organizacion\EstablecimientoSalud;
+use App\Models\Soporte\DocumentoSustento;
 use App\Services\CargaAsistenciaManualService;
+use App\Services\ImportacionHojaAsistenciaService;
 use App\Support\AlcanceDeEess;
+use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class CargaAsistenciaManualController extends Controller
 {
+    private const MAX_ERRORES_EN_RESPUESTA = 300;
+
     private const RELACIONES = [
         'usuario:UsuarioId,UsuarioNombre',
         'eess:EessId,EessCodigo,EessNombre',
@@ -42,6 +50,58 @@ class CargaAsistenciaManualController extends Controller
             ->paginate(max(1, min($request->integer('por_pagina', 15), 100)));
 
         return CargaAsistenciaManualResource::collection($registros);
+    }
+
+    // GET /api/cargas-asistencia-manual/plantilla?eess_id=&anio=&mes=   hoja de asistencia del mes en Excel
+    public function plantilla(Request $request, ImportacionHojaAsistenciaService $importacion): BinaryFileResponse
+    {
+        $datos = $this->mes($request);
+        if ($motivo = $importacion->motivoSinHojas($datos['eess_id'])) {
+            throw new DomainException($motivo);
+        }
+        $nombre = sprintf('hoja_asistencia_%s_%04d-%02d.xlsx', EstablecimientoSalud::query()->whereKey($datos['eess_id'])->value('EessCodigo'), $datos['anio'], $datos['mes']);
+
+        return response()->download($importacion->plantilla($datos['eess_id'], $datos['anio'], $datos['mes']), $nombre)->deleteFileAfterSend();
+    }
+
+    // POST /api/cargas-asistencia-manual/importar  (multipart: eess_id, anio, mes, archivo, DocumentoSustentoId = la hoja
+    // firmada escaneada; confirmar=1 guarda; omitir_errores=1 guarda solo las filas validas). Sin `confirmar` solo valida.
+    public function importar(Request $request, ImportacionHojaAsistenciaService $importacion): JsonResponse
+    {
+        $datos = $this->mes($request) + $request->validate([
+            'archivo' => ['required', 'file', 'max:5120', 'mimes:xlsx,csv,txt'],
+            'DocumentoSustentoId' => ['required', 'integer', Rule::exists(DocumentoSustento::class, 'DocumentoSustentoId')],
+            'confirmar' => ['sometimes', 'boolean'],
+            'omitir_errores' => ['sometimes', 'boolean'],
+        ], [
+            'archivo.required' => 'Elige el archivo de Excel con la hoja de asistencia.',
+            'archivo.mimes' => 'El archivo debe ser un Excel (.xlsx) o un CSV.',
+            'archivo.max' => 'El archivo supera los 5 MB.',
+            'DocumentoSustentoId.required' => 'Adjunta la hoja de asistencia firmada (escaneada) como sustento.',
+        ], ['DocumentoSustentoId' => 'documento de sustento']);
+        set_time_limit(300);
+
+        $archivo = $request->file('archivo');
+        $confirmar = $request->boolean('confirmar');
+        $omitir = $request->boolean('omitir_errores');
+        $resultado = $importacion->importar(
+            $datos['eess_id'], $datos['anio'], $datos['mes'], $archivo->getRealPath(), $archivo->getClientOriginalExtension() ?: 'xlsx',
+            $archivo->getClientOriginalName(), (int) $datos['DocumentoSustentoId'], $request->user(), $confirmar, $omitir,
+        );
+        $resultado['errores_total'] = count($resultado['errores']);
+        $resultado['errores'] = array_slice($resultado['errores'], 0, self::MAX_ERRORES_EN_RESPUESTA);
+
+        if (! $confirmar) {
+            return response()->json($resultado);
+        }
+        if ($resultado['errores_total'] > 0 && ! $omitir) {
+            return response()->json(['message' => 'La hoja tiene filas con errores: corrígelas o importa solo las válidas.'] + $resultado, 422);
+        }
+        if ($resultado['registradas'] === 0) {
+            return response()->json(['message' => 'La hoja no tiene marcas nuevas para registrar.'] + $resultado, 422);
+        }
+
+        return response()->json($resultado, 201);
     }
 
     // POST /api/cargas-asistencia-manual
@@ -74,5 +134,18 @@ class CargaAsistenciaManualController extends Controller
         $servicio->anular($carga);
 
         return response()->json(['mensaje' => 'Carga anulada.'], 200);
+    }
+
+    /** @return array{eess_id:int,anio:int,mes:int} */
+    private function mes(Request $request): array
+    {
+        $datos = $request->validate([
+            'eess_id' => ['required', 'integer', Rule::exists(EstablecimientoSalud::class, 'EessId')],
+            'anio' => ['required', 'integer', 'between:2000,2100'],
+            'mes' => ['required', 'integer', 'between:1,12'],
+        ], [], ['eess_id' => 'establecimiento']);
+        AlcanceDeEess::exigir((int) $datos['eess_id'], $request->user());
+
+        return array_map('intval', $datos);
     }
 }

@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\DB;
 
 class SupervisionInopinadaResource extends JsonResource
 {
@@ -19,6 +20,9 @@ class SupervisionInopinadaResource extends JsonResource
             'resultado' => $this->SupervisionInopinadaResultado,
             'observacion' => $this->SupervisionInopinadaObservacion,
             'estado' => $this->SupervisionInopinadaEstado,
+            // Destino del acta: el expediente PAD que se inicio a partir de ella (si hubo observaciones).
+            'expediente_pad' => ($e = DB::table('Disciplina.ExpedientePad')->where('SupervisionInopinadaId', $this->SupervisionInopinadaId)->where('ExpedientePadEstado', '<>', 'ANULADO')->first(['ExpedientePadId', 'ExpedientePadNumero', 'ExpedientePadEstado']))
+                ? ['id' => (int) $e->ExpedientePadId, 'numero' => $e->ExpedientePadNumero, 'estado' => $e->ExpedientePadEstado] : null,
             // Anulada = "inactiva": el listado la muestra apagada.
             'activo' => ! in_array($this->SupervisionInopinadaEstado, ['ANULADO', 'ANULADA'], true),
             'eess' => $this->whenLoaded('eess', fn () => $this->eess ? [

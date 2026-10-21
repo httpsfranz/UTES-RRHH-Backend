@@ -19,7 +19,7 @@ class AsignacionHorarioController extends Controller
         'horario:HorarioId,HorarioCodigo,HorarioNombre',
     ];
 
-    // GET /api/asignaciones-horario?buscar=...&vinculo_laboral_id=&horario_id=&estado=
+    // GET /api/asignaciones-horario?buscar=...&vinculo_laboral_id=&trabajador_id=&horario_id=&estado=
     //     &desde=AAAA-MM-DD&hasta=AAAA-MM-DD&por_pagina=15
     public function index(Request $request)
     {
@@ -33,6 +33,7 @@ class AsignacionHorarioController extends Controller
                     ->where('TrabajadorNombreCompleto', 'like', "%{$buscar}%")
                     ->orWhere('TrabajadorNumeroDocumento', 'like', "%{$buscar}%"))))
             ->when(AlcanceDeEess::restringeVinculos($request), fn ($q) => $q->whereIn('VinculoLaboralId', AlcanceDeEess::vinculos($request)))
+            ->when($request->filled('trabajador_id'), fn ($q) => $q->whereHas('vinculoLaboral', fn ($v) => $v->where('TrabajadorId', $request->integer('trabajador_id'))))
             ->when($request->filled('horario_id'), fn ($q) => $q->where('HorarioId', $request->integer('horario_id')))
             ->when($request->filled('estado'), fn ($q) => $q->where('AsignacionHorarioEstado', $request->boolean('estado')))
             ->when(AlcanceDeEess::restringe($request), fn ($q) => $q->whereHas('vinculoLaboral', fn ($v) => $v->whereIn('EessId', AlcanceDeEess::ids($request))))

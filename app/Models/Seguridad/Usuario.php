@@ -39,12 +39,25 @@ class Usuario extends Authenticatable
         'UsuarioPasswordHash',
         'UsuarioCorreo',
         'UsuarioEstado',
+        'UsuarioBloqueado',
+        'UsuarioBloqueadoHasta',
+        'UsuarioMotivoBloqueo',
+        'UsuarioIntentosFallidos',
+        'UsuarioDebeCambiarPassword',
+        'UsuarioFechaCambioPassword',
+        'UsuarioUltimoAcceso',
     ];
 
     protected $casts = [
         'TrabajadorId' => 'integer',
         'UsuarioFechaCreacion' => 'datetime',
         'UsuarioEstado' => 'boolean',
+        'UsuarioBloqueado' => 'boolean',
+        'UsuarioBloqueadoHasta' => 'datetime',
+        'UsuarioDebeCambiarPassword' => 'boolean',
+        'UsuarioFechaCambioPassword' => 'datetime',
+        'UsuarioUltimoAcceso' => 'datetime',
+        'UsuarioIntentosFallidos' => 'integer',
     ];
 
     public function getAuthPassword(): string

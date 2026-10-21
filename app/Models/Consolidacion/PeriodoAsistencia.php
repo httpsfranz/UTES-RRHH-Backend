@@ -24,11 +24,13 @@ class PeriodoAsistencia extends Model
         'PeriodoAsistenciaFechaInicio',
         'PeriodoAsistenciaFechaFin',
         'PeriodoAsistenciaEstado',
+        'PeriodoAsistenciaFechaCierre',
+        'PeriodoAsistenciaCerradoPor',
     ];
 
     protected $casts = [
         'PeriodoAsistenciaFechaInicio' => 'date',
-        'PeriodoAsistenciaFechaFin'    => 'date',
+        'PeriodoAsistenciaFechaFin' => 'date',
         'PeriodoAsistenciaFechaCierre' => 'datetime',
     ];
 

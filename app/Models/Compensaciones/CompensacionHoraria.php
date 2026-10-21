@@ -33,6 +33,7 @@ class CompensacionHoraria extends Model
         'CompensacionHorariaAutorizadoPreviamente',
         'CompensacionHorariaObservacion',
         'CompensacionHorariaEstado',
+        'CompensacionHorariaFechaTrabajo',
     ];
 
     protected $casts = [
@@ -45,6 +46,7 @@ class CompensacionHoraria extends Model
         'CompensacionHorariaHorasGeneradas' => 'float',
         'CompensacionHorariaHorasDevueltas' => 'float',
         'CompensacionHorariaFechaLimite' => 'date',
+        'CompensacionHorariaFechaTrabajo' => 'date',
         'CompensacionHorariaAutorizadoPreviamente' => 'boolean',
     ];
 

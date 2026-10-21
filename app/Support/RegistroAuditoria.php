@@ -45,7 +45,49 @@ class RegistroAuditoria
             'AuditoriaDatosAnteriores' => self::json($anteriores),
             'AuditoriaDatosNuevos' => self::json($nuevos),
             'AuditoriaDireccionIp' => request()->ip(),
+            'AuditoriaModulo' => self::modulo($esquema),
+            'AuditoriaDetalle' => self::motivoDeBaja($operacion),
         ]);
+    }
+
+    /**
+     * Motivo elegido en el modal de baja del sistema (MotivoBaja viaja con el DELETE o el PATCH que desactiva).
+     */
+    private static function motivoDeBaja(string $operacion): ?string
+    {
+        $motivo = trim((string) request()->input('MotivoBaja', ''));
+
+        return $operacion !== 'INSERT' && $motivo !== '' ? mb_substr('Motivo de la desactivación: '.$motivo, 0, 500) : null;
+    }
+
+    /**
+     * Evento que no es un alta/edicion/baja de un registro: accesos (LOGIN, LOGIN_FALLIDO, LOGOUT), seguridad (BLOQUEO,
+     * DESBLOQUEO, ACCESO_DENEGADO, PERMISOS, REVOCAR_SESION, CAMBIO_PASSWORD) y consultas sensibles (EXPORTAR, CONSULTA).
+     * Si no hay usuario autenticado (p. ej. un intento de acceso fallido) se indica el usuario afectado.
+     */
+    public static function evento(string $operacion, string $esquema, string $tabla, ?string $registroId, string $detalle, string $resultado = 'EXITO', ?int $usuarioId = null): void
+    {
+        DB::table('Seguridad.Auditoria')->insert([
+            'UsuarioId' => $usuarioId ?? auth()->user()?->getAuthIdentifier(),
+            'AuditoriaEsquema' => $esquema,
+            'AuditoriaTabla' => $tabla,
+            'AuditoriaOperacion' => $operacion,
+            'AuditoriaRegistroId' => $registroId,
+            'AuditoriaDireccionIp' => request()->ip(),
+            'AuditoriaResultado' => $resultado,
+            'AuditoriaModulo' => self::modulo($esquema),
+            'AuditoriaDetalle' => mb_substr($detalle, 0, 500),
+        ]);
+    }
+
+    /** Nombre del modulo del sistema (menu) al que pertenece un esquema de la base. */
+    public static function modulo(string $esquema): string
+    {
+        return [
+            'Organizacion' => 'Organización', 'Personal' => 'Personal', 'Seguridad' => 'Seguridad', 'Biometria' => 'Biometría', 'Configuracion' => 'Configuración',
+            'Programacion' => 'Programación', 'Asistencia' => 'Asistencia', 'Solicitudes' => 'Solicitudes', 'Soporte' => 'Soporte', 'Vacaciones' => 'Vacaciones',
+            'Compensaciones' => 'Compensaciones', 'Consolidacion' => 'Consolidación', 'Disciplina' => 'Disciplina',
+        ][$esquema] ?? $esquema;
     }
 
     /** @param  array<string,mixed>|null  $datos */

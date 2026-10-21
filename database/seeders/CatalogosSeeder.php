@@ -42,6 +42,7 @@ class CatalogosSeeder extends Seeder
         $this->disciplina();
         $this->seguridad();
         $this->parametrosDelSistema();
+        $this->tiposDeNotificacion();
         // En produccion este es el unico seeder que corre: deja listos permisos, matriz de roles y usuarios predeterminados.
         // En desarrollo los crea DatabaseSeeder al final (despues de los datos de prueba, para no desplazar sus Id).
         if (app()->isProduction()) {
@@ -459,6 +460,34 @@ class CatalogosSeeder extends Seeder
         ]);
     }
 
+    /**
+     * Tipos de notificacion y su regla de envio (V005). Los codigos son los que emite el sistema; desde la pantalla se
+     * cambian los roles de destino, el ambito y si van por correo.
+     */
+    private function tiposDeNotificacion(): void
+    {
+        // [codigo, nombre, descripcion, roles de destino, alcance, al interesado, correo]
+        $tipos = [
+            ['PAPELETA_APROBADA', 'Papeleta aprobada', 'Aviso a quien registró la papeleta', null, 'INTERESADO', 1, 0],
+            ['PAPELETA_RECHAZADA', 'Papeleta rechazada', 'Aviso a quien registró la papeleta', null, 'INTERESADO', 1, 1],
+            ['LICENCIA_APROBADA', 'Licencia aprobada', 'Aviso a quien registró la licencia', null, 'INTERESADO', 1, 1],
+            ['LICENCIA_RECHAZADA', 'Licencia rechazada', 'Aviso a quien registró la licencia', null, 'INTERESADO', 1, 1],
+            ['SOLICITUD_DE_CAMBIO_DE_TURNO_APROBADA', 'Cambio de turno aprobado', 'Aviso a quien solicitó el cambio de turno', null, 'INTERESADO', 1, 0],
+            ['SOLICITUD_DE_CAMBIO_DE_TURNO_RECHAZADA', 'Cambio de turno rechazado', 'Aviso a quien solicitó el cambio de turno', null, 'INTERESADO', 1, 1],
+            ['JUSTIFICACION_APROBADA', 'Justificación aprobada', 'Aviso a quien registró la justificación de faltas', null, 'INTERESADO', 1, 0],
+            ['JUSTIFICACION_RECHAZADA', 'Justificación rechazada', 'Aviso a quien registró la justificación de faltas', null, 'INTERESADO', 1, 1],
+            ['ALERTA_FALTAS_REITERADAS', 'Faltas reiteradas', 'Trabajadores que alcanzan el umbral de faltas del RIT (Art. 23)', 'ADMIN,RRHH_RED', 'RED', 0, 1],
+            ['CONSOLIDADO_OBSERVADO', 'Consolidado observado', 'Se pide corregir la asistencia de un consolidado', 'RESP_EESS', 'EESS', 0, 1],
+            ['CUENTA_BLOQUEADA', 'Cuenta bloqueada', 'Una cuenta se bloqueó por intentos fallidos o por el administrador', 'ADMIN', 'RED', 1, 1],
+            ['SUPERVISION_OBSERVADA', 'Supervisión inopinada observada', 'El acta de una supervisión registró observaciones', 'RRHH_RED,JEFE_MICRORED', 'MICRORED', 0, 1],
+            ['CALENDARIO_NO_LABORABLE', 'Día no laborable registrado', 'Se registró un feriado o día no laborable que afecta la asistencia', 'RESP_EESS,PROGRAMADOR', 'MICRORED', 0, 0],
+        ];
+        $this->sembrar('Soporte.TipoNotificacion', 'TipoNotificacionCodigo', array_map(fn (array $t) => [
+            'TipoNotificacionCodigo' => $t[0], 'TipoNotificacionNombre' => $t[1], 'TipoNotificacionDescripcion' => $t[2], 'TipoNotificacionRolesDestino' => $t[3],
+            'TipoNotificacionAlcance' => $t[4], 'TipoNotificacionAlInteresado' => $t[5], 'TipoNotificacionEnviaCorreo' => $t[6],
+        ], $tipos));
+    }
+
     private function parametrosDelSistema(): void
     {
         $this->sembrar('Configuracion.ParametroSistema', 'ParametroSistemaCodigo', [
@@ -468,6 +497,9 @@ class CatalogosSeeder extends Seeder
             ['ParametroSistemaCodigo' => 'DIAS_ANTICIPO_PROG', 'ParametroSistemaValor' => '5', 'ParametroSistemaDescripcion' => 'Dias de anticipacion para remitir la programacion'],
             ['ParametroSistemaCodigo' => 'REFRIGERIO_DESCUENTA_JORNADA', 'ParametroSistemaValor' => '0', 'ParametroSistemaDescripcion' => '1 = el refrigerio de la sede (45 min) se resta de los minutos trabajados; 0 = no se marca ni se descuenta (RIT Art. 16.1)'],
             ['ParametroSistemaCodigo' => 'TOLERANCIA_GLOBAL_MIN', 'ParametroSistemaValor' => '5', 'ParametroSistemaDescripcion' => 'Minutos de tolerancia por defecto'],
+            ['ParametroSistemaCodigo' => 'SESION_INACTIVIDAD_MIN', 'ParametroSistemaValor' => '30', 'ParametroSistemaDescripcion' => 'Minutos sin actividad tras los cuales la sesion expira y se pide ingresar de nuevo'],
+            ['ParametroSistemaCodigo' => 'LOGIN_INTENTOS_MAX', 'ParametroSistemaValor' => '5', 'ParametroSistemaDescripcion' => 'Intentos fallidos seguidos de inicio de sesion antes de bloquear la cuenta'],
+            ['ParametroSistemaCodigo' => 'LOGIN_BLOQUEO_MIN', 'ParametroSistemaValor' => '15', 'ParametroSistemaDescripcion' => 'Minutos que la cuenta queda bloqueada tras superar los intentos fallidos'],
         ]);
     }
 }

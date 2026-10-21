@@ -17,6 +17,16 @@ class RolVacacionalRequest extends CatalogoRequest
     use ReglasDeNegocio;
     use ReglasDeVacaciones;
 
+    /** Con inicio y fin (lo que se elige en el calendario) los dias calendario se calculan: no se digitan. */
+    protected function prepareForValidation(): void
+    {
+        $inicio = $this->input('RolVacacionalFechaProgramada');
+        $fin = $this->input('RolVacacionalFechaFinProgramada');
+        if (blank($this->input('RolVacacionalDias')) && is_string($inicio) && is_string($fin) && strtotime($inicio) && strtotime($fin) && $fin >= $inicio) {
+            $this->merge(['RolVacacionalDias' => intdiv(strtotime($fin) - strtotime($inicio), 86400) + 1]);
+        }
+    }
+
     public function rules(): array
     {
         return [

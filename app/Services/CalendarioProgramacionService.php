@@ -205,7 +205,7 @@ class CalendarioProgramacionService
      * @param  list<int>  $ids
      * @return Collection<string,list<array<string,string|null>>>
      */
-    private function ausenciasPorDia(array $ids, CarbonImmutable $primero, CarbonImmutable $ultimo): Collection
+    public function ausenciasPorDia(array $ids, CarbonImmutable $primero, CarbonImmutable $ultimo): Collection
     {
         $d = $primero->toDateString();
         $h = $ultimo->toDateString();

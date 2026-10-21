@@ -19,6 +19,7 @@ class CompensacionHorariaResource extends JsonResource
             'horas_generadas' => $this->CompensacionHorariaHorasGeneradas,
             'horas_devueltas' => $this->CompensacionHorariaHorasDevueltas,
             'fecha_limite' => optional($this->CompensacionHorariaFechaLimite)->format('Y-m-d'),
+            'fecha_trabajo' => optional($this->CompensacionHorariaFechaTrabajo)->format('Y-m-d'),
             'autorizado_previamente' => (bool) $this->CompensacionHorariaAutorizadoPreviamente,
             'observacion' => $this->CompensacionHorariaObservacion,
             'estado' => $this->CompensacionHorariaEstado,

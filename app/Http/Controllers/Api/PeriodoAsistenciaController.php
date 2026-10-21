@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\PeriodoAsistenciaRequest;
 use App\Http\Resources\PeriodoAsistenciaResource;
 use App\Models\Consolidacion\PeriodoAsistencia;
+use App\Support\HoraLocal;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class PeriodoAsistenciaController extends Controller
 {
@@ -51,7 +53,14 @@ class PeriodoAsistenciaController extends Controller
     // PUT|PATCH /api/periodos-asistencia/{periodo}
     public function update(PeriodoAsistenciaRequest $request, PeriodoAsistencia $periodo)
     {
-        $periodo->update($request->validated());
+        $datos = $request->validated();
+        // Cerrar deja constancia de cuando y quien, y cierra los consolidados (ya conformes) del periodo.
+        if (($datos['PeriodoAsistenciaEstado'] ?? null) === 'CERRADO') {
+            $datos['PeriodoAsistenciaFechaCierre'] = HoraLocal::ahora();
+            $datos['PeriodoAsistenciaCerradoPor'] = $request->user()?->getAuthIdentifier();
+            DB::table('Consolidacion.ConsolidadoAsistencia')->where('PeriodoAsistenciaId', $periodo->PeriodoAsistenciaId)->update(['ConsolidadoAsistenciaEstado' => 'CERRADO']);
+        }
+        $periodo->update($datos);
 
         return new PeriodoAsistenciaResource($periodo->fresh());
     }

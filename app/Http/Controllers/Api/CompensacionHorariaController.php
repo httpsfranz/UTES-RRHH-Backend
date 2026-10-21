@@ -10,6 +10,7 @@ use App\Http\Resources\CompensacionHorariaResource;
 use App\Models\Compensaciones\CompensacionHoraria;
 use App\Services\CompensacionHorariaService;
 use App\Support\AlcanceDeEess;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -47,7 +48,25 @@ class CompensacionHorariaController extends Controller
             ->orderByDesc('CompensacionHorariaId')
             ->paginate(max(1, min($request->integer('por_pagina', 15), 100)));
 
+        // Las autorizadas cuyo dia ya ocurrio toman sus horas de la marcacion de salida (no se digitan).
+        $servicio = app(CompensacionHorariaService::class);
+        $registros->getCollection()->each(fn (CompensacionHoraria $c) => $servicio->recalcular($c));
+
         return CompensacionHorariaResource::collection($registros);
+    }
+
+    // GET /api/compensaciones-horarias/candidatas?eess_id=&desde=AAAA-MM-DD&hasta=AAAA-MM-DD
+    // Dias con una hora o mas fuera de la jornada segun las marcaciones (potencialmente compensables) y si tienen autorizacion previa.
+    public function candidatas(Request $request, CompensacionHorariaService $servicio): JsonResponse
+    {
+        $datos = $request->validate([
+            'eess_id' => ['nullable', 'integer'],
+            'desde' => ['required', 'date_format:Y-m-d'],
+            'hasta' => ['required', 'date_format:Y-m-d', 'after_or_equal:desde', 'before_or_equal:'.CarbonImmutable::parse((string) $request->input('desde', 'today'))->addDays(62)->toDateString()],
+        ], ['hasta.before_or_equal' => 'Consulta como máximo dos meses.']);
+        $eess = AlcanceDeEess::restringe($request) ? AlcanceDeEess::ids($request) : null;
+
+        return response()->json(['data' => $servicio->candidatas($eess, $datos['desde'], $datos['hasta'])]);
     }
 
     // POST /api/compensaciones-horarias

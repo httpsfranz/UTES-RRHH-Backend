@@ -9,6 +9,7 @@ use App\Http\Resources\RolPermisoResource;
 use App\Models\Seguridad\Rol;
 use App\Models\Seguridad\RolPermiso;
 use App\Services\RolPermisoService;
+use App\Support\ResguardoDeAdministracion;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -49,7 +50,7 @@ class RolPermisoController extends Controller
     // PUT|PATCH /api/roles-permisos/{asignacion}
     public function update(RolPermisoRequest $request, RolPermiso $asignacion)
     {
-        $asignacion->update($request->validated());
+        ResguardoDeAdministracion::proteger($request->user(), fn () => $asignacion->update($request->validated()));
 
         return new RolPermisoResource($asignacion->fresh()->load('rol', 'permiso'));
     }
@@ -58,7 +59,7 @@ class RolPermisoController extends Controller
     public function destroy(RolPermiso $asignacion): JsonResponse
     {
         // Tabla puente: aqui SI se borra la fila (quitar el permiso al rol). Nada la referencia.
-        $asignacion->delete();
+        ResguardoDeAdministracion::proteger(request()->user(), fn () => $asignacion->delete());
 
         return response()->json(['mensaje' => 'Permiso retirado del rol.'], 200);
     }
@@ -79,7 +80,7 @@ class RolPermisoController extends Controller
     // PUT /api/roles/{rol}/permisos : reemplaza el conjunto de permisos del rol
     public function sincronizar(RolPermisosSincronizarRequest $request, Rol $rol, RolPermisoService $servicio)
     {
-        $resultado = $servicio->sincronizar($rol, $request->validated('PermisoIds'));
+        $resultado = ResguardoDeAdministracion::proteger($request->user(), fn () => $servicio->sincronizar($rol, $request->validated('PermisoIds')));
 
         return response()->json([
             'mensaje' => 'Permisos del rol actualizados.',

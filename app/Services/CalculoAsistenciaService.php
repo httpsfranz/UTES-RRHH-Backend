@@ -188,7 +188,7 @@ class CalculoAsistenciaService
                 't.TurnoToleranciaEntradaMinutos as tol_entrada', 't.TurnoToleranciaSalidaMinutos as tol_salida', 't.TurnoRefrigerioMinutos as refrigerio'])
             ->groupBy('vinculo');
 
-        $noLaborables = DB::table('Soporte.CalendarioNoLaborable')->where($dia('CalendarioNoLaborableFecha'))
+        $noLaborables = DB::table('Soporte.CalendarioNoLaborable')->where('CalendarioNoLaborableEstado', 1)->where($dia('CalendarioNoLaborableFecha'))
             ->get(['CalendarioNoLaborableFecha as fecha', 'MicroredId as microred'])
             ->groupBy(fn ($r) => substr((string) $r->fecha, 0, 10));
 

@@ -21,6 +21,22 @@ class PeriodoVacacionalRequest extends CatalogoRequest
     /** ANULADO no se envia: se llega con DELETE. */
     public const ESTADOS_EDITABLES = ['ABIERTO', 'CERRADO'];
 
+    /**
+     * El record es un año de servicios: con la fecha de inicio basta (el fin es un año despues menos un dia) y el año del
+     * record es el año en que se cumple (el de la fecha de fin). Ninguno de los dos se digita.
+     */
+    protected function prepareForValidation(): void
+    {
+        $inicio = $this->input('PeriodoVacacionalFechaInicio');
+        if (is_string($inicio) && strtotime($inicio) && blank($this->input('PeriodoVacacionalFechaFin'))) {
+            $this->merge(['PeriodoVacacionalFechaFin' => date('Y-m-d', strtotime($inicio.' +1 year -1 day'))]);
+        }
+        $fin = $this->input('PeriodoVacacionalFechaFin');
+        if (is_string($fin) && strtotime($fin) && ($this->has('PeriodoVacacionalFechaFin') || $this->esCreacion())) {
+            $this->merge(['PeriodoVacacionalAnio' => (int) date('Y', strtotime($fin))]);
+        }
+    }
+
     public function rules(): array
     {
         return [

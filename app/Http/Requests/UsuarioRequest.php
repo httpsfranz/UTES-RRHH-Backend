@@ -41,6 +41,9 @@ class UsuarioRequest extends CatalogoRequest
             // Correo institucional de la cuenta: sirve para login/notificaciones, asi que no se repite entre cuentas.
             'UsuarioCorreo' => ['nullable', 'string', 'email', 'max:200', 'regex:/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/D', $this->unico(Usuario::class, 'UsuarioCorreo')],
             'UsuarioEstado' => $this->booleano(),
+            // Estado de la cuenta elegido en el formulario (alta o edicion): se traduce a UsuarioEstado y UsuarioBloqueado.
+            'UsuarioEstadoCuenta' => ['nullable', Rule::in(['ACTIVO', 'INACTIVO', 'BLOQUEADO'])],
+            'UsuarioMotivoBloqueo' => ['nullable', 'required_if:UsuarioEstadoCuenta,BLOQUEADO', 'string', 'max:200'],
         ];
     }
 
