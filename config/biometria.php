@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Marcador facial (proyecto aparte, C:\Proyectos\UTES-Marcador-Facial): el navegador del kiosco calcula el descriptor
+ * Marcador facial (proyecto aparte, C:\Proyectos\UTES-RRHH-Marcador-Facial): el navegador del kiosco calcula el descriptor
  * del rostro (128 numeros, face-api) y lo envia; el backend lo compara con las plantillas ROSTRO de
  * Biometria.PlantillaBiometrica y registra la marcacion.
  */

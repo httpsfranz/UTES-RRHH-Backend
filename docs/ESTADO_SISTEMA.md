@@ -7,7 +7,7 @@
 **Cómo leer este documento:**
 - **Estados:** **IMPLEMENTADO** quiere decir que está en el código y tiene pruebas. **EN PROGRESO** quiere decir que existe en parte. **PENDIENTE** quiere decir que no existe.
 - **NO DISPONIBLE:** marca un dato que no aparece ni en el código ni en la documentación. Todos se recogen en la sección 18.
-- **Rutas:** son relativas a cada proyecto. `BE/` es `UTES-RRHH-Backend`, `FE/` es `UTES-RRHH-Frontend` y `KF/` es `UTES-Marcador-Facial`.
+- **Rutas:** son relativas a cada proyecto. `BE/` es `UTES-RRHH-Backend`, `FE/` es `UTES-RRHH-Frontend` y `KF/` es `UTES-RRHH-Marcador-Facial`.
 
 ---
 
@@ -168,7 +168,7 @@ C:\Proyectos
 │       ├── nav/                       menu.js, acceso.js, permisosDeApi.js (espejo de permisos)
 │       ├── pages/<modulo>/            156 archivos de pantallas y formularios, en 13 módulos
 │       └── routes.jsx                 rutas (carga diferida) y redirecciones de rutas antiguas
-├── UTES-Marcador-Facial/              kiosco de marcación facial
+├── UTES-RRHH-Marcador-Facial/         kiosco de marcación facial
 │   ├── src/                           main.js, rostro.js (face-api), api.js, config.js, estilos.css
 │   └── scripts/copiar-modelos.mjs     copia los modelos de face-api a public/models
 ├── AUDITORIA_PENDIENTES.md            auditoría de pendientes (12 y 13 oct)
@@ -373,7 +373,7 @@ flowchart LR
 flowchart TB
     subgraph Cliente
         FE[SPA React 19<br/>UTES-RRHH-Frontend :5173]
-        KF[Kiosco facial JS + face-api<br/>UTES-Marcador-Facial :5180]
+        KF[Kiosco facial JS + face-api<br/>UTES-RRHH-Marcador-Facial :5180]
     end
     subgraph API[Backend Laravel 13 :8000]
         MW[Middleware<br/>auth:sanctum · SesionActiva · VerificarPermiso · dispositivo · throttle]
@@ -819,7 +819,7 @@ Turnos de los establecimientos, también **coinciden**:
 ```mermaid
 flowchart LR
     subgraph EESS[Establecimiento de salud]
-        PC[PC kiosco + cámara<br/>navegador · UTES-Marcador-Facial]
+        PC[PC kiosco + cámara<br/>navegador · UTES-RRHH-Marcador-Facial]
     end
     subgraph Oficinas[RRHH / Jefaturas]
         NAV[Navegador<br/>SPA UTES-RRHH-Frontend]
