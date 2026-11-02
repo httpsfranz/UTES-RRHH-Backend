@@ -22,6 +22,7 @@ class ConsolidadoAsistenciaResource extends JsonResource
             'minutos_extra' => $this->ConsolidadoAsistenciaMinutosExtra,
             'fecha_generacion' => optional($this->ConsolidadoAsistenciaFechaGeneracion)->format('Y-m-d H:i:s'),
             'estado' => $this->ConsolidadoAsistenciaEstado,
+            'minutos_sin_goce' => (int) $this->ConsolidadoAsistenciaMinutosSinGoce,
             // Revision: observacion (motivo de la correccion pedida o nota de conformidad), quien y cuando reviso.
             'observacion' => $this->ConsolidadoAsistenciaObservacion,
             'revisado_por' => $this->ConsolidadoAsistenciaRevisadoPor ? DB::table('Seguridad.Usuario')->where('UsuarioId', $this->ConsolidadoAsistenciaRevisadoPor)->value('UsuarioNombre') : null,

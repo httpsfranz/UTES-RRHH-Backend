@@ -13,6 +13,8 @@ Artisan::command('inspire', function () {
 Schedule::command('asistencia:calcular --dias=2')->hourly()->timezone('America/Lima')->withoutOverlapping();
 Schedule::command('asistencia:calcular --dias=10')->dailyAt('02:00')->timezone('America/Lima')->withoutOverlapping();
 Schedule::command('consolidado:actualizar')->dailyAt('02:30')->timezone('America/Lima')->withoutOverlapping();
+// Respaldo diario de la base de datos (RIT, Art. 14).
+Schedule::command('sistema:respaldar')->dailyAt('01:00')->timezone('America/Lima')->withoutOverlapping();
 Schedule::command('sistema:mantenimiento')->dailyAt('03:00')->timezone('America/Lima')->withoutOverlapping();
 // Correos de notificaciones: reintenta los pendientes (hasta 3 intentos; luego quedan FALLIDO con el error).
 Schedule::command('notificaciones:enviar')->everyMinute()->withoutOverlapping();

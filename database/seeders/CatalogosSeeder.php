@@ -48,6 +48,8 @@ class CatalogosSeeder extends Seeder
         if (app()->isProduction()) {
             $this->call(UsuariosYPermisosSeeder::class);
         }
+
+        $this->call(CatalogosRitSeeder::class);
     }
 
     private function organizacion(): void

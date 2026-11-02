@@ -41,6 +41,10 @@ trait ReglasDeVacaciones
 
             return;
         }
+        // El periodo completo se programa del dia 1 al 30 del mes (RIT, Art. 70 f).
+        if ($dias === 30 && substr($inicio, 8, 2) !== '01') {
+            $validator->errors()->add('RolVacacionalFechaProgramada', 'El período vacacional completo se inicia el primer día del mes (RIT, Art. 70).');
+        }
         $this->vinculoVigenteEn($validator, 'RolVacacionalFechaProgramada', $inicio, $fin, $periodo->VinculoLaboralId);
         $this->rechazaPeriodoCerrado($validator, 'RolVacacionalFechaProgramada', $inicio, $fin);
 

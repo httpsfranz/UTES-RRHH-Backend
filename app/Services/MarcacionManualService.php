@@ -61,6 +61,10 @@ class MarcacionManualService
             throw ValidationException::withMessages(['VinculoLaboralId' => 'El período de asistencia de hoy está cerrado: ya no admite marcaciones.']);
         }
 
+        if (! self::autorizada($vinculoId, (int) $vinculo->EessId, $hoy)) {
+            throw ValidationException::withMessages(['VinculoLaboralId' => 'Este establecimiento tiene reloj facial: la marca manual exige autorización de Recursos Humanos (RIT, Art. 16).']);
+        }
+
         $abierta = $this->entradaAbierta($vinculoId, $ahora);
         if ($tipo === 'ENTRADA' && $abierta !== null) {
             throw ValidationException::withMessages(['MarcacionTipo' => 'Ya tiene una entrada registrada a las '.$abierta->format('H:i').' sin salida: marca su salida.']);
@@ -76,7 +80,7 @@ class MarcacionManualService
         }
 
         $metodo = (int) DB::table('Biometria.MetodoMarcacion')->where('MetodoMarcacionCodigo', 'MANUAL')->value('MetodoMarcacionId');
-        $nota = 'Registro manual por '.$operador->UsuarioNombre.' (RIT, Art. 21).';
+        $nota = 'Registro manual por '.$operador->UsuarioNombre.' (RIT, Art. 16).';
         $marcacion = Marcacion::create([
             'VinculoLaboralId' => $vinculoId,
             'MetodoMarcacionId' => $metodo,
@@ -98,6 +102,29 @@ class MarcacionManualService
             'hora' => $ahora->format('H:i'),
             'mensaje' => ($tipo === 'ENTRADA' ? 'Entrada' : 'Salida').' de '.$nombre.' registrada a las '.$ahora->format('H:i').'.',
         ];
+    }
+
+    /**
+     * La marca manual es excepcional (RIT, Art. 16): procede en un establecimiento sin reloj facial activo, con una
+     * autorizacion vigente del trabajador o durante una contingencia autorizada por RRHH.
+     */
+    public static function autorizada(int $vinculoId, int $eessId, string $fecha): bool
+    {
+        $conReloj = DB::table('Biometria.DispositivoMarcacion')->where('EessId', $eessId)->where('DispositivoMarcacionEstado', 1)->where('DispositivoMarcacionTipo', 'like', '%acial%')->exists();
+        if (! $conReloj) {
+            return true;
+        }
+        $contingencia = DB::table('Biometria.ContingenciaMarcacion')->where('EessId', $eessId)->where('ContingenciaMarcacionEstado', 1)
+            ->whereDate('ContingenciaMarcacionFechaInicio', '<=', $fecha)->whereDate('ContingenciaMarcacionFechaFin', '>=', $fecha)->exists();
+        if ($contingencia) {
+            return true;
+        }
+        $trabajador = DB::table('Personal.VinculoLaboral')->where('VinculoLaboralId', $vinculoId)->value('TrabajadorId');
+
+        return DB::table('Biometria.AutorizacionMetodo as a')->join('Biometria.MetodoMarcacion as m', 'm.MetodoMarcacionId', '=', 'a.MetodoMarcacionId')
+            ->where('a.TrabajadorId', $trabajador)->where('m.MetodoMarcacionCodigo', 'MANUAL')->where('a.AutorizacionMetodoEstado', 1)
+            ->whereDate('a.AutorizacionMetodoFechaInicio', '<=', $fecha)
+            ->where(fn ($q) => $q->whereNull('a.AutorizacionMetodoFechaFin')->orWhereDate('a.AutorizacionMetodoFechaFin', '>=', $fecha))->exists();
     }
 
     /** Hora de la ultima ENTRADA valida sin una SALIDA posterior, si ocurrio en las ultimas horas. */

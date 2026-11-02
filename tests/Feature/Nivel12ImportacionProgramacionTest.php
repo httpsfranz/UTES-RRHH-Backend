@@ -68,7 +68,7 @@ class Nivel12ImportacionProgramacionTest extends TestCase
     public function test_la_plantilla_trae_al_personal_con_lo_ya_programado_y_las_ausencias_entre_parentesis(): void
     {
         $v = $this->nuevoVinculo();
-        $this->pintar($v, '2026-12-07', ['M', 'T']);
+        $this->pintar($v, '2026-12-07', ['M']);
         $this->rolVacacional($this->periodoVacacional($v), '2026-12-14', 3);
 
         $respuesta = $this->get('/api/programacion-mensual/plantilla?'.http_build_query(['eess_id' => $this->eessId()] + self::MES))->assertOk();
@@ -78,7 +78,7 @@ class Nivel12ImportacionProgramacionTest extends TestCase
         $cabecera = $filas[2];
         $fila = collect($filas)->first(fn ($f) => HojaDeCalculo::texto($f[0]) === $this->dni($v));
         $this->assertSame('DNI', $cabecera[0]);
-        $this->assertSame('M+T', $fila[array_search(7, $cabecera, true)]);
+        $this->assertSame('M', $fila[array_search(7, $cabecera, true)]);
         $this->assertMatchesRegularExpression('/^\(.+\)$/', $fila[array_search(14, $cabecera, true)]);
     }
 
@@ -86,7 +86,7 @@ class Nivel12ImportacionProgramacionTest extends TestCase
     {
         $v = $this->nuevoVinculo();   // regimen "OTRO": no hace guardia
 
-        $r = $this->subir($this->excel([$v => [7 => 'M', 8 => 'm + t', 9 => 'X', 10 => 'N']]))->assertOk()->json();
+        $r = $this->subir($this->excel([$v => [7 => 'M', 8 => 't', 9 => 'X', 10 => 'N']]))->assertOk()->json();
 
         $this->assertSame([1, 3, 2], [$r['filas'], $r['cambios'], $r['validos']]);
         $this->assertSame(['Día 10', 'Día 9'], array_column($r['errores'], 'campo'));
@@ -102,11 +102,11 @@ class Nivel12ImportacionProgramacionTest extends TestCase
         $this->pintar($v, '2026-12-14', ['M']);
         $this->pintar($otro, '2026-12-07', ['M']);
 
-        $r = $this->subir($this->excel([$v => [7 => 'M', 8 => 'M/T']]), ['confirmar' => 1])->assertCreated()->json();
+        $r = $this->subir($this->excel([$v => [7 => 'M', 8 => 'T']]), ['confirmar' => 1])->assertCreated()->json();
 
         $this->assertSame(3, $r['aplicados']);
         $this->assertSame(['M'], $this->codigos($v, '2026-12-07'));
-        $this->assertSame(['M', 'T'], $this->codigos($v, '2026-12-08'));
+        $this->assertSame(['T'], $this->codigos($v, '2026-12-08'));
         $this->assertSame([], $this->codigos($v, '2026-12-14'), 'el dia vacio en el archivo queda libre');
         $this->assertSame(['M'], $this->codigos($otro, '2026-12-07'), 'quien no esta en el archivo no se toca');
     }

@@ -20,6 +20,7 @@ class AsistenciaDiaria extends Model
     public $timestamps = false;
 
     protected $fillable = [
+        'AsistenciaDiariaMinutosSinGoce',
         'VinculoLaboralId',
         'TurnoProgramadoId',
         'EstadoAsistenciaId',
@@ -37,6 +38,7 @@ class AsistenciaDiaria extends Model
     ];
 
     protected $casts = [
+        'AsistenciaDiariaMinutosSinGoce' => 'integer',
         'AsistenciaDiariaId' => 'integer',
         'VinculoLaboralId' => 'integer',
         'TurnoProgramadoId' => 'integer',

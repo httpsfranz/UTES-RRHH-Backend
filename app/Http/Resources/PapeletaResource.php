@@ -28,6 +28,13 @@ class PapeletaResource extends JsonResource
             'fecha_registro' => optional($this->PapeletaFechaRegistro)->format('Y-m-d H:i:s'),
             'fecha_resolucion' => optional($this->PapeletaFechaResolucion)->format('Y-m-d H:i:s'),
             'estado' => $this->PapeletaEstado,
+            'es_urgente' => (bool) $this->PapeletaEsUrgente,
+            'parto_multiple' => (bool) $this->PapeletaPartoMultiple,
+            'fecha_nacimiento_hijo' => optional($this->PapeletaFechaNacimientoHijo)->format('Y-m-d'),
+            'unidad_destino' => $this->PapeletaUnidadDestino,
+            'conforme_destino' => $this->PapeletaConformeDestino,
+            'visto_bueno' => $this->PapeletaVistoBuenoPor !== null,
+            'fecha_visto_bueno' => optional($this->PapeletaFechaVistoBueno)->format('Y-m-d H:i:s'),
             // Anulada = "inactiva": el listado la muestra apagada.
             'activo' => ! in_array($this->PapeletaEstado, ['ANULADO', 'ANULADA'], true),
             'trabajador' => $this->whenLoaded('vinculoLaboral', fn () => $this->vinculoLaboral?->relationLoaded('trabajador') && $this->vinculoLaboral->trabajador ? [

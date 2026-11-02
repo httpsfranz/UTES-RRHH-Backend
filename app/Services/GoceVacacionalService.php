@@ -28,6 +28,9 @@ class GoceVacacionalService
                 throw new DomainException('La programación o el período vacacional ya no están vigentes: no se puede aprobar el goce.');
             }
             $dias = (float) $goce->GoceVacacionalDias;
+            if ($dias >= SolicitudService::DIAS_CON_ENTREGA_DE_CARGO && ! SolicitudService::tieneEntregaDeCargo((int) $periodo->VinculoLaboralId, 'VACACIONES', $goce->GoceVacacionalFechaInicio->toDateString())) {
+                throw new DomainException('Un descanso de 30 días o más exige registrar antes la entrega de cargo (RIT, Art. 70).');
+            }
             if ($dias > (float) $periodo->PeriodoVacacionalDiasDisponibles) {
                 throw new DomainException("El período vacacional solo tiene {$periodo->PeriodoVacacionalDiasDisponibles} días disponibles.");
             }

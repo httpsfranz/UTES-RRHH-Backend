@@ -207,7 +207,13 @@ class ProgramacionMensualService
             return $motivo;
         }
 
-        return $this->turnos->conflictoDeAgenda($vinculo->TrabajadorId, $fecha, substr((string) $turno->TurnoHoraEntrada, 0, 8), substr((string) $turno->TurnoHoraSalida, 0, 8));
+        $entrada = substr((string) $turno->TurnoHoraEntrada, 0, 8);
+        $salida = substr((string) $turno->TurnoHoraSalida, 0, 8);
+        if ($motivo = $this->turnos->excesoDeJornada($vinculo, $fecha, TurnoProgramado::minutosEntre($entrada, $salida), (bool) $turno->TurnoEsGuardia)) {
+            return $motivo;
+        }
+
+        return $this->turnos->conflictoDeAgenda($vinculo->TrabajadorId, $fecha, $entrada, $salida);
     }
 
     /** La programacion mensual vigente (no anulada) del establecimiento en ese mes. */

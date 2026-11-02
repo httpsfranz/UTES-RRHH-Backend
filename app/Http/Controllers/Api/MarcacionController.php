@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\MarcacionRequest;
 use App\Http\Resources\MarcacionResource;
 use App\Models\Asistencia\Marcacion;
+use App\Services\ImportacionMarcacionesService;
 use App\Support\AlcanceDeEess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -81,5 +82,13 @@ class MarcacionController extends Controller
         $marcacion->update(['MarcacionEsValida' => false]);
 
         return response()->json(['mensaje' => 'Marcación invalidada.'], 200);
+    }
+
+    // POST /api/marcaciones/importar  (archivo con DNI, FECHA_HORA y TIPO exportado por un reloj; ?confirmar=1 guarda)
+    public function importar(Request $request, ImportacionMarcacionesService $servicio): JsonResponse
+    {
+        $archivo = $request->validate(['archivo' => ['required', 'file', 'mimes:csv,txt,xlsx', 'max:5120']])['archivo'];
+
+        return response()->json($servicio->importar($archivo->getRealPath(), strtolower($archivo->getClientOriginalExtension()), $request->boolean('confirmar')));
     }
 }

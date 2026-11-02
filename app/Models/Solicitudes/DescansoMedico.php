@@ -21,6 +21,7 @@ class DescansoMedico extends Model
     public $timestamps = false;
 
     protected $fillable = [
+        'DescansoMedicoEsExtemporaneo',
         'VinculoLaboralId',
         'DocumentoSustentoId',
         'DescansoMedicoNumeroCitt',
@@ -33,6 +34,7 @@ class DescansoMedico extends Model
     ];
 
     protected $casts = [
+        'DescansoMedicoEsExtemporaneo' => 'boolean',
         'DescansoMedicoId' => 'integer',
         'VinculoLaboralId' => 'integer',
         'DocumentoSustentoId' => 'integer',

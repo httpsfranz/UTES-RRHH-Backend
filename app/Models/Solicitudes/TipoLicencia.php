@@ -20,6 +20,11 @@ class TipoLicencia extends Model
 
     // La PK nunca va aca.
     protected $fillable = [
+        'TipoLicenciaSexo',
+        'TipoLicenciaMaximoDiasCas',
+        'TipoLicenciaMaximoDiasAnio',
+        'TipoLicenciaACuentaVacaciones',
+        'TipoLicenciaExigeAnticipacion',
         'TipoLicenciaCodigo',
         'TipoLicenciaNombre',
         'TipoLicenciaDescripcion',
@@ -30,9 +35,13 @@ class TipoLicencia extends Model
     ];
 
     protected $casts = [
-        'TipoLicenciaConGoce'    => 'boolean', // BIT -> true/false
+        'TipoLicenciaMaximoDiasCas' => 'integer',
+        'TipoLicenciaMaximoDiasAnio' => 'integer',
+        'TipoLicenciaACuentaVacaciones' => 'boolean',
+        'TipoLicenciaExigeAnticipacion' => 'boolean',
+        'TipoLicenciaConGoce' => 'boolean', // BIT -> true/false
         'TipoLicenciaMaximoDias' => 'integer',
-        'TipoLicenciaEstado'     => 'boolean',
+        'TipoLicenciaEstado' => 'boolean',
     ];
 
     // --- Scopes: filtros reutilizables ---

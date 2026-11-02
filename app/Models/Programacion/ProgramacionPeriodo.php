@@ -21,6 +21,8 @@ class ProgramacionPeriodo extends Model
     public $timestamps = false;
 
     protected $fillable = [
+        'ProgramacionPeriodoReprogramaciones',
+        'ProgramacionPeriodoMotivoTardio',
         'EessId',
         'TipoPeriodoProgramacionId',
         'UsuarioRegistroId',
@@ -37,6 +39,7 @@ class ProgramacionPeriodo extends Model
     ];
 
     protected $casts = [
+        'ProgramacionPeriodoReprogramaciones' => 'integer',
         'ProgramacionPeriodoId' => 'integer',
         'EessId' => 'integer',
         'TipoPeriodoProgramacionId' => 'integer',

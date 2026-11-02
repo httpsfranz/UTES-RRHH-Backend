@@ -12,7 +12,7 @@ use Illuminate\Validation\Validator;
 class OcurrenciaPorteriaRequest extends CatalogoRequest
 {
     /**
-     * Tipos que registra el servicio de vigilancia segun el RIT (Art. 21): salidas con papeleta, su retorno,
+     * Tipos que registra el servicio de vigilancia segun el RIT (Art. 16): salidas con papeleta, su retorno,
      * el exceso de las 3 horas de la papeleta y el abandono sin autorizacion; OTRO queda abierto.
      */
     public const TIPOS = [

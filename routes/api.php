@@ -76,6 +76,8 @@ use App\Http\Controllers\Api\ProgramacionMensualController;
 use App\Http\Controllers\Api\ProgramacionPeriodoController;
 use App\Http\Controllers\Api\ProgramacionTrabajadorController;
 use App\Http\Controllers\Api\RegimenLaboralController;
+use App\Http\Controllers\Api\RegistroRitController;
+use App\Http\Controllers\Api\ReporteOficialController;
 use App\Http\Controllers\Api\ResponsableEessController;
 use App\Http\Controllers\Api\RolController;
 use App\Http\Controllers\Api\RolPermisoController;
@@ -103,10 +105,11 @@ use App\Http\Controllers\Api\UsuarioAmbitoController;
 use App\Http\Controllers\Api\UsuarioController;
 use App\Http\Controllers\Api\UsuarioRolController;
 use App\Http\Controllers\Api\VinculoLaboralController;
+use App\Support\RegistrosRit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-/* ---- Marcador facial (kiosco, proyecto aparte): se autentica con codigo y clave de dispositivo, no con sesion ---- */
+/* ---- Marcador facial (proyecto aparte): se autentica con codigo y clave de dispositivo, no con sesion ---- */
 Route::middleware(['dispositivo', 'throttle:60,1'])->prefix('marcador-facial')->group(function () {
     Route::get('estado', [MarcadorFacialController::class, 'estado']);
     Route::post('marcar', [MarcadorFacialController::class, 'marcar']);
@@ -120,11 +123,26 @@ Route::middleware(['auth:sanctum', 'sesion'])->group(function () {
     Route::post('auth/cambiar-password', [AuthController::class, 'cambiarPassword'])->middleware('throttle:10,1');
 });
 
+/* ---- Registros sencillos del RIT (App\Support\RegistrosRit): el parametro {registro} se resuelve segun el recurso ---- */
+Route::bind('registro', function (string $valor, Illuminate\Routing\Route $ruta) {
+    $modelo = RegistrosRit::RECURSOS[explode('/', $ruta->uri())[1]][0];
+
+    return $modelo::query()->findOrFail($valor);
+});
+
 /* ---- Todo lo demas exige sesion y el permiso del modulo (App\Support\PermisosDeRuta) ---- */
-Route::middleware(['auth:sanctum', 'sesion', 'permiso'])->group(function () {
+Route::middleware(['auth:sanctum', 'sesion', 'permiso', 'alcance'])->group(function () {
     Route::get('/user', function (Request $request) {
         return $request->user();
     });
+    Route::get('reportes/anexos/{anexo}', [ReporteOficialController::class, 'anexo'])->whereNumber('anexo');
+    Route::get('reportes/planilla-descuentos', [ReporteOficialController::class, 'planilla']);
+    Route::get('reconocimientos/candidatos', [ReporteOficialController::class, 'candidatos']);
+    Route::get('vinculos-laborales/{vinculo}/documento', [ReporteOficialController::class, 'documentoDeTrabajo'])->whereNumber('vinculo');
+    Route::post('marcaciones/importar', [MarcacionController::class, 'importar']);
+    foreach (array_keys(RegistrosRit::RECURSOS) as $recurso) {
+        Route::apiResource($recurso, RegistroRitController::class)->parameters([$recurso => 'registro']);
+    }
     Route::get('dashboard', [DashboardController::class, 'resumen']);
     Route::get('menu-pendientes', ContadoresDelMenuController::class);
 
@@ -375,6 +393,7 @@ Route::middleware(['auth:sanctum', 'sesion', 'permiso'])->group(function () {
 
     /* ---- Programacion, personal y seguridad ---- */
     Route::post('programaciones-periodo/{programacion}/publicar', [ProgramacionPeriodoController::class, 'publicar'])->whereNumber('programacion');
+    Route::post('programaciones-periodo/{programacion}/reprogramar', [ProgramacionPeriodoController::class, 'reprogramar'])->whereNumber('programacion');
     Route::post('programaciones-periodo/{programacion}/cerrar', [ProgramacionPeriodoController::class, 'cerrar'])->whereNumber('programacion');
     Route::apiResource('programaciones-periodo', ProgramacionPeriodoController::class)
         ->parameters(['programaciones-periodo' => 'programacion']);

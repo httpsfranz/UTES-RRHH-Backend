@@ -678,6 +678,9 @@ class DashboardService
         if ($this->perfil !== 'personal' && $this->acceso->tiene('PERSONAL_VER') && ($sinHorario = $this->sinHorario->cantidad($this->eess)) > 0) {
             $tareas[] = $this->tarea('Personal sin horario', $sinHorario, 'turquesa', 'users', 'Tienen vínculo vigente pero aún no tienen horario fijo ni programación (RIT, Art. 16)', '/personal/trabajadores?pendiente=horario');
         }
+        if ($this->perfil !== 'personal' && $this->acceso->tiene('PERSONAL_VER') && ($vencidas = $this->colegiaturasVencidas()) > 0) {
+            $tareas[] = $this->tarea('Colegiaturas vencidas', $vencidas, 'ambar', 'users', 'Personal con vínculo vigente y habilitación vencida (RIT, Art. 84.37)', '/personal/trabajadores');
+        }
         if ($this->acceso->tiene('REPORTES_VER') && ($cierre = $this->periodoPorCerrar())) {
             $tareas[] = $this->tarea("Cierre de {$cierre['etiqueta']}", $cierre['cantidad'], 'indigo', 'check', $cierre['detalle'], '/consolidacion/cierre');
         }
@@ -724,6 +727,16 @@ class DashboardService
     }
 
     /** @return array{etiqueta:string,cantidad:int,detalle:string}|null  el ultimo mes terminado que sigue sin cerrar */
+    private function colegiaturasVencidas(): int
+    {
+        $hoy = $this->hoy->toDateString();
+
+        return (int) DB::table('Personal.Colegiatura as c')->join('Personal.VinculoLaboral as v', 'v.TrabajadorId', '=', 'c.TrabajadorId')
+            ->where('c.ColegiaturaEstado', 1)->whereDate('c.ColegiaturaFechaVencimiento', '<', $hoy)->where('v.VinculoLaboralEstado', 1)
+            ->where(fn ($q) => $q->whereNull('v.VinculoLaboralFechaFin')->orWhereDate('v.VinculoLaboralFechaFin', '>=', $hoy))
+            ->when($this->eess !== null, fn ($q) => $q->whereIn('v.EessId', $this->eess ?: [0]))->distinct()->count('c.TrabajadorId');
+    }
+
     private function periodoPorCerrar(): ?array
     {
         $periodo = DB::table('Consolidacion.PeriodoAsistencia')->where('PeriodoAsistenciaEstado', '<>', 'CERRADO')

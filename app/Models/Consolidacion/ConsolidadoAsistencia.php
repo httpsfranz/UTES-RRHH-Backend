@@ -22,6 +22,7 @@ class ConsolidadoAsistencia extends Model
     public $timestamps = false;
 
     protected $fillable = [
+        'ConsolidadoAsistenciaMinutosSinGoce',
         'PeriodoAsistenciaId',
         'VinculoLaboralId',
         'ConsolidadoAsistenciaDiasTrabajados',
@@ -37,6 +38,7 @@ class ConsolidadoAsistencia extends Model
     ];
 
     protected $casts = [
+        'ConsolidadoAsistenciaMinutosSinGoce' => 'integer',
         'ConsolidadoAsistenciaId' => 'integer',
         'PeriodoAsistenciaId' => 'integer',
         'VinculoLaboralId' => 'integer',

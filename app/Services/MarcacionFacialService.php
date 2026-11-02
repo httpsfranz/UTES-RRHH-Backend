@@ -9,10 +9,10 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Marcacion por reconocimiento facial (RIT, Art. 21: el rostro es la forma normal de marcar) desde el marcador facial,
- * un proyecto aparte que corre en el navegador del kiosco.
+ * Marcacion por reconocimiento facial (RIT, Art. 16: el rostro es la forma normal de marcar) desde el marcador facial,
+ * un proyecto aparte que corre en el navegador del marcador facial.
  *
- * El kiosco no guarda fotos ni plantillas: calcula el descriptor del rostro (128 numeros) y lo envia. Aqui se compara
+ * El marcador facial no guarda fotos ni plantillas: calcula el descriptor del rostro (128 numeros) y lo envia. Aqui se compara
  * con las plantillas ROSTRO activas (Biometria.PlantillaBiometrica, registradas con consentimiento vigente) del personal
  * con vinculo vigente en el establecimiento del dispositivo. Si coincide se registra la marca con las mismas reglas que la
  * marcacion manual: hora del servidor, vinculo vigente, periodo abierto; el tipo (entrada o salida) se deduce solo.
@@ -135,7 +135,7 @@ class MarcacionFacialService
         return array_values(unpack('g'.self::DIMENSION, $bytes));
     }
 
-    /** Lista de numeros -> base64 de float32 little-endian (lo que envia el kiosco al registrar un rostro). */
+    /** Lista de numeros -> base64 de float32 little-endian (lo que envia el marcador facial al registrar un rostro). */
     public static function codificar(array $descriptor): string
     {
         return base64_encode(pack('g*', ...array_map('floatval', $descriptor)));

@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Support\HoraLocal;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Tests\Support\Nivel2Modulos;
@@ -457,7 +456,7 @@ class Nivel2CrudTest extends CrudModulosTestCase
 
         // La fecha del evento la pone el servidor: lo que mande el cliente se ignora.
         $manipulada = $this->postJson('/api/consentimientos-biometricos', $payload + ['ConsentimientoBiometricoFecha' => '2000-01-01 00:00:00'])->assertCreated();
-        $this->assertStringStartsWith(HoraLocal::hoy()->format('Y-m-d'), $manipulada->json('data.fecha'));
+        $this->assertStringStartsWith(date('Y-m-d'), $manipulada->json('data.fecha'));
 
         // Historial: no se edita ni se borra.
         $this->putJson("/api/consentimientos-biometricos/{$id}", $payload)->assertStatus(405);
@@ -575,7 +574,7 @@ class Nivel2CrudTest extends CrudModulosTestCase
         // Sin fecha: la base pone la actual.
         $sinFecha = $this->payload($spec);
         unset($sinFecha['OcurrenciaPorteriaFechaHora']);
-        $this->assertStringStartsWith(HoraLocal::hoy()->format('Y-m-d'), $this->postJson($spec['endpoint'], $sinFecha)->assertCreated()->json('data.fecha_hora'));
+        $this->assertStringStartsWith(date('Y-m-d'), $this->postJson($spec['endpoint'], $sinFecha)->assertCreated()->json('data.fecha_hora'));
     }
 
     public function test_una_ocurrencia_de_tipo_otro_puede_no_tener_persona_pero_exige_descripcion(): void

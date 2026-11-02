@@ -17,6 +17,7 @@ class GoceVacacionalResource extends JsonResource
             'fecha_fin' => optional($this->GoceVacacionalFechaFin)->format('Y-m-d'),
             'dias' => $this->GoceVacacionalDias,
             'estado' => $this->GoceVacacionalEstado,
+            'es_adelanto' => (bool) $this->GoceVacacionalEsAdelanto,
             // Anulada = "inactiva": el listado la muestra apagada.
             'activo' => ! in_array($this->GoceVacacionalEstado, ['ANULADO', 'ANULADA'], true),
             'trabajador' => $this->whenLoaded('rolVacacional', fn () => $this->rolVacacional?->periodoVacacional?->vinculoLaboral?->relationLoaded('trabajador') && $this->rolVacacional?->periodoVacacional?->vinculoLaboral->trabajador ? [

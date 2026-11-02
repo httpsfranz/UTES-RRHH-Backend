@@ -2,6 +2,7 @@
 
 namespace Database\Seeders\Concerns;
 
+use App\Support\HoraLocal;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -11,15 +12,20 @@ use Illuminate\Support\Str;
  * nada usa aleatorios; cada decision sale de crc32 de una clave de texto (trabajador + fecha + motivo), asi que dos
  * corridas dan exactamente el mismo estado sin importar el orden en que se genere.
  *
- * Los trabajadores de volumen tienen DNI 46NNNNNN y vinculos VL-1NNN (los de los otros seeders son 700000NN y VL-00NN),
- * y la expansion nunca toca a estos ultimos: siguen siendo los casos puntuales que recorren los tests.
+ * Los trabajadores de volumen tienen vinculos VL-1NNN y DNI verosimiles (los de los otros seeders son 700000NN y VL-00NN),
+ * y la expansion nunca toca a estos ultimos: siguen siendo los casos puntuales que recorren los tests. Solo en la base de
+ * trabajo, al final de DatabaseSeeder, DatosPersonalesRealistasSeeder les da DNI, celular y correo verosimiles.
  */
 trait VolumenBase
 {
-    /** La Red simula la operacion desde el inicio de julio (los meses cerrados, para ver historial) hasta este dia. */
+    /**
+     * La Red simula la operacion desde el inicio de julio (los meses cerrados, para ver historial) hasta el fin de la
+     * programacion publicada. Lo que aun no ocurrio no se inventa: las marcas posteriores a la hora de la siembra se omiten
+     * y el motor ignora los dias futuros, asi que la asistencia queda al dia sin importar cuando se corra el seeder.
+     */
     protected const VOLUMEN_DESDE = '2026-07-01';
 
-    protected const VOLUMEN_HASTA = '2026-10-20';
+    protected const VOLUMEN_HASTA = '2026-11-30';
 
     /** Primer vinculo de volumen: si existe, la expansion ya se sembro y no se repite. */
     protected const VOLUMEN_MARCADOR = 'VL-1001';
@@ -37,6 +43,55 @@ trait VolumenBase
 
     /** @var array<string,int> nombre de usuario => UsuarioId (cache) */
     protected array $usuariosCache = [];
+
+    /** Fecha de hoy en Lima: separa lo ya ocurrido (cumplido, resuelto) de lo que aun esta por venir (programado, pendiente). */
+    protected function hoyVolumen(): string
+    {
+        return HoraLocal::ahora()->toDateString();
+    }
+
+    /**
+     * DNI de 8 digitos verosimil para la edad: quien nacio antes de los 80 tiene un DNI de la serie 1NNNNNNN (La Libertad,
+     * libretas antiguas); los nacidos en los 80 y 90, de la serie 4NNNNNNN; los mas jovenes, de la 7NNNNNNN. Unico dentro de
+     * $usados (que se actualiza).
+     *
+     * @param  array<string,true>  $usados
+     */
+    protected function dniRealista(string $clave, int $anioNacimiento, array &$usados): string
+    {
+        $prefijos = match (true) {
+            $anioNacimiento < 1972 => ['17', '18'],
+            $anioNacimiento < 1980 => ['18', '19', '40'],
+            $anioNacimiento < 1990 => ['40', '41', '42', '43', '44'],
+            $anioNacimiento < 1996 => ['44', '45', '46', '47', '48'],
+            default => ['70', '71', '72', '73', '74', '75', '76', '77'],
+        };
+        $intento = 0;
+        do {
+            $dni = $this->elegir("{$clave}|dni{$intento}", $prefijos).str_pad((string) (crc32("{$clave}|dni|{$intento}") % 1000000), 6, '0', STR_PAD_LEFT);
+            $intento++;
+        } while (isset($usados[$dni]) || preg_match('/(\d)\1{3}/', $dni));
+        $usados[$dni] = true;
+
+        return $dni;
+    }
+
+    /** Celular peruano de 9 digitos (empieza con 9, con los prefijos de los operadores). */
+    protected function celularRealista(string $clave): string
+    {
+        $prefijo = $this->elegir("{$clave}|cel", ['940', '941', '942', '943', '944', '948', '949', '950', '951', '952', '956', '958', '959', '961', '962', '964', '965', '966', '968', '969', '970', '971', '972', '973', '975', '976', '978', '979', '980', '981', '982', '983', '984', '985', '986', '987', '988', '989', '991', '992', '993', '994', '995', '996', '997', '998']);
+
+        return $prefijo.str_pad((string) (crc32("{$clave}|celn") % 1000000), 6, '0', STR_PAD_LEFT);
+    }
+
+    /** Correo personal verosimil: nombre.apellido con un numero corto en un proveedor comun. */
+    protected function correoRealista(string $clave, string $nombres, string $paterno): string
+    {
+        $usuario = Str::lower(Str::ascii(Str::before($nombres.' ', ' '))).$this->elegir("{$clave}|sep", ['.', '_', '']).Str::lower(preg_replace('/[^A-Za-z]/', '', Str::ascii($paterno)));
+        $numero = $this->azar("{$clave}|num") < 65 ? (string) $this->azarEntre("{$clave}|n2", 1, 99) : '';
+
+        return $usuario.$numero.'@'.$this->porcentaje("{$clave}|dom", ['gmail.com' => 72, 'hotmail.com' => 18, 'outlook.com' => 7, 'yahoo.es' => 3]);
+    }
 
     protected function yaTieneVolumen(): bool
     {
@@ -151,10 +206,16 @@ trait VolumenBase
         return ['Juan', 'Luis', 'Carlos', 'José', 'Miguel', 'Pedro', 'Jorge', 'Víctor', 'Walter', 'César', 'Héctor', 'Raúl', 'Óscar', 'Henry', 'Edwin', 'Ronald', 'Segundo', 'Manuel', 'Wilmer', 'Alex', 'Jhon', 'Franklin', 'Marco', 'Elmer', 'Santos', 'Percy', 'Ángel', 'Fernando', 'Ricardo', 'Roberto'];
     }
 
-    /** @return list<string> */
-    protected function segundosNombres(): array
+    /**
+     * Segundo nombre (vacio = no tiene) que corresponde al sexo.
+     *
+     * @return list<string>
+     */
+    protected function segundosNombres(bool $esMujer): array
     {
-        return ['', 'Elena', '', 'Isabel', '', 'del Pilar', '', 'Alejandra', '', 'Antonio', '', 'Alberto', '', 'Eduardo', '', 'Enrique', '', 'Daniel', '', 'de los Ángeles'];
+        return $esMujer
+            ? ['', 'Elena', '', 'Isabel', '', 'del Pilar', '', 'Alejandra', '', 'de los Ángeles', '', 'del Carmen', '', 'Beatriz']
+            : ['', 'Antonio', '', 'Alberto', '', 'Eduardo', '', 'Enrique', '', 'Daniel', '', 'Martín', '', 'Javier'];
     }
 
     /** @return list<string> */

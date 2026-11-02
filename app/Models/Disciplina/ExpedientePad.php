@@ -21,6 +21,7 @@ class ExpedientePad extends Model
     public $timestamps = false;
 
     protected $fillable = [
+        'ExpedientePadMedidaCautelar',
         'VinculoLaboralId',
         'TipoFaltaDisciplinariaId',
         'DocumentoSustentoId',
@@ -34,6 +35,7 @@ class ExpedientePad extends Model
     ];
 
     protected $casts = [
+        'ExpedientePadMedidaCautelar' => 'boolean',
         'ExpedientePadId' => 'integer',
         'VinculoLaboralId' => 'integer',
         'TipoFaltaDisciplinariaId' => 'integer',

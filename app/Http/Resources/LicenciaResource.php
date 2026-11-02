@@ -21,6 +21,10 @@ class LicenciaResource extends JsonResource
             'motivo' => $this->LicenciaMotivo,
             'fecha_registro' => optional($this->LicenciaFechaRegistro)->format('Y-m-d H:i:s'),
             'estado' => $this->LicenciaEstado,
+            'caso_especial' => $this->LicenciaCasoEspecial,
+            'es_extemporanea' => (bool) $this->LicenciaEsExtemporanea,
+            'visto_bueno' => $this->LicenciaVistoBuenoPor !== null,
+            'fecha_visto_bueno' => optional($this->LicenciaFechaVistoBueno)->format('Y-m-d H:i:s'),
             // Anulada = "inactiva": el listado la muestra apagada.
             'activo' => ! in_array($this->LicenciaEstado, ['ANULADO', 'ANULADA'], true),
             'trabajador' => $this->whenLoaded('vinculoLaboral', fn () => $this->vinculoLaboral?->relationLoaded('trabajador') && $this->vinculoLaboral->trabajador ? [

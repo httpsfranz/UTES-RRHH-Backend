@@ -8,6 +8,8 @@ use App\Models\Asistencia\JustificacionFalta;
 use App\Models\Personal\VinculoLaboral;
 use App\Models\Seguridad\Usuario;
 use App\Models\Soporte\DocumentoSustento;
+use App\Support\Parametro;
+use App\Support\ReglasDeSolicitud;
 use Illuminate\Validation\Validator;
 
 /**
@@ -49,6 +51,14 @@ class JustificacionFaltaRequest extends CatalogoRequest
     public function withValidator(Validator $validator): void
     {
         $this->despuesDeValidar($validator, function (Validator $validator) {
+            if ($this->esCreacion()) {
+                $plazo = ReglasDeSolicitud::situacionDelPlazo((string) $this->fechaEfectiva('JustificacionFaltaFechaFin'), Parametro::entero('DIAS_JUSTIFICAR_FALTA', 3));
+                if ($plazo === 'vencido') {
+                    $validator->errors()->add('JustificacionFaltaFechaFin', 'Venció el plazo para justificar esa falta y para regularizarla (RIT, Art. 64).');
+                } elseif ($plazo === 'extemporaneo' && blank($this->valorEfectivo('JustificacionFaltaObservacion'))) {
+                    $validator->errors()->add('JustificacionFaltaObservacion', 'Se presenta fuera de plazo: indica el motivo (RIT, Art. 64).');
+                }
+            }
             $inicio = $this->fechaEfectiva('JustificacionFaltaFechaInicio');
             $fin = $this->fechaEfectiva('JustificacionFaltaFechaFin');
 
@@ -81,5 +91,16 @@ class JustificacionFaltaRequest extends CatalogoRequest
                 $validator->errors()->add('JustificacionFaltaFechaInicio', 'El trabajador ya tiene una justificación pendiente o aprobada que se superpone con esas fechas.');
             }
         });
+    }
+
+    /** @return array<string,mixed> */
+    public function datos(): array
+    {
+        $datos = parent::datos();
+        if ($this->esCreacion()) {
+            $datos['JustificacionFaltaEsExtemporanea'] = ReglasDeSolicitud::situacionDelPlazo((string) $this->fechaEfectiva('JustificacionFaltaFechaFin'), Parametro::entero('DIAS_JUSTIFICAR_FALTA', 3)) !== null;
+        }
+
+        return $datos;
     }
 }

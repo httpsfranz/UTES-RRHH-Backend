@@ -30,6 +30,21 @@ use Tests\TestCase;
  */
 abstract class CrudModulosTestCase extends TestCase
 {
+    /** Claves que V007 agrego a los Resource, por endpoint. */
+    private const CLAVES_V007 = [
+        '/api/licencias' => ['caso_especial', 'es_extemporanea', 'visto_bueno', 'fecha_visto_bueno'],
+        '/api/papeletas' => ['es_urgente', 'parto_multiple', 'fecha_nacimiento_hijo', 'unidad_destino', 'conforme_destino', 'visto_bueno', 'fecha_visto_bueno'],
+        '/api/descansos-medicos' => ['es_extemporaneo'],
+        '/api/justificaciones-falta' => ['es_extemporanea'],
+        '/api/goces-vacacionales' => ['es_adelanto'],
+        '/api/programaciones-periodo' => ['reprogramaciones', 'motivo_tardio'],
+        '/api/consolidados-asistencia' => ['minutos_sin_goce'],
+        '/api/vinculos-laborales' => ['ingreso_mensual', 'causa_cese', 'fecha_renuncia'],
+        '/api/expedientes-pad' => ['medida_cautelar', 'autoridades'],
+        '/api/asistencia-diaria' => ['minutos_sin_goce'],
+        '/api/tipos-licencia' => ['sexo', 'maximo_dias_cas', 'maximo_dias_anio', 'a_cuenta_vacaciones', 'exige_anticipacion'],
+    ];
+
     use ArmaEscenarios;
     use DatabaseTransactions;
 
@@ -125,7 +140,7 @@ abstract class CrudModulosTestCase extends TestCase
         $respuesta = $this->postJson($spec['endpoint'], $this->payload($spec));
 
         $respuesta->assertCreated();
-        $this->assertEqualsCanonicalizing($spec['keys'], array_keys($respuesta->json('data')), "Claves del Resource de {$slug}");
+        $this->assertEqualsCanonicalizing(array_merge($spec['keys'], self::CLAVES_V007[$spec['endpoint']] ?? []), array_keys($respuesta->json('data')), "Claves del Resource de {$slug}");
         $this->assertIsInt($respuesta->json('data.id'));
 
         $fila = DB::table($spec['table'])->where($spec['pk'], $respuesta->json('data.id'))->first();

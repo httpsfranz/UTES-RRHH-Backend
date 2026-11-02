@@ -117,6 +117,14 @@ class TurnoProgramadoRequest extends CatalogoRequest
             $conflicto = $servicio->conflictoDeAgenda($vinculo->TrabajadorId, $fecha, $entradaEfectiva, $salidaEfectiva, array_filter([$this->registroId()]));
             if ($conflicto) {
                 $validator->errors()->add('TurnoProgramadoFecha', $conflicto);
+
+                return;
+            }
+
+            if ($exceso = $servicio->excesoDeJornada($vinculo, $fecha, TurnoProgramado::minutosEntre($entradaEfectiva, $salidaEfectiva), $this->esGuardia($turno), array_filter([$this->registroId()]))) {
+                $validator->errors()->add('TurnoProgramadoFecha', $exceso);
+
+                return;
             }
         });
     }

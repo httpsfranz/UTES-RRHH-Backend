@@ -96,6 +96,12 @@ trait ArmaEscenarios
     }
 
     /** Vinculo nuevo de enfermero(a) nombrado del D.L. 276 (hace guardia) en el establecimiento indicado. */
+    /** Da a un usuario alcance sobre un establecimiento. */
+    public function darAlcance(string $nombre, int $eessId): void
+    {
+        DB::table('Seguridad.UsuarioAmbito')->insert(['UsuarioId' => $this->usuarioId($nombre), 'EessId' => $eessId]);
+    }
+
     public function nuevoVinculoDeGuardia(array $extra = [], ?int $trabajadorId = null): int
     {
         return $this->nuevoVinculo($extra + [

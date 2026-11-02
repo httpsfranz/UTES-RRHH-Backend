@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
  * Deja habilitado solo lo que la Red usa de verdad (revision del tester, 2026-10-19, contrastada con el RIT):
  *
  *   - Documento de identidad: solo DNI (el personal de la Red se identifica con DNI).
- *   - Metodos de marcacion: reconocimiento facial (RIT, Art. 21: "unicamente mediante reconocimiento facial") y registro
+ *   - Metodos de marcacion: reconocimiento facial (RIT, Art. 16: "unicamente mediante reconocimiento facial") y registro
  *     manual (la excepcion del mismo articulo: parte diario / control manual autorizado por RRHH). Los demas se desactivan.
  *   - Dispositivos: solo los relojes faciales; la marca manual se hace sin dispositivo.
  *   - Plantillas biometricas: solo las faciales.

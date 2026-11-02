@@ -78,7 +78,7 @@ trait VolumenCierre
     }
 
     /**
-     * Cambios de turno sobre la programacion publicada de octubre (RIT, Art. 16 y 20), con mas de 48 horas de anticipacion:
+     * Cambios de turno sobre los proximos turnos de la programacion publicada (RIT, Art. 16 y 20), con mas de 48 horas de anticipacion:
      * un reemplazo pendiente, una reprogramacion rechazada, una anulacion aprobada (se aplica con el servicio) y un reemplazo anulado.
      */
     protected function volumenCambiosDeTurno(): void
@@ -91,6 +91,8 @@ trait VolumenCierre
             ->join('Programacion.ProgramacionPeriodo as pe', 'pe.ProgramacionPeriodoId', '=', 'pt.ProgramacionPeriodoId')
             ->where('pt.VinculoLaboralId', $vinculo)->where('pe.ProgramacionPeriodoEstado', 'PUBLICADA')->where('t.TurnoProgramadoEstado', 'PROGRAMADO')->where('t.TurnoProgramadoEsGuardia', 0)
             ->whereDate('t.TurnoProgramadoFecha', '>=', $desde)->orderBy('t.TurnoProgramadoFecha')->first(['t.TurnoProgramadoId', 't.TurnoProgramadoFecha']);
+        // Fecha a N dias de hoy (negativo = dias atras): los cambios caen en los proximos turnos, nunca en lo ya trabajado.
+        $dentroDe = fn (int $dias) => date('Y-m-d', strtotime($this->hoyVolumen()." {$dias} days"));
 
         $resolver = [];
         $k = 0;
@@ -107,10 +109,10 @@ trait VolumenCierre
             $solicita = fn (array $p) => isset($p['usuario']) ? $this->usuarioId($p['usuario']) : $this->usuarioId('rvargas');
             $casos = [
                 // [tipo, solicitante, turno, reemplazante|null, turno nuevo|null, motivo, estado, resolucion]
-                ['REEMPLAZO', $a, $turnoDe($a['vinculo'], '2026-10-08'), $b, null, 'Cita médica programada con anticipación', 'PENDIENTE', null],
-                ['REPROGRAMACION', $b, $turnoDe($b['vinculo'], '2026-10-12'), null, 'T', 'Trámite personal por la mañana: pide pasar a turno tarde', 'PENDIENTE', 'rechazar'],
-                ['ANULACION', $c, $turnoDe($c['vinculo'], '2026-10-14'), null, null, 'Descanso médico programado: el turno queda sin efecto', 'PENDIENTE', 'aprobar'],
-                ['REEMPLAZO', $b, $turnoDe($b['vinculo'], '2026-10-19'), $c, null, 'Se desistió del cambio', 'ANULADO', null],
+                ['REEMPLAZO', $a, $turnoDe($a['vinculo'], $dentroDe(2)), $b, null, 'Cita médica programada con anticipación', 'PENDIENTE', null],
+                ['REPROGRAMACION', $b, $turnoDe($b['vinculo'], $dentroDe(3)), null, 'T', 'Trámite personal por la mañana: pide pasar a turno tarde', 'PENDIENTE', 'rechazar'],
+                ['ANULACION', $c, $turnoDe($c['vinculo'], $dentroDe(4)), null, null, 'Descanso médico programado: el turno queda sin efecto', 'PENDIENTE', 'aprobar'],
+                ['REEMPLAZO', $b, $turnoDe($b['vinculo'], $dentroDe(1)), $c, null, 'Se desistió del cambio', 'ANULADO', null],
             ];
             foreach ($casos as [$tipo, $solicitante, $turno, $reemplazante, $nuevo, $motivo, $estado, $resolucion]) {
                 if ($turno === null) {
@@ -121,7 +123,7 @@ trait VolumenCierre
                     'TurnoIdNuevo' => $nuevo === null ? null : $turnos[$nuevo], 'VinculoLaboralSolicitanteId' => $solicitante['vinculo'],
                     'VinculoLaboralReemplazanteId' => $reemplazante === null ? null : $reemplazante['vinculo'],
                     'DocumentoSustentoId' => $tipo === 'ANULACION' ? $this->documento('certificado-medico', 900 + $k, '2026-10-01') : null,
-                    'UsuarioRegistroId' => $solicita($solicitante), 'CambioTurnoFechaSolicitud' => '2026-10-0'.(1 + $k % 3).' 0'.(8 + $k % 2).':30:00',
+                    'UsuarioRegistroId' => $solicita($solicitante), 'CambioTurnoFechaSolicitud' => $dentroDe(-1 - $k % 3).' 0'.(8 + $k % 2).':30:00',
                     'CambioTurnoMotivo' => $motivo, 'CambioTurnoEstado' => $estado,
                 ], 'CambioTurnoId');
                 if ($resolucion !== null) {
@@ -399,7 +401,7 @@ trait VolumenCierre
             for ($k = 0; $k < 4; $k++, $i++) {
                 $tipo = $this->porcentaje("po{$i}", ['SALIDA_CON_PAPELETA' => 35, 'RETORNO_DE_PAPELETA' => 25, 'SALIDA_SIN_AUTORIZACION' => 15, 'EXCESO_DE_PAPELETA' => 10, 'OTRO' => 15]);
                 $p = $tipo === 'OTRO' && $this->azar("po{$i}s") < 50 ? null : $personal[$this->azarEntre("po{$i}p", 0, $personal->count() - 1)];
-                $dia = date('Y-m-d', strtotime('2026-08-03 +'.$this->azarEntre("po{$i}d", 0, 59).' days'));
+                $dia = date('Y-m-d', strtotime('2026-08-03 +'.$this->azarEntre("po{$i}d", 0, 80).' days'));
                 while (date('N', strtotime($dia)) > 5) {
                     $dia = date('Y-m-d', strtotime($dia.' +1 day'));
                 }
@@ -440,11 +442,11 @@ trait VolumenCierre
             }
         }
         $this->insertarPorLotes('Soporte.Notificacion', $avisos);
-
+        $diasHastaHoy = max(0, intdiv(strtotime($this->hoyVolumen()) - strtotime(self::VOLUMEN_DESDE), 86400));
         $sesiones = [];
         for ($i = 0; $i < 90 && $usuarios->count() > 0; $i++) {
             $u = $usuarios[$i % $usuarios->count()];
-            $inicio = date('Y-m-d', strtotime('2026-07-01 +'.$this->azarEntre("se{$i}", 0, 94).' days')).' '.sprintf('%02d:%02d:00', 7 + $i % 9, ($i * 7) % 60);
+            $inicio = date('Y-m-d', strtotime('2026-07-01 +'.$this->azarEntre("se{$i}", 0, $diasHastaHoy).' days')).' '.sprintf('%02d:%02d:00', 7 + $i % 9, ($i * 7) % 60);
             $resultado = $this->porcentaje("se{$i}r", ['EXITOSO' => 86, 'CLAVE_INCORRECTA' => 11, 'USUARIO_INACTIVO' => 3]);
             $sesiones[] = [
                 'UsuarioId' => $this->usuarioId($u['usuario']), 'SesionAccesoFechaInicio' => $inicio,
@@ -464,7 +466,7 @@ trait VolumenCierre
                 'AuditoriaEsquema' => $esquema, 'AuditoriaTabla' => $tabla, 'AuditoriaOperacion' => $operacion, 'AuditoriaRegistroId' => (string) (1 + $this->azarEntre("au{$i}r", 0, 400)),
                 'AuditoriaDatosAnteriores' => $operacion === 'INSERT' ? null : '{"'.$columna.'":"anterior"}',
                 'AuditoriaDatosNuevos' => $operacion === 'DELETE' ? null : '{"'.$columna.'":"nuevo"}',
-                'AuditoriaFechaHora' => date('Y-m-d', strtotime('2026-07-01 +'.$this->azarEntre("au{$i}d", 0, 94).' days')).' '.sprintf('%02d:%02d:00', 8 + $i % 10, ($i * 17) % 60),
+                'AuditoriaFechaHora' => date('Y-m-d', strtotime('2026-07-01 +'.$this->azarEntre("au{$i}d", 0, $diasHastaHoy).' days')).' '.sprintf('%02d:%02d:00', 8 + $i % 10, ($i * 17) % 60),
                 'AuditoriaDireccionIp' => '192.168.10.'.(40 + $i % 20),
             ];
         }

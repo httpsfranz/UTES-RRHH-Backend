@@ -9,10 +9,14 @@ use App\Models\Personal\RegimenLaboral;
 use App\Models\Personal\Trabajador;
 use App\Models\Personal\VinculoLaboral;
 use App\Rules\Codigo;
+use App\Support\ReglasDeSolicitud;
 use Illuminate\Validation\Validator;
 
 class VinculoLaboralRequest extends CatalogoRequest
 {
+    /** Causas de termino del servicio (RIT, Art. 129). */
+    public const CAUSAS_DE_CESE = ['FALLECIMIENTO', 'RENUNCIA', 'INCAPACIDAD', 'DESTITUCION', 'PERIODO_DE_PRUEBA', 'FIN_DE_CONTRATO', 'INHABILITACION', 'SENTENCIA', 'TERMINO_DE_DESIGNACION', 'MUTUO_DISENSO', 'LIMITE_DE_EDAD', 'OTRO'];
+
     public function rules(): array
     {
         return [
@@ -29,6 +33,9 @@ class VinculoLaboralRequest extends CatalogoRequest
             'VinculoLaboralFechaFin' => ['nullable', 'date_format:Y-m-d'],
             'VinculoLaboralMotivoCese' => $this->texto(300),
             'VinculoLaboralEstado' => $this->booleano(),
+            'VinculoLaboralIngresoMensual' => ['nullable', 'numeric', 'min:0', 'max:99999999'],
+            'VinculoLaboralCausaCese' => ['nullable', 'in:'.implode(',', self::CAUSAS_DE_CESE)],
+            'VinculoLaboralFechaRenuncia' => ['nullable', 'date_format:Y-m-d'],
         ];
     }
 
@@ -60,6 +67,20 @@ class VinculoLaboralRequest extends CatalogoRequest
             }
             if ($fin === null && filled($this->valorEfectivo('VinculoLaboralMotivoCese'))) {
                 $validator->errors()->add('VinculoLaboralMotivoCese', 'El motivo de cese solo aplica cuando el vínculo tiene fecha de fin.');
+            }
+
+            $causa = $this->valorEfectivo('VinculoLaboralCausaCese');
+            if ($causa === 'RENUNCIA') {
+                $renuncia = $this->valorEfectivo('VinculoLaboralFechaRenuncia');
+                $renuncia = $renuncia ? substr((string) $renuncia, 0, 10) : null;
+                if ($renuncia === null) {
+                    $validator->errors()->add('VinculoLaboralFechaRenuncia', 'Indica la fecha en que presentó la renuncia (RIT, Art. 130).');
+                } elseif ($fin !== null && ! $this->boolean('ExoneraPlazoRenuncia') && (strtotime($fin) - strtotime($renuncia)) / 86400 < 30) {
+                    $validator->errors()->add('VinculoLaboralFechaRenuncia', 'La renuncia se presenta con 30 días de anticipación, salvo exoneración (RIT, Art. 130).');
+                }
+                if (ReglasDeSolicitud::tienePadEnCurso((int) $this->registroId())) {
+                    $validator->errors()->add('VinculoLaboralCausaCese', 'Con un procedimiento disciplinario en curso no se presenta renuncia (RIT, Art. 107).');
+                }
             }
 
             $condicion = CondicionLaboral::find($this->valorEfectivo('CondicionLaboralId'));

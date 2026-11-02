@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Administracion de biometria en UNA pantalla (RIT, Art. 21): por cada trabajador, como marca (reconocimiento facial o
+ * Administracion de biometria en UNA pantalla (RIT, Art. 16): por cada trabajador, como marca (reconocimiento facial o
  * registro manual autorizado por RRHH), si tiene su plantilla facial y si dio su consentimiento (y cuando). Las altas
  * siguen yendo a sus tablas (autorizaciones-metodo, plantillas-biometricas, consentimientos-biometricos); esto solo las
  * resume juntas.
@@ -61,7 +61,7 @@ class BiometriaController extends Controller
                 'plantilla_facial' => $p ? ['id' => (int) $p->PlantillaBiometricaId, 'con_referencia' => (bool) $p->con_referencia, 'fecha' => substr((string) $p->PlantillaBiometricaFechaRegistro, 0, 10)] : null,
                 'autorizacion_manual' => $a ? ['id' => (int) $a->AutorizacionMetodoId, 'desde' => substr((string) $a->AutorizacionMetodoFechaInicio, 0, 10),
                     'hasta' => $a->AutorizacionMetodoFechaFin ? substr((string) $a->AutorizacionMetodoFechaFin, 0, 10) : null, 'vigente' => $manualVigente] : null,
-                // Como marca hoy: con autorizacion vigente, registro manual; si no, reconocimiento facial (Art. 21).
+                // Como marca hoy: con autorizacion vigente, registro manual; si no, reconocimiento facial (Art. 16).
                 'metodo' => $manualVigente ? 'MANUAL' : 'FACIAL',
             ];
         })->all()]);

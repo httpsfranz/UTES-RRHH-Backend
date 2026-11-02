@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Support\HoraLocal;
 use Illuminate\Support\Facades\DB;
 use Tests\Support\Nivel3Modulos;
 
@@ -323,7 +322,7 @@ class Nivel3ProgramacionTest extends CrudModulosTestCase
         $usuario = $this->usuario('vsanchez');
         $rol = $this->id('Seguridad.Rol', 'RolId', ['RolCodigo' => 'RRHH_RED']);
         $id = $this->postJson('/api/usuarios-roles', ['UsuarioId' => $usuario, 'RolId' => $rol])->assertCreated()->json('data.id');
-        $this->assertSame(HoraLocal::hoy()->toDateString(), $this->getJson("/api/usuarios-roles/{$id}")->json('data.fecha_inicio'));   // la base pone hoy
+        $this->assertSame(date('Y-m-d'), $this->getJson("/api/usuarios-roles/{$id}")->json('data.fecha_inicio'));   // la base pone hoy
 
         $this->postJson('/api/usuarios-roles', ['UsuarioId' => $usuario, 'RolId' => $rol])->assertStatus(422)->assertJsonValidationErrors(['RolId']);
         // Desactivado, el rol no se vuelve a crear: se reactiva.

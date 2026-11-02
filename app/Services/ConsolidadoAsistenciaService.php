@@ -48,6 +48,7 @@ class ConsolidadoAsistenciaService
                 ->selectRaw('SUM(CASE WHEN ea.EstadoAsistenciaEsFalta = 1 AND ea.EstadoAsistenciaEsDescontable = 0 THEN 1 ELSE 0 END) AS Justificadas')
                 ->selectRaw('SUM(AsistenciaDiariaMinutosTardanza) AS Tardanza')
                 ->selectRaw('SUM(AsistenciaDiariaMinutosExtra) AS Extra')
+                ->selectRaw('SUM(AsistenciaDiariaMinutosSinGoce) AS SinGoce')
                 ->get();
 
             $generados = $actualizados = $omitidos = 0;
@@ -58,6 +59,7 @@ class ConsolidadoAsistenciaService
                     'ConsolidadoAsistenciaDiasFaltaJustificada' => (float) $fila->Justificadas,
                     'ConsolidadoAsistenciaMinutosTardanza' => (int) $fila->Tardanza,
                     'ConsolidadoAsistenciaMinutosExtra' => (int) $fila->Extra,
+                    'ConsolidadoAsistenciaMinutosSinGoce' => (int) $fila->SinGoce,
                     'ConsolidadoAsistenciaFechaGeneracion' => now(),
                 ];
                 $existente = ConsolidadoAsistencia::query()

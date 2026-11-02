@@ -10,7 +10,7 @@ class ClaveDeDispositivoBiometrico extends Command
 {
     protected $signature = 'biometria:clave-dispositivo {codigo? : Codigo del dispositivo (p. ej. DISP-LE-01); sin codigo lista los faciales activos}';
 
-    protected $description = 'Muestra la clave con la que un marcador facial (kiosco) se conecta a la API';
+    protected $description = 'Muestra la clave con la que un marcador facial se conecta a la API';
 
     public function handle(): int
     {

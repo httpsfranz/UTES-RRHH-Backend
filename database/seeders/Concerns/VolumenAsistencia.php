@@ -9,7 +9,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Expansion de volumen, parte 2: lo que ocurre en la Red entre julio y el 20 de octubre de 2026. Cada trabajador tiene su
+ * Expansion de volumen, parte 2: lo que ocurre en la Red entre julio y fines de octubre de 2026 (hasta la hora en que se siembra). Cada trabajador tiene su
  * programacion mensual de turnos (o su horario fijo), sus vacaciones, licencias, descansos medicos y papeletas, y marca
  * entrada y salida cada dia con la variacion normal de una operacion real (tardanzas, omisiones, faltas, salidas
  * anticipadas, sobretiempo). La asistencia diaria NO se escribe a mano: se calcula con el mismo motor que usa el sistema
@@ -38,7 +38,7 @@ trait VolumenAsistencia
 
     private const PERIODOS_VOLUMEN = [
         ['2026-07-01', '2026-07-31', 'CERRADA'], ['2026-08-01', '2026-08-31', 'CERRADA'], ['2026-09-01', '2026-09-30', 'CERRADA'],
-        ['2026-10-01', '2026-10-31', 'PUBLICADA'], ['2026-11-01', '2026-11-30', 'BORRADOR'],
+        ['2026-10-01', '2026-10-31', 'PUBLICADA'], ['2026-11-01', '2026-11-30', 'PUBLICADA'], ['2026-12-01', '2026-12-31', 'BORRADOR'],
     ];
 
     protected function volumenAsistencia(): void
@@ -135,6 +135,7 @@ trait VolumenAsistencia
     {
         $tipoMensual = (int) DB::table('Programacion.TipoPeriodoProgramacion')->where('TipoPeriodoProgramacionCodigo', 'MENSUAL')->value('TipoPeriodoProgramacionId');
         $usuario = $this->usuarioId('rvargas');
+        $hoy = $this->hoyVolumen();
         $turnoIds = DB::table('Configuracion.Turno')->pluck('TurnoId', 'TurnoCodigo')->all();
 
         // Un periodo mensual por establecimiento y mes (se reusa el que ya existia, p. ej. setiembre y octubre de La Esperanza).
@@ -203,10 +204,10 @@ trait VolumenAsistencia
                 $ptNuevos[] = $pt;
                 $turnos = $this->turnosDelMes($p, $primero, $primero->daysInMonth);
                 foreach ($turnos as $fecha => $t) {
-                    if ($periodo['estado'] === 'BORRADOR' && $fecha > '2026-11-15') {
-                        continue;   // el borrador de noviembre solo llega a la primera quincena
+                    if ($periodo['estado'] === 'BORRADOR' && $fecha > '2026-12-15') {
+                        continue;   // el borrador de diciembre solo llega a la primera quincena
                     }
-                    $cumplido = $periodo['estado'] !== 'BORRADOR' && $fecha <= self::VOLUMEN_HASTA;
+                    $cumplido = $periodo['estado'] !== 'BORRADOR' && $fecha < $hoy;
                     $filasTurnos[] = [
                         'ProgramacionTrabajadorId' => $pt, 'TurnoId' => $turnoIds[$t['turno']], 'TurnoProgramadoFecha' => $fecha,
                         'TurnoProgramadoEsGuardia' => $t['guardia'] ? 1 : 0, 'TurnoProgramadoEstado' => $cumplido ? 'CUMPLIDO' : 'PROGRAMADO',
@@ -454,6 +455,7 @@ trait VolumenAsistencia
     {
         $tipos = DB::table('Solicitudes.TipoPapeleta')->pluck('TipoPapeletaId', 'TipoPapeletaCodigo')->all();
         $registra = $this->usuarioId('rvargas');
+        $hoy = $this->hoyVolumen();
         $jefes = [];
         foreach ($this->dotacion as $p) {
             if ($p['rol'] === 'JEFE_EESS' && isset($p['usuario'])) {
@@ -471,16 +473,16 @@ trait VolumenAsistencia
             for ($k = 0; $k < $cantidad; $k++) {
                 $clave = "{$p['n']}|pap{$k}";
                 $tipo = $this->porcentaje($clave.'t', ['COMISION' => 26, 'PERM_SALUD' => 20, 'PERM_PARTIC' => 18, 'PERM_OFICIAL' => 12, 'ONOMASTICO' => 8, 'CAPACITACION' => 9, 'ESTUDIOS' => 7]);
-                // Un dia habil entre el 6 de julio y el 2 de octubre; una de cada doce es una solicitud futura (aun pendiente).
-                $dia = date('Y-m-d', strtotime('2026-07-06 +'.$this->azarEntre($clave.'d', 0, 88).' days'));
+                // Un dia habil entre el 6 de julio y el 23 de octubre; una de cada doce es una solicitud de los proximos dias (aun pendiente).
+                $dia = date('Y-m-d', strtotime('2026-07-06 +'.$this->azarEntre($clave.'d', 0, 109).' days'));
                 if ($this->azar($clave.'f') < 8) {
-                    $dia = date('Y-m-d', strtotime('2026-10-05 +'.$this->azarEntre($clave.'fd', 0, 9).' days'));
+                    $dia = date('Y-m-d', strtotime($hoy.' +'.$this->azarEntre($clave.'fd', 1, 10).' days'));
                 }
                 while (date('N', strtotime($dia)) > 5) {
                     $dia = date('Y-m-d', strtotime($dia.' +1 day'));
                 }
                 $diaCompleto = in_array($tipo, ['ONOMASTICO', 'CAPACITACION'], true);
-                $estado = $dia > self::VOLUMEN_HASTA ? 'PENDIENTE' : $this->porcentaje($clave.'e', ['APROBADO' => 68, 'PENDIENTE' => 12, 'RECHAZADO' => 10, 'ANULADO' => 10]);
+                $estado = $dia > $hoy ? 'PENDIENTE' : $this->porcentaje($clave.'e', ['APROBADO' => 68, 'PENDIENTE' => 12, 'RECHAZADO' => 10, 'ANULADO' => 10]);
                 $turno = $this->turnosPlan[$p['vinculo']][$dia]['turno'] ?? 'M';
                 $base = $turno === 'T' ? 15 : 9;                       // hora de salida: 09:00 en la manana, 15:00 en la tarde
                 $salidaMin = $base * 60 + 30 * $this->azarEntre($clave.'h', 0, 4);

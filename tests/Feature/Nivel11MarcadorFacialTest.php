@@ -11,8 +11,8 @@ use Tests\Support\ArmaEscenarios;
 use Tests\TestCase;
 
 /**
- * Marcador facial (kiosco aparte): el rostro se registra con el endpoint de plantillas de siempre (con consentimiento) y
- * el kiosco, autenticado con su clave de dispositivo, envia el descriptor; el backend reconoce y registra la marca.
+ * Marcador facial (proyecto aparte): el rostro se registra con el endpoint de plantillas de siempre (con consentimiento) y
+ * el marcador facial, autenticado con su clave de dispositivo, envia el descriptor; el backend reconoce y registra la marca.
  */
 class Nivel11MarcadorFacialTest extends TestCase
 {
@@ -31,14 +31,14 @@ class Nivel11MarcadorFacialTest extends TestCase
         parent::setUp();
         DB::table('Biometria.DispositivoMarcacion')->insert([
             'EessId' => $this->idSembrado('Organizacion.EstablecimientoSalud', 'EessId', ['EessCodigo' => 'EESS-LE-01']),
-            'DispositivoMarcacionCodigo' => self::DISPOSITIVO, 'DispositivoMarcacionNombre' => 'Kiosco de prueba', 'DispositivoMarcacionTipo' => 'Facial',
+            'DispositivoMarcacionCodigo' => self::DISPOSITIVO, 'DispositivoMarcacionNombre' => 'Marcador facial de prueba', 'DispositivoMarcacionTipo' => 'Facial',
         ]);
         $trabajador = $this->nuevoTrabajador();
         $this->vinculo = $this->nuevoVinculo([], $trabajador);
         DB::table('Biometria.ConsentimientoBiometrico')->insert(['TrabajadorId' => $trabajador, 'ConsentimientoBiometricoAceptado' => 1, 'ConsentimientoBiometricoVersion' => 'v1']);
         $this->rostro = $this->vector();
 
-        // Registro del rostro: el mismo endpoint que usan las pantallas de biometria (el kiosco lo llama con sesion de RRHH).
+        // Registro del rostro: el mismo endpoint que usan las pantallas de biometria (el marcador facial lo llama con sesion de RRHH).
         $this->postJson('/api/plantillas-biometricas', [
             'TrabajadorId' => $trabajador, 'PlantillaBiometricaTipo' => 'ROSTRO', 'PlantillaBiometricaReferencia' => MarcacionFacialService::codificar($this->rostro),
         ])->assertCreated();
@@ -62,11 +62,11 @@ class Nivel11MarcadorFacialTest extends TestCase
             ->postJson('/api/marcador-facial/marcar', ['descriptor' => $descriptor]);
     }
 
-    public function test_el_kiosco_sin_su_clave_no_puede_marcar(): void
+    public function test_el_marcador_sin_su_clave_no_puede_marcar(): void
     {
         $this->marcar($this->rostro, 'clave-equivocada')->assertUnauthorized();
         $this->withHeaders(['X-Dispositivo' => self::DISPOSITIVO, 'X-Clave-Dispositivo' => ClaveDeDispositivo::para(self::DISPOSITIVO)])
-            ->getJson('/api/marcador-facial/estado')->assertOk()->assertJsonPath('dispositivo.nombre', 'Kiosco de prueba');
+            ->getJson('/api/marcador-facial/estado')->assertOk()->assertJsonPath('dispositivo.nombre', 'Marcador facial de prueba');
 
         DB::table('Biometria.DispositivoMarcacion')->where('DispositivoMarcacionCodigo', self::DISPOSITIVO)->update(['DispositivoMarcacionEstado' => 0]);
         $this->marcar($this->rostro)->assertForbidden();

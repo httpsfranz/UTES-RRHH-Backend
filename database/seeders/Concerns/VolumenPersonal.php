@@ -3,11 +3,10 @@
 namespace Database\Seeders\Concerns;
 
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 /**
  * Expansion de volumen, parte 1: la dotacion de personal de toda la Red. Cada establecimiento recibe la plantilla propia de
- * su nivel (un C.S. I-4 tiene unos 21 trabajadores; un P.S. I-1, 4; la sede, 15), con sus vinculos laborales, colegiaturas,
+ * su nivel (un C.S. I-4 tiene unos 21 trabajadores; un P.S. I-2, 8; un P.S. I-1, 6; la sede, 15), con sus vinculos laborales, colegiaturas,
  * consentimiento y plantilla biometrica, los responsables del establecimiento y los usuarios que los operan.
  *
  * Usa VolumenBase. Deja la lista de trabajadores en $this->dotacion para las otras partes de la expansion.
@@ -66,14 +65,16 @@ trait VolumenPersonal
                 ['Enfermero(a)', 'SERUMS_EQUIV', 'DL1153', 'ENFERMERIA', 1, 'prog'],
                 ['Obstetra', 'CONTRATADO', 'DL276', 'OBSTETRICIA', 1, 'prog'],
                 ['Médico(a) Cirujano(a)', 'SERUMS_REM', 'DL1153', 'MEDICO', 1, 'prog'],
+                ['Odontólogo(a)', 'CAS', 'DL1057', 'ODONTOLOGIA', 1, 'prog'],
                 ['Técnico(a) en Enfermería', 'NOMBRADO', 'DL276', 'TEC_ENF', 1, 'prog'],
-                ['Técnico(a) en Enfermería', 'CAS', 'DL1057', 'TEC_ENF', 1, 'prog'],
+                ['Técnico(a) en Enfermería', 'CAS', 'DL1057', 'TEC_ENF', 2, 'prog'],
             ],
             'PS_I1' => [
                 ['Enfermero(a)', 'SERUMS_REM', 'DL1153', 'ENFERMERIA', 1, 'prog'],
+                ['Enfermero(a)', 'CAS', 'DL1057', 'ENFERMERIA', 1, 'prog'],
                 ['Obstetra', 'CAS', 'DL1057', 'OBSTETRICIA', 1, 'prog'],
                 ['Técnico(a) en Enfermería', 'NOMBRADO', 'DL276', 'TEC_ENF', 1, 'prog'],
-                ['Técnico(a) en Enfermería', 'CAS', 'DL1057', 'TEC_ENF', 1, 'prog'],
+                ['Técnico(a) en Enfermería', 'CAS', 'DL1057', 'TEC_ENF', 2, 'prog'],
             ],
             'SEDE' => [
                 ['Contador(a)', 'NOMBRADO', 'DL276', 'CONTABILIDAD', 1, 'HOR-ADM-LV'],
@@ -156,10 +157,10 @@ trait VolumenPersonal
         $plantillas = $this->plantillasPorNivel();
         $femeninos = $this->nombresFemeninos();
         $masculinos = $this->nombresMasculinos();
-        $segundos = $this->segundosNombres();
         $apellidos = $this->apellidos();
 
         $personas = [];
+        $dnis = DB::table('Personal.Trabajador')->pluck('TrabajadorNumeroDocumento')->mapWithKeys(fn ($d) => [(string) $d => true])->all();
         $n = 0;
         foreach ($this->nivelesPorEstablecimiento() as $eess => $nivel) {
             foreach ($plantillas[$nivel] as [$cargo, $condicion, $regimen, $profesion, $cantidad, $modo]) {
@@ -167,17 +168,18 @@ trait VolumenPersonal
                     $n++;
                     $esMujer = $this->azar("sexo{$n}") < 62;
                     $nombres = $this->elegir("nom{$n}", $esMujer ? $femeninos : $masculinos);
-                    $segundo = $this->elegir("seg{$n}", $segundos);
+                    $segundo = $this->elegir("seg{$n}", $this->segundosNombres($esMujer));
                     $nombres = trim($nombres.' '.$segundo);
                     $paterno = $apellidos[($n * 7) % count($apellidos)];
                     $materno = $apellidos[($n * 11 + 5) % count($apellidos)];
                     if ($materno === $paterno) {
                         $materno = $apellidos[($n * 11 + 6) % count($apellidos)];
                     }
+                    $nacimiento = sprintf('%d-%02d-%02d', 1964 + $this->azarEntre("nac{$n}", 0, 36), 1 + $n % 12, 1 + ($n * 5) % 28);
                     $personas[] = [
                         'n' => $n, 'eess' => $eess, 'cargo' => $cargo, 'condicion' => $condicion, 'regimen' => $regimen, 'profesion' => $profesion, 'modo' => $modo,
-                        'sexo' => $esMujer ? 'F' : 'M', 'nombres' => $nombres, 'paterno' => $paterno, 'materno' => $materno,
-                        'documento' => (string) (46000000 + $n), 'inicio' => $this->inicioDeVinculo($condicion, $n),
+                        'sexo' => $esMujer ? 'F' : 'M', 'nombres' => $nombres, 'paterno' => $paterno, 'materno' => $materno, 'nacimiento' => $nacimiento,
+                        'documento' => $this->dniRealista("vol{$n}", (int) substr($nacimiento, 0, 4), $dnis), 'inicio' => $this->inicioDeVinculo($condicion, $n),
                     ];
                 }
             }
@@ -191,15 +193,18 @@ trait VolumenPersonal
             'TrabajadorApellidoPaterno' => $p['paterno'],
             'TrabajadorApellidoMaterno' => $p['materno'],
             'TrabajadorSexo' => $p['sexo'],
-            'TrabajadorFechaNacimiento' => sprintf('%d-%02d-%02d', 1964 + $this->azarEntre("nac{$p['n']}", 0, 36), 1 + $p['n'] % 12, 1 + ($p['n'] * 5) % 28),
-            'TrabajadorCorreo' => $this->azar("mail{$p['n']}") < 60 ? Str::lower(Str::ascii(Str::before($p['nombres'], ' ').'.'.$p['paterno'])).$p['n'].'@ejemplo.pe' : null,
-            'TrabajadorTelefono' => $this->azar("tel{$p['n']}") < 85 ? '99'.str_pad((string) (2000000 + $p['n'] * 137 % 7000000), 7, '0', STR_PAD_LEFT) : null,
+            'TrabajadorFechaNacimiento' => $p['nacimiento'],
+            'TrabajadorCorreo' => $this->azar("mail{$p['n']}") < 60 ? $this->correoRealista("vol{$p['n']}", $p['nombres'], $p['paterno']) : null,
+            'TrabajadorTelefono' => $this->azar("tel{$p['n']}") < 85 ? $this->celularRealista("vol{$p['n']}") : null,
             'TrabajadorDireccion' => $this->direccionDe($p['n'], $distritos[$p['eess']] ?? 'Trujillo'),
             'TrabajadorFechaRegistro' => '2026-09-01 08:00:00',
             'TrabajadorEstado' => 1,
         ], $personas));
 
-        $trabajadorPorDocumento = DB::table('Personal.Trabajador')->where('TrabajadorNumeroDocumento', 'like', '46%')->pluck('TrabajadorId', 'TrabajadorNumeroDocumento')->all();
+        $trabajadorPorDocumento = [];
+        foreach (array_chunk(array_column($personas, 'documento'), 1000) as $parte) {
+            $trabajadorPorDocumento += DB::table('Personal.Trabajador')->whereIn('TrabajadorNumeroDocumento', $parte)->pluck('TrabajadorId', 'TrabajadorNumeroDocumento')->all();
+        }
 
         $this->insertarPorLotes('Personal.VinculoLaboral', array_map(fn (array $p) => [
             'TrabajadorId' => $trabajadorPorDocumento[$p['documento']],
@@ -307,7 +312,7 @@ trait VolumenPersonal
             $this->dotacion[$i]['usuario'] = $nombre;
             $filas[] = [
                 'TrabajadorId' => $p['trabajador'], 'UsuarioNombre' => $nombre, 'UsuarioPasswordHash' => self::VOLUMEN_HASH,
-                'UsuarioCorreo' => $nombre.'@ejemplo.pe', 'UsuarioFechaCreacion' => '2026-07-01 09:00:00', 'UsuarioEstado' => 1,
+                'UsuarioCorreo' => $nombre.'@redsalud-trujillo.gob.pe', 'UsuarioFechaCreacion' => '2026-07-01 09:00:00', 'UsuarioEstado' => 1,
             ];
         }
         $this->insertarPorLotes('Seguridad.Usuario', $filas);

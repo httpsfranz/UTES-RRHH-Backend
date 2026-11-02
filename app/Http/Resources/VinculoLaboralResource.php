@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Support\AccesoUsuario;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -22,6 +23,10 @@ class VinculoLaboralResource extends JsonResource
             'condicion_laboral_id' => $this->CondicionLaboralId,
             'cargo_id' => $this->CargoId,
             'codigo' => $this->VinculoLaboralCodigo,
+            // Dato reservado (RIT, Art. 83.19): solo RRHH.
+            'ingreso_mensual' => $request->user() && AccesoUsuario::de($request->user())->tiene('PERSONAL_EDITAR') ? $this->VinculoLaboralIngresoMensual : null,
+            'causa_cese' => $this->VinculoLaboralCausaCese,
+            'fecha_renuncia' => optional($this->VinculoLaboralFechaRenuncia)->format('Y-m-d'),
             'codigo_airhsp' => $this->VinculoLaboralCodigoAirhsp,
             'numero_plaza' => $this->VinculoLaboralNumeroPlaza,
             'fecha_inicio' => optional($this->VinculoLaboralFechaInicio)->format('Y-m-d'),

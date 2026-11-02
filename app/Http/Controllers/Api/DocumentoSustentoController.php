@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\DocumentoSustentoRequest;
 use App\Http\Resources\DocumentoSustentoResource;
 use App\Models\Soporte\DocumentoSustento;
+use App\Support\AccesoUsuario;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -49,6 +50,8 @@ class DocumentoSustentoController extends Controller
     // GET /api/documentos-sustento/{documento}/archivo?descargar=1  (sin `descargar` se muestra en el navegador)
     public function archivo(Request $request, DocumentoSustento $documento): StreamedResponse
     {
+        // Los sustentos pueden ser certificados medicos (RIT, Art. 83.19): los abre quien resuelve solicitudes, no porteria.
+        abort_unless(AccesoUsuario::de($request->user())->tiene('SOLICITUDES_APROBAR') || AccesoUsuario::de($request->user())->tiene('ASISTENCIA_APROBAR'), 403, 'No tienes permiso para abrir este documento.');
         abort_unless(filled($documento->DocumentoSustentoRuta) && Storage::disk(self::DISCO)->exists($documento->DocumentoSustentoRuta), 404, 'El documento no tiene un archivo guardado.');
 
         $cabeceras = ['Content-Type' => $documento->DocumentoSustentoTipo ?: 'application/octet-stream'];

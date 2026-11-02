@@ -57,6 +57,7 @@ class Nivel5Test extends CrudModulosTestCase
         $destacado = $this->programacionDeTrabajador($periodo, $this->nuevoVinculo());   // regimen "otro", condicion destacado
         $serums = $this->programacionDeTrabajador($periodo, $this->nuevoVinculo([
             'CondicionLaboralId' => $this->idPorCodigo('Personal.CondicionLaboral', 'CondicionLaboralId', 'CondicionLaboralCodigo', 'SERUMS_EQUIV'),
+            'CargoId' => $this->idPorCodigo('Personal.Cargo', 'CargoId', 'CargoNombre', 'Enfermero(a)'),
         ]));
 
         // RIT, Art. 20: un turno de guardia, o marcar un turno como guardia, solo para D.L. 276 y SERUMS.
@@ -87,10 +88,11 @@ class Nivel5Test extends CrudModulosTestCase
         // Se superpone con la manana (07:30-13:30).
         $this->postJson('/api/turnos-programados', $this->turno($pt, '2026-11-02', 'T', ['TurnoProgramadoHoraEntrada' => '12:00', 'TurnoProgramadoHoraSalida' => '18:00']))
             ->assertStatus(422)->assertJsonValidationErrors(['TurnoProgramadoFecha'])->assertJsonPath('errors.TurnoProgramadoFecha.0', fn ($m) => str_contains($m, 'superpone'));
-        // Que un turno empiece cuando termina el otro no es superposicion: manana + tarde (12 horas seguidas).
-        $this->postJson('/api/turnos-programados', $this->turno($pt, '2026-11-02', 'T'))->assertCreated();
-        // Con la guardia nocturna que sigue serian 24 horas continuas: prohibido (RIT, Art. 20).
-        $this->postJson('/api/turnos-programados', $this->turno($pt, '2026-11-02', 'N'))->assertStatus(422)->assertJsonPath('errors.TurnoProgramadoFecha.0', fn ($m) => str_contains($m, '24 horas'));
+        // Dos turnos regulares el mismo dia no se programan: la jornada es de 6 horas (RIT, Art. 16).
+        $this->postJson('/api/turnos-programados', $this->turno($pt, '2026-11-02', 'T'))->assertStatus(422);
+        // Guardia diurna seguida de la nocturna serian 24 horas continuas: prohibido (RIT, Art. 20).
+        $this->postJson('/api/turnos-programados', $this->turno($pt, '2026-11-03', 'G12-D'))->assertCreated();
+        $this->postJson('/api/turnos-programados', $this->turno($pt, '2026-11-03', 'N'))->assertStatus(422)->assertJsonPath('errors.TurnoProgramadoFecha.0', fn ($m) => str_contains($m, '24 horas'));
         // El turno que cruza la medianoche choca con el del dia siguiente.
         $this->postJson('/api/turnos-programados', $this->turno($pt, '2026-11-05', 'N'))->assertCreated();
         $this->postJson('/api/turnos-programados', $this->turno($pt, '2026-11-06', 'M', ['TurnoProgramadoHoraEntrada' => '06:00', 'TurnoProgramadoHoraSalida' => '10:00']))

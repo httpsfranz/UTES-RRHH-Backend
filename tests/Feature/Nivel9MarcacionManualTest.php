@@ -10,13 +10,20 @@ use Tests\Support\ArmaEscenarios;
 use Tests\TestCase;
 
 /**
- * Control manual de asistencia desde el calendario (RIT, Art. 21): POST /api/asistencia-diaria/marcar registra la entrada
+ * Control manual de asistencia desde el calendario (RIT, Art. 16): POST /api/asistencia-diaria/marcar registra la entrada
  * o la salida con la hora del servidor, y el calendario se puede ver por dia, semana o mes (vista + fecha).
  */
 class Nivel9MarcacionManualTest extends TestCase
 {
     use ArmaEscenarios;
     use DatabaseTransactions;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // El establecimiento de prueba tiene reloj facial: la marca manual se autoriza con una contingencia (RIT, Art. 16).
+        DB::table('Biometria.ContingenciaMarcacion')->insert(['EessId' => $this->eessId(), 'ContingenciaMarcacionFechaInicio' => '2026-01-01', 'ContingenciaMarcacionFechaFin' => '2030-12-31', 'ContingenciaMarcacionMotivo' => 'Prueba']);
+    }
 
     private function marcar(int $vinculo, string $tipo, array $extra = []): TestResponse
     {
@@ -33,7 +40,7 @@ class Nivel9MarcacionManualTest extends TestCase
         $this->assertSame(HoraLocal::hoy()->toDateString(), substr((string) $marca->MarcacionFechaHora, 0, 10));
         $this->assertSame('MANUAL', $marca->MarcacionOrigen);
         $this->assertSame('MANUAL', DB::table('Biometria.MetodoMarcacion')->where('MetodoMarcacionId', $marca->MetodoMarcacionId)->value('MetodoMarcacionCodigo'));
-        $this->assertStringContainsString('RIT, Art. 21', $marca->MarcacionObservacion);
+        $this->assertStringContainsString('RIT, Art. 16', $marca->MarcacionObservacion);
         $this->assertSame(substr((string) $marca->MarcacionFechaHora, 11, 5), $respuesta->json('hora'));
     }
 

@@ -6,6 +6,8 @@ use App\Models\Compensaciones\ConceptoDescuento;
 use App\Models\Compensaciones\DetalleLiquidacion;
 use App\Models\Compensaciones\LiquidacionDescuento;
 use App\Models\Consolidacion\ConsolidadoAsistencia;
+use App\Support\DiasHabiles;
+use App\Support\Parametro;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 
@@ -14,15 +16,29 @@ use Illuminate\Support\Facades\DB;
  * en la planilla unica de pagos, previa disposicion en la Resolucion Directoral). Ciclo de vida:
  * GENERADO -> APROBADO -> REMITIDO (a planilla), o ANULADO mientras no se haya remitido.
  *
- * El sistema no guarda la remuneracion del trabajador, por eso las lineas nacen con la cantidad calculada desde el
- * consolidado (dias de falta, horas de tardanza) y el importe en cero: lo completa quien liquida con el dato de la
- * planilla (valor del dia = ingreso total / 30; valor de la hora = valor del dia / jornada diaria, de 6 u 8 horas;
- * valor del minuto = valor de la hora / 60).
+ * Importes (RIT, Art. 25): valor del dia = ingreso total / 30; valor de la hora = valor del dia / jornada diaria, de 6 u
+ * 8 horas. El ingreso sale del vinculo laboral; sin ese dato la linea nace con importe cero y la completa quien liquida.
+ *
+ * Tardanzas (RIT, Art. 22, parametro TARDANZA_MODO_DESCUENTO): UMBRAL_MENSUAL descuenta solo al superar una hora al mes y
+ * computa como hora la fraccion mayor a 30 minutos; PROPORCIONAL (Art. 25) descuenta todos los minutos.
  */
 class LiquidacionDescuentoService
 {
     /** Consolidados que ya se pueden liquidar: los observados o recien generados aun pueden corregirse. */
     public const CONSOLIDADOS_LIQUIDABLES = ['CONFORME', 'CERRADO'];
+
+    /** Horas de tardanza del mes que se descuentan (ver la cabecera de la clase). */
+    public static function horasDeTardanza(int $minutos): float
+    {
+        if (Parametro::texto('TARDANZA_MODO_DESCUENTO', 'UMBRAL_MENSUAL') === 'PROPORCIONAL') {
+            return round($minutos / 60, 2);
+        }
+        if ($minutos <= 60) {
+            return 0.0;
+        }
+
+        return (float) (intdiv($minutos, 60) + ($minutos % 60 > 30 ? 1 : 0));
+    }
 
     /** Motivo por el que el consolidado no se puede liquidar (null = se puede). */
     public static function motivoSiNoSeLiquida(ConsolidadoAsistencia $consolidado): ?string
@@ -30,8 +46,8 @@ class LiquidacionDescuentoService
         if (! in_array($consolidado->ConsolidadoAsistenciaEstado, self::CONSOLIDADOS_LIQUIDABLES, true)) {
             return 'Solo se liquida un consolidado conforme o cerrado: el de este trabajador está '.strtolower($consolidado->ConsolidadoAsistenciaEstado).'.';
         }
-        if ((float) $consolidado->ConsolidadoAsistenciaDiasFalta <= 0 && $consolidado->ConsolidadoAsistenciaMinutosTardanza <= 0) {
-            return 'El consolidado no tiene inasistencias injustificadas ni tardanzas que descontar.';
+        if ((float) $consolidado->ConsolidadoAsistenciaDiasFalta <= 0 && self::horasDeTardanza((int) $consolidado->ConsolidadoAsistenciaMinutosTardanza) <= 0 && (int) $consolidado->ConsolidadoAsistenciaMinutosSinGoce <= 0) {
+            return 'El consolidado no tiene inasistencias injustificadas, tardanzas ni permisos sin goce que descontar.';
         }
 
         return null;
@@ -136,19 +152,39 @@ class LiquidacionDescuentoService
      */
     private function lineasDelConsolidado(ConsolidadoAsistencia $consolidado): array
     {
+        $vinculo = DB::table('Personal.VinculoLaboral')->where('VinculoLaboralId', $consolidado->VinculoLaboralId)->first(['VinculoLaboralId', 'VinculoLaboralIngresoMensual']);
+        $ingreso = (float) ($vinculo->VinculoLaboralIngresoMensual ?? 0);
+        $valorDia = $ingreso / 30;
+        $valorHora = $valorDia / (DiasHabiles::esSede((int) $consolidado->VinculoLaboralId) ? 8 : 6);
+        $nota = $ingreso > 0 ? '' : ' Sin ingreso registrado: completar el importe.';
+
         $lineas = [];
-        if ((float) $consolidado->ConsolidadoAsistenciaDiasFalta > 0) {
+        $dias = (float) $consolidado->ConsolidadoAsistenciaDiasFalta;
+        if ($dias > 0) {
             $lineas[] = [
                 'ConceptoDescuentoId' => $this->concepto('DESC_FALTA')->ConceptoDescuentoId,
-                'DetalleLiquidacionCantidad' => (float) $consolidado->ConsolidadoAsistenciaDiasFalta,
-                'DetalleLiquidacionObservacion' => 'Días de falta injustificada. Valor del día = ingreso total / 30 (RIT, Art. 25).',
+                'DetalleLiquidacionCantidad' => $dias,
+                'DetalleLiquidacionImporte' => round($dias * $valorDia, 2),
+                'DetalleLiquidacionObservacion' => 'Días de falta injustificada. Valor del día = ingreso total / 30 (RIT, Art. 25).'.$nota,
             ];
         }
-        if ($consolidado->ConsolidadoAsistenciaMinutosTardanza > 0) {
+        $minutos = (int) $consolidado->ConsolidadoAsistenciaMinutosTardanza;
+        $horas = self::horasDeTardanza($minutos);
+        if ($horas > 0) {
             $lineas[] = [
                 'ConceptoDescuentoId' => $this->concepto('DESC_TARDANZA')->ConceptoDescuentoId,
-                'DetalleLiquidacionCantidad' => round($consolidado->ConsolidadoAsistenciaMinutosTardanza / 60, 2),
-                'DetalleLiquidacionObservacion' => 'Horas de tardanza ('.$consolidado->ConsolidadoAsistenciaMinutosTardanza.' minutos). Valor de la hora = valor del día / jornada diaria (RIT, Art. 25).',
+                'DetalleLiquidacionCantidad' => $horas,
+                'DetalleLiquidacionImporte' => round($horas * $valorHora, 2),
+                'DetalleLiquidacionObservacion' => "Horas de tardanza ({$minutos} minutos). Valor de la hora = valor del día / jornada diaria (RIT, Art. 22 y 25).".$nota,
+            ];
+        }
+        $sinGoce = (int) $consolidado->ConsolidadoAsistenciaMinutosSinGoce;
+        if ($sinGoce > 0) {
+            $lineas[] = [
+                'ConceptoDescuentoId' => $this->concepto('DESC_PERMISO')->ConceptoDescuentoId,
+                'DetalleLiquidacionCantidad' => round($sinGoce / 60, 2),
+                'DetalleLiquidacionImporte' => round($sinGoce / 60 * $valorHora, 2),
+                'DetalleLiquidacionObservacion' => "Permisos particulares sin goce ({$sinGoce} minutos, RIT, Art. 62).".$nota,
             ];
         }
 

@@ -38,6 +38,7 @@ class ExpedientePadRequest extends CatalogoRequest
             'ExpedientePadDescripcion' => $this->texto(1500),
             'ExpedientePadSancion' => $this->texto(300),
             'ExpedientePadEstado' => ['sometimes', 'in:'.implode(',', self::ESTADOS_EDITABLES)],
+            'ExpedientePadMedidaCautelar' => $this->booleano(),
         ];
     }
 

@@ -44,7 +44,7 @@ class Nivel3SolicitudesTest extends CrudModulosTestCase
     private function papeleta(int $vinculo, array $extra = []): array
     {
         return $extra + [
-            'VinculoLaboralId' => $vinculo, 'TipoPapeletaId' => $this->tipoPapeleta('PERM_OFICIAL'), 'PapeletaFecha' => '2026-09-21',
+            'VinculoLaboralId' => $vinculo, 'TipoPapeletaId' => $this->tipoPapeleta('PERM_OFICIAL'), 'PapeletaFecha' => '2026-09-21', 'PapeletaUnidadDestino' => 'Sede administrativa',
             'PapeletaHoraSalida' => '10:00', 'PapeletaHoraRetorno' => '11:00',
         ];
     }
@@ -233,7 +233,7 @@ class Nivel3SolicitudesTest extends CrudModulosTestCase
         $this->postJson('/api/licencias', $seisDias)->assertStatus(422)->assertJsonValidationErrors(['TipoLicenciaId']);
         $this->postJson('/api/licencias', $cincoDias)->assertCreated();
         // Los otros tipos no se afectan.
-        $this->postJson('/api/licencias', $this->licencia($vinculo, ['LicenciaFechaInicio' => '2026-10-05', 'LicenciaFechaFin' => '2026-10-20']))->assertCreated();
+        $this->postJson('/api/licencias', $this->licencia($vinculo, ['TipoLicenciaId' => $this->tipoLicencia('ESTUDIOS'), 'LicenciaFechaInicio' => '2026-10-05', 'LicenciaFechaFin' => '2026-10-20']))->assertCreated();
     }
 
     public function test_aprobar_y_rechazar_licencias(): void
@@ -279,7 +279,9 @@ class Nivel3SolicitudesTest extends CrudModulosTestCase
     public function test_el_descanso_sin_citt_ni_documento_no_se_aprueba(): void
     {
         $vinculo = $this->nuevoVinculo();
-        $id = $this->postJson('/api/descansos-medicos', $this->descanso($vinculo, ['DescansoMedicoNumeroCitt' => null]))->assertCreated()->json('data.id');
+        $this->postJson('/api/descansos-medicos', $this->descanso($vinculo, ['DescansoMedicoNumeroCitt' => null]))->assertStatus(422)->assertJsonValidationErrors(['DocumentoSustentoId']);
+        $id = $this->postJson('/api/descansos-medicos', $this->descanso($vinculo))->assertCreated()->json('data.id');
+        DB::table('Solicitudes.DescansoMedico')->where('DescansoMedicoId', $id)->update(['DescansoMedicoNumeroCitt' => null, 'DocumentoSustentoId' => null]);
 
         $this->postJson("/api/descansos-medicos/{$id}/aprobar", ['UsuarioId' => $this->usuario()])->assertStatus(422);
         $this->patchJson("/api/descansos-medicos/{$id}", ['DescansoMedicoNumeroCitt' => 'ZZ-7777'])->assertOk();

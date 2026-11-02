@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\OcurrenciaPorteriaRequest;
 use App\Http\Resources\OcurrenciaPorteriaResource;
 use App\Models\Solicitudes\OcurrenciaPorteria;
+use App\Services\CalculoAsistenciaService;
+use App\Services\NotificacionService;
 use App\Support\AlcanceDeEess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -46,9 +48,16 @@ class OcurrenciaPorteriaController extends Controller
     }
 
     // POST /api/ocurrencias-porteria
-    public function store(OcurrenciaPorteriaRequest $request): JsonResponse
+    public function store(OcurrenciaPorteriaRequest $request, NotificacionService $notificaciones, CalculoAsistenciaService $calculo): JsonResponse
     {
         $ocurrencia = OcurrenciaPorteria::create($request->validated());
+        if (in_array($ocurrencia->OcurrenciaPorteriaTipo, ['SALIDA_SIN_AUTORIZACION', 'EXCESO_DE_PAPELETA'], true)) {
+            $notificaciones->emitir('OCURRENCIA_PORTERIA', 'Ocurrencia de portería', 'Portería informó: '.mb_strtolower(str_replace('_', ' ', $ocurrencia->OcurrenciaPorteriaTipo)).'. Revisa el caso (RIT, Art. 16 y 28).', '/solicitudes/ocurrencias-porteria', (int) $ocurrencia->EessId);
+            if ($ocurrencia->VinculoLaboralId !== null) {
+                $fecha = substr((string) $ocurrencia->OcurrenciaPorteriaFechaHora, 0, 10);
+                $calculo->calcular($fecha, $fecha, (int) $ocurrencia->VinculoLaboralId);
+            }
+        }
 
         return (new OcurrenciaPorteriaResource($ocurrencia->fresh()->load(self::RELACIONES)))
             ->response()

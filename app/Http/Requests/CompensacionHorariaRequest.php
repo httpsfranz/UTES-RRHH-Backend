@@ -10,6 +10,7 @@ use App\Models\Personal\VinculoLaboral;
 use App\Models\Seguridad\Usuario;
 use App\Support\HoraLocal;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Validator;
 
 /**
@@ -60,6 +61,18 @@ class CompensacionHorariaRequest extends CatalogoRequest
     public function withValidator(Validator $validator): void
     {
         $this->despuesDeValidar($validator, function (Validator $validator) {
+            $codigo = DB::table('Compensaciones.TipoCompensacion')->where('TipoCompensacionId', $this->valorEfectivo('TipoCompensacionId'))->value('TipoCompensacionCodigo');
+            if ($codigo === 'ACTO_CIVICO' && $this->esCreacion()) {
+                $trabajo = $this->valorEfectivo('CompensacionHorariaFechaTrabajo');
+                $mes = $trabajo ? CarbonImmutable::parse($trabajo) : HoraLocal::hoy();
+                $usado = DB::table('Compensaciones.CompensacionHoraria')->where('VinculoLaboralId', $this->valorEfectivo('VinculoLaboralId'))->where('TipoCompensacionId', $this->valorEfectivo('TipoCompensacionId'))
+                    ->whereNotIn('CompensacionHorariaEstado', ['ANULADO'])
+                    ->whereRaw('YEAR(COALESCE(CompensacionHorariaFechaTrabajo, CompensacionHorariaFechaGeneracion)) = ?', [$mes->year])
+                    ->whereRaw('MONTH(COALESCE(CompensacionHorariaFechaTrabajo, CompensacionHorariaFechaGeneracion)) = ?', [$mes->month])->exists();
+                if ($usado) {
+                    $validator->errors()->add('TipoCompensacionId', 'El acto cívico se compensa con un día hábil dentro del mes, no acumulable (RIT, Disp. Compl. 3ª).');
+                }
+            }
             $this->rechazaEstadoEnviado($validator, 'CompensacionHorariaEstado');
             $this->rechazaEstadoEnviado($validator, 'CompensacionHorariaHorasDevueltas');
             $this->soloSiPendiente($validator, 'CompensacionHorariaEstado', 'CompensacionHorariaEstado', 'La compensación');

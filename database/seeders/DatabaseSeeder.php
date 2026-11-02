@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Support\VaciaEsquemasDelSistema;
+use Database\Seeders\Concerns\ConservaRostrosEnrolados;
 use Illuminate\Database\Seeder;
 use RuntimeException;
 
@@ -14,9 +15,12 @@ use RuntimeException;
  *   2. Siembra los catalogos base                -> CatalogosSeeder.
  *   3. Siembra datos de prueba                   -> DatosPruebaSeeder: los casos puntuales de cada modulo y, salvo
  *      SEED_VOLUMEN=false, la expansion de volumen (la Red entera como un sistema ya en uso, ~45 segundos).
+ *   4. Con la expansion de volumen (la base de trabajo, nunca la de PHPUnit): DNI, celulares y correos verosimiles para
+ *      todos (DatosPersonalesRealistasSeeder) y las personas enroladas en el marcador facial vuelven a quedar registradas
+ *      con su rostro, su vinculo y su horario (Concerns\ConservaRostrosEnrolados), asi el marcador facial las sigue reconociendo.
  *
  * Es reproducible: cada ejecucion termina en exactamente el mismo estado, sin importar
- * cuantas pruebas se hicieron antes.
+ * cuantas pruebas se hicieron antes (la asistencia llega hasta la hora en que se siembra).
  *
  *     php artisan db:seed --class=DatabaseSeeder      (o simplemente: php artisan db:seed)
  *     php artisan migrate:fresh --seed                 (recrea ademas la estructura)
@@ -26,6 +30,8 @@ use RuntimeException;
  */
 class DatabaseSeeder extends Seeder
 {
+    use ConservaRostrosEnrolados;
+
     public function run(): void
     {
         if (app()->isProduction()) {
@@ -34,6 +40,9 @@ class DatabaseSeeder extends Seeder
                 .'Para cargar los catalogos use: php artisan db:seed --class=CatalogosSeeder'
             );
         }
+
+        $volumen = filter_var(config('seed.volumen'), FILTER_VALIDATE_BOOLEAN);
+        $enrolados = $volumen ? $this->respaldarRostrosEnrolados() : [];
 
         $tablas = VaciaEsquemasDelSistema::ejecutar();
         $this->command?->info("Datos borrados: {$tablas} tablas vaciadas, identidades reiniciadas.");
@@ -46,5 +55,13 @@ class DatabaseSeeder extends Seeder
             // Otra vez al final: ahora que existen microredes y establecimientos, los usuarios predeterminados reciben su ambito.
             UsuariosYPermisosSeeder::class,
         ]);
+
+        if ($volumen) {
+            $this->call(DatosPersonalesRealistasSeeder::class);
+            foreach ($this->restaurarRostrosEnrolados($enrolados) as $nombre) {
+                $this->command?->info("Rostro enrolado conservado: {$nombre}");
+            }
+            $this->call(DatosRitRealistasSeeder::class);
+        }
     }
 }

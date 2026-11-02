@@ -23,6 +23,9 @@ class VinculoLaboral extends Model
     public $timestamps = false;
 
     protected $fillable = [
+        'VinculoLaboralIngresoMensual',
+        'VinculoLaboralCausaCese',
+        'VinculoLaboralFechaRenuncia',
         'TrabajadorId',
         'EessId',
         'RegimenLaboralId',
@@ -38,6 +41,8 @@ class VinculoLaboral extends Model
     ];
 
     protected $casts = [
+        'VinculoLaboralIngresoMensual' => 'decimal:2',
+        'VinculoLaboralFechaRenuncia' => 'date',
         'TrabajadorId' => 'integer',
         'EessId' => 'integer',
         'RegimenLaboralId' => 'integer',

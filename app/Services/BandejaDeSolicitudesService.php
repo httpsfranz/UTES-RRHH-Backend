@@ -64,6 +64,11 @@ class BandejaDeSolicitudesService
                 ->when($vinculos !== null, fn (Builder $q) => $q->whereIn('vinculo', $vinculos ?: [0]))
                 ->when($eess !== null, fn (Builder $q) => $q->whereIn('vinculo', DB::table('Personal.VinculoLaboral')->whereIn('EessId', $eess ?: [0])->select('VinculoLaboralId')))
                 ->get();
+            $visto = in_array($recurso, ['licencias', 'papeletas'], true)
+                ? DB::table($recurso === 'licencias' ? 'Solicitudes.Licencia' : 'Solicitudes.Papeleta')->whereIn($recurso === 'licencias' ? 'LicenciaId' : 'PapeletaId', $deTipo->pluck('id')->all() ?: [0])
+                    ->whereNotNull($recurso === 'licencias' ? 'LicenciaVistoBuenoPor' : 'PapeletaVistoBuenoPor')->pluck($recurso === 'licencias' ? 'LicenciaId' : 'PapeletaId')->map(fn ($id) => (int) $id)->flip()
+                : collect();
+            $esDeLaRed = $acceso->eessIds === null;
             $resumen[] = ['tipo' => $recurso, 'nombre' => $nombre, 'pendientes' => $deTipo->where('estado', 'PENDIENTE')->count(), 'puede_aprobar' => $puedeAprobar];
             if ($tipo !== null && $tipo !== $recurso) {
                 continue;
@@ -72,7 +77,7 @@ class BandejaDeSolicitudesService
                 'clave' => "{$recurso}-{$f->id}", 'tipo' => $recurso, 'tipo_nombre' => $nombre, 'id' => (int) $f->id, 'vinculo_id' => (int) $f->vinculo,
                 'estado' => $f->estado, 'fecha' => substr((string) $f->fecha, 0, 10), 'fecha_fin' => $f->fecha_fin ? substr((string) $f->fecha_fin, 0, 10) : null,
                 'registrado' => $f->registrado ? substr((string) $f->registrado, 0, 16) : null, 'detalle' => trim(preg_replace('/\s+/', ' ', (string) $f->detalle)),
-                'puede_aprobar' => $puedeAprobar && $f->estado === 'PENDIENTE', 'puede_rechazar' => $puedeAprobar && $conRechazo && $f->estado === 'PENDIENTE', 'pantalla' => $ruta,
+                'visto_bueno' => $visto->has((int) $f->id), 'puede_aprobar' => $puedeAprobar && $f->estado === 'PENDIENTE' && ($esDeLaRed || ! $visto->has((int) $f->id)), 'puede_rechazar' => $puedeAprobar && $conRechazo && $f->estado === 'PENDIENTE', 'pantalla' => $ruta,
             ]));
         }
 

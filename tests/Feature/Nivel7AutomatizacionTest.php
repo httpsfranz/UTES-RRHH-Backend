@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Services\AutomatizacionService;
 use App\Support\HoraLocal;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use Tests\Support\ArmaEscenarios;
@@ -35,6 +36,7 @@ class Nivel7AutomatizacionTest extends TestCase
 
     public function test_el_periodo_del_mes_se_abre_una_sola_vez(): void
     {
+        CarbonImmutable::setTestNow('2028-03-15 15:00:00');
         DB::table('Consolidacion.PeriodoAsistencia')->where(['PeriodoAsistenciaAnio' => HoraLocal::hoy()->year, 'PeriodoAsistenciaMes' => HoraLocal::hoy()->month])->delete();
 
         $this->assertTrue($this->servicio()->abrirPeriodoDelMes());

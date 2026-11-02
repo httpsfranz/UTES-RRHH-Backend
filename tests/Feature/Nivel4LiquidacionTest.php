@@ -33,7 +33,7 @@ class Nivel4LiquidacionTest extends CrudModulosTestCase
 
         $lineas = collect($r->json('data.detalles'))->keyBy('concepto.codigo');
         $this->assertEquals(2, $lineas['DESC_FALTA']['cantidad']);       // dias de falta
-        $this->assertEquals(1.5, $lineas['DESC_TARDANZA']['cantidad']);   // las tardanzas se acumulan en horas (RIT, Art. 25)
+        $this->assertEquals(1, $lineas['DESC_TARDANZA']['cantidad']);   // 90 minutos: una hora; la fraccion cuenta si pasa de 30 minutos (RIT, Art. 22)
         $this->assertEquals(0, $lineas['DESC_FALTA']['importe']);
 
         // Se ve igual en el detalle y en el listado.

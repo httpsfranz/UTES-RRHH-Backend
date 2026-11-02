@@ -70,6 +70,17 @@ class PeriodoVacacionalRequest extends CatalogoRequest
     public function withValidator(Validator $validator): void
     {
         $this->despuesDeValidar($validator, function (Validator $validator) {
+            // 30 dias por anio completo de servicios: antes del anio solo se genera la proporcion (RIT, Art. 68 y 69).
+            $inicioPeriodo = (string) $this->fechaEfectiva('PeriodoVacacionalFechaInicio');
+            $finPeriodo = (string) $this->fechaEfectiva('PeriodoVacacionalFechaFin');
+            $ganados = $this->valorEfectivo('PeriodoVacacionalDiasGanados');
+            if ($ganados !== null && $inicioPeriodo !== '' && $finPeriodo >= $inicioPeriodo) {
+                $proporcion = min(self::DIAS_POR_ANIO, (int) floor(((strtotime($finPeriodo) - strtotime($inicioPeriodo)) / 86400 + 1) / 365 * self::DIAS_POR_ANIO));
+                if ((float) $ganados > max($proporcion, 0) + 0.01 && $this->esCreacion()) {
+                    $validator->errors()->add('PeriodoVacacionalDiasGanados', "Ese período solo genera {$proporcion} días: los 30 días exigen un año completo de servicios (RIT, Art. 68 y 69).");
+                }
+            }
+
             $actual = $this->registro()?->PeriodoVacacionalEstado;
             $reabre = $actual === 'CERRADO' && $this->input('PeriodoVacacionalEstado') === 'ABIERTO' && count($this->all()) === 1;
             if (in_array($actual, ['CERRADO', 'ANULADO'], true) && ! $reabre) {

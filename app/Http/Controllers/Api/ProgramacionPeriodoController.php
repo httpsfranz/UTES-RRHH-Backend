@@ -78,9 +78,20 @@ class ProgramacionPeriodoController extends Controller
     }
 
     // POST /api/programaciones-periodo/{programacion}/publicar   (BORRADOR -> PUBLICADA; remitida, ya no se modifica)
-    public function publicar(ProgramacionPeriodo $programacion, ProgramacionPeriodoService $servicio): JsonResponse
+    //      { MotivoTardio? }  obligatorio despues del dia 20 del mes anterior (RIT, Art. 16)
+    public function publicar(Request $request, ProgramacionPeriodo $programacion, ProgramacionPeriodoService $servicio): JsonResponse
     {
-        return (new ProgramacionPeriodoResource($servicio->publicar($programacion)->load(self::RELACIONES)))->response();
+        $datos = $request->validate(['MotivoTardio' => ['nullable', 'string', 'max:500']]);
+
+        return (new ProgramacionPeriodoResource($servicio->publicar($programacion, $datos['MotivoTardio'] ?? null)->load(self::RELACIONES)))->response();
+    }
+
+    // POST /api/programaciones-periodo/{programacion}/reprogramar   { Motivo, Excepcional? }  vuelve a borrador (hasta dos veces)
+    public function reprogramar(Request $request, ProgramacionPeriodo $programacion, ProgramacionPeriodoService $servicio): JsonResponse
+    {
+        $datos = $request->validate(['Motivo' => ['required', 'string', 'min:5', 'max:500'], 'Excepcional' => ['sometimes', 'boolean']], [], ['Motivo' => 'motivo']);
+
+        return (new ProgramacionPeriodoResource($servicio->reprogramar($programacion, $datos['Motivo'], (bool) ($datos['Excepcional'] ?? false))->load(self::RELACIONES)))->response();
     }
 
     // POST /api/programaciones-periodo/{programacion}/cerrar   (PUBLICADA -> CERRADA)

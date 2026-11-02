@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\Vacaciones\GoceVacacional;
+use App\Support\DiasHabiles;
 use App\Support\HoraLocal;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
@@ -139,6 +141,141 @@ class AutomatizacionService
         }
 
         return $creados;
+    }
+
+    /** Avisa a RRHH de quien acumula mas de 60 minutos de tardanza en el mes: falta leve (RIT, Art. 104.1). */
+    public function detectarTardanzasAcumuladas(): int
+    {
+        $hoy = HoraLocal::hoy();
+        $mes = $hoy->startOfMonth();
+        $casos = DB::table('Asistencia.AsistenciaDiaria as a')->join('Personal.VinculoLaboral as v', 'v.VinculoLaboralId', '=', 'a.VinculoLaboralId')
+            ->join('Personal.Trabajador as t', 't.TrabajadorId', '=', 'v.TrabajadorId')
+            ->whereDate('a.AsistenciaDiariaFecha', '>=', $mes->toDateString())->whereDate('a.AsistenciaDiariaFecha', '<=', $hoy->toDateString())
+            ->groupBy('v.VinculoLaboralCodigo', 't.TrabajadorNombreCompleto')->havingRaw('SUM(a.AsistenciaDiariaMinutosTardanza) > 60')
+            ->get(['v.VinculoLaboralCodigo as codigo', 't.TrabajadorNombreCompleto as nombre', DB::raw('SUM(a.AsistenciaDiariaMinutosTardanza) as minutos')]);
+
+        return $this->avisarUnaVez('ALERTA_TARDANZA_MENSUAL', $casos->map(fn ($c) => [
+            'titulo' => 'Tardanza acumulada: '.$this->limpio($c->nombre)." ({$c->codigo})",
+            'mensaje' => "Acumula {$c->minutos} minutos en {$mes->format('m/Y')}: falta leve (RIT, Art. 104.1).",
+        ])->all(), '/asistencia/asistencia-diaria');
+    }
+
+    /** Colegiaturas vencidas del personal con vinculo vigente (RIT, Art. 84.37). */
+    public function detectarColegiaturasVencidas(): int
+    {
+        $hoy = HoraLocal::hoy()->toDateString();
+        $casos = DB::table('Personal.Colegiatura as c')->join('Personal.Trabajador as t', 't.TrabajadorId', '=', 'c.TrabajadorId')
+            ->join('Personal.VinculoLaboral as v', 'v.TrabajadorId', '=', 't.TrabajadorId')
+            ->where('c.ColegiaturaEstado', 1)->whereDate('c.ColegiaturaFechaVencimiento', '<', $hoy)->where('v.VinculoLaboralEstado', 1)
+            ->where(fn ($q) => $q->whereNull('v.VinculoLaboralFechaFin')->orWhereDate('v.VinculoLaboralFechaFin', '>=', $hoy))
+            ->distinct()->get(['t.TrabajadorNombreCompleto as nombre', 'c.ColegiaturaNumero as numero', 'c.ColegiaturaFechaVencimiento as vence']);
+
+        return $this->avisarUnaVez('ALERTA_COLEGIATURA', $casos->map(fn ($c) => [
+            'titulo' => 'Colegiatura vencida: '.$this->limpio($c->nombre),
+            'mensaje' => "La colegiatura N° {$c->numero} venció el ".substr((string) $c->vence, 0, 10).': la habilitación debe estar vigente (RIT, Art. 84.37).',
+        ])->all(), '/personal/trabajadores');
+    }
+
+    /** Personal que cumple 70 anios este anio: cesa el 31 de diciembre (RIT, Art. 129). */
+    public function detectarLimiteDeEdad(): int
+    {
+        $hoy = HoraLocal::hoy();
+        $casos = DB::table('Personal.Trabajador as t')->join('Personal.VinculoLaboral as v', 'v.TrabajadorId', '=', 't.TrabajadorId')
+            ->where('v.VinculoLaboralEstado', 1)->whereNull('v.VinculoLaboralFechaFin')->whereYear('t.TrabajadorFechaNacimiento', '<=', $hoy->year - 70)
+            ->distinct()->get(['t.TrabajadorNombreCompleto as nombre', 't.TrabajadorFechaNacimiento as nacimiento']);
+
+        return $this->avisarUnaVez('ALERTA_LIMITE_EDAD', $casos->map(fn ($c) => [
+            'titulo' => 'Límite de edad: '.$this->limpio($c->nombre),
+            'mensaje' => 'Cumple 70 años en '.$hoy->year.': puede continuar hasta el 31 de diciembre de ese año (RIT, Art. 129).',
+        ])->all(), '/personal/trabajadores');
+    }
+
+    /** Quien no volvio tras su licencia, vacaciones o descanso medico: inasistencia al dia siguiente (RIT, Art. 28 c). */
+    public function detectarNoReincorporacion(): int
+    {
+        $hoy = HoraLocal::hoy();
+        $ayer = $hoy->subDays(5)->toDateString();
+        $origen = DB::table('Solicitudes.Licencia')->where('LicenciaEstado', 'APROBADO')->whereDate('LicenciaFechaFin', '>=', $ayer)->whereDate('LicenciaFechaFin', '<', $hoy->toDateString())->select('VinculoLaboralId as vinculo', 'LicenciaFechaFin as fin')
+            ->unionAll(DB::table('Solicitudes.DescansoMedico')->where('DescansoMedicoEstado', 'APROBADO')->whereDate('DescansoMedicoFechaFin', '>=', $ayer)->whereDate('DescansoMedicoFechaFin', '<', $hoy->toDateString())->select('VinculoLaboralId as vinculo', 'DescansoMedicoFechaFin as fin'))
+            ->get();
+
+        $casos = [];
+        foreach ($origen as $o) {
+            $siguiente = date('Y-m-d', strtotime(substr((string) $o->fin, 0, 10).' +1 day'));
+            $falto = DB::table('Asistencia.AsistenciaDiaria as a')->join('Asistencia.EstadoAsistencia as e', 'e.EstadoAsistenciaId', '=', 'a.EstadoAsistenciaId')
+                ->where('a.VinculoLaboralId', $o->vinculo)->whereDate('a.AsistenciaDiariaFecha', $siguiente)->whereIn('e.EstadoAsistenciaCodigo', ['FALTA', 'FALTA_GUARDIA'])->exists();
+            if ($falto) {
+                $nombre = DB::table('Personal.VinculoLaboral as v')->join('Personal.Trabajador as t', 't.TrabajadorId', '=', 'v.TrabajadorId')->where('v.VinculoLaboralId', $o->vinculo)->value('t.TrabajadorNombreCompleto');
+                $casos[] = ['titulo' => 'No se reincorporó: '.$this->limpio($nombre), 'mensaje' => "Terminó su ausencia autorizada y faltó el {$siguiente} (RIT, Art. 28)."];
+            }
+        }
+
+        return $this->avisarUnaVez('ALERTA_NO_REINCORPORACION', $casos, '/asistencia/asistencia-diaria');
+    }
+
+    /** Fraccionamiento sin respuesta en 3 dias habiles: se considera aprobado (RIT, Art. 73). */
+    public function aprobarFraccionamientosPorSilencio(): int
+    {
+        $aprobados = 0;
+        foreach (GoceVacacional::query()->where('GoceVacacionalEstado', 'PENDIENTE')->where('GoceVacacionalDias', '<', 7)->get() as $goce) {
+            if (DiasHabiles::transcurridosDesde($goce->GoceVacacionalFechaSolicitud->toDateString()) > 3) {
+                app(GoceVacacionalService::class)->aprobar($goce, 0, 'Aprobado por silencio: sin respuesta en 3 días hábiles (RIT, Art. 73).');
+                $aprobados++;
+            }
+        }
+
+        return $aprobados;
+    }
+
+    /** Dias no laborables compensables: la compensacion se programa sola, hasta 15 dias desde la semana siguiente (RIT, Art. 18). */
+    public function programarCompensacionDeDiasNoLaborables(): int
+    {
+        $hoy = HoraLocal::hoy();
+        $tipo = DB::table('Compensaciones.TipoCompensacion')->where('TipoCompensacionCodigo', 'DIA_NO_LABORABLE')->value('TipoCompensacionId');
+        if ($tipo === null) {
+            return 0;
+        }
+        $creadas = 0;
+        foreach (DB::table('Soporte.CalendarioNoLaborable')->where('CalendarioNoLaborableEstado', 1)->where('CalendarioNoLaborableCompensable', 1)->whereDate('CalendarioNoLaborableFecha', '<=', $hoy->toDateString())->whereDate('CalendarioNoLaborableFecha', '>=', $hoy->subDays(30)->toDateString())->get() as $dia) {
+            $fecha = substr((string) $dia->CalendarioNoLaborableFecha, 0, 10);
+            $nota = "Compensación del día no laborable {$fecha} (RIT, Art. 18).";
+            $limite = CarbonImmutable::parse($fecha)->next(CarbonImmutable::MONDAY)->addDays(15)->toDateString();
+            $vinculos = DB::table('Personal.AsignacionHorario as ah')->join('Personal.VinculoLaboral as v', 'v.VinculoLaboralId', '=', 'ah.VinculoLaboralId')
+                ->join('Organizacion.EstablecimientoSalud as e', 'e.EessId', '=', 'v.EessId')->where('ah.AsignacionHorarioEstado', 1)->where('v.VinculoLaboralEstado', 1)
+                ->when($dia->MicroredId, fn ($q, $m) => $q->where('e.MicroredId', $m))->distinct()->pluck('v.VinculoLaboralId');
+            foreach ($vinculos as $vinculo) {
+                $ya = DB::table('Compensaciones.CompensacionHoraria')->where('VinculoLaboralId', $vinculo)->where('TipoCompensacionId', $tipo)->where('CompensacionHorariaObservacion', $nota)->exists();
+                if (! $ya) {
+                    DB::table('Compensaciones.CompensacionHoraria')->insert(['VinculoLaboralId' => $vinculo, 'TipoCompensacionId' => $tipo, 'CompensacionHorariaFechaGeneracion' => $hoy->toDateTimeString(), 'CompensacionHorariaHorasGeneradas' => 8,
+                        'CompensacionHorariaHorasDevueltas' => 0, 'CompensacionHorariaFechaLimite' => $limite, 'CompensacionHorariaAutorizadoPreviamente' => 1, 'CompensacionHorariaObservacion' => $nota, 'CompensacionHorariaEstado' => 'APROBADO']);
+                    $creadas++;
+                }
+            }
+        }
+
+        return $creadas;
+    }
+
+    /** @param  list<array{titulo:string,mensaje:string}>  $casos */
+    private function avisarUnaVez(string $tipo, array $casos, string $enlace): int
+    {
+        $creados = 0;
+        foreach ($this->destinatarios() as $usuarioId) {
+            foreach ($casos as $caso) {
+                $ya = DB::table('Soporte.Notificacion')->where(['UsuarioId' => $usuarioId, 'NotificacionTipo' => $tipo, 'NotificacionTitulo' => $caso['titulo'], 'NotificacionMensaje' => $caso['mensaje']])->exists();
+                if (! $ya) {
+                    $this->notificaciones->notificar($usuarioId, $tipo, $caso['titulo'], $caso['mensaje'], $enlace);
+                    $creados++;
+                }
+            }
+        }
+
+        return $creados;
+    }
+
+    private function limpio(?string $nombre): string
+    {
+        return trim(preg_replace('/\s+/', ' ', str_replace(' ,', ',', (string) $nombre)));
     }
 
     /**

@@ -3,12 +3,12 @@
 namespace App\Support;
 
 /**
- * Clave con la que un marcador facial (kiosco) se identifica ante la API, sin cuenta de usuario ni sesion (un kiosco
+ * Clave con la que un marcador facial se identifica ante la API, sin cuenta de usuario ni sesion (un marcador facial
  * no puede depender de una sesion que vence por inactividad).
  *
  * No se guarda en la base: se deriva del codigo del dispositivo y de la APP_KEY (HMAC), asi que no hace falta una
  * columna nueva. Se obtiene con `php artisan biometria:clave-dispositivo DISP-LE-01` y se escribe una sola vez en la
- * configuracion del kiosco. Para revocarla basta con desactivar el dispositivo en Biometria.DispositivoMarcacion.
+ * configuracion del marcador facial. Para revocarla basta con desactivar el dispositivo en Biometria.DispositivoMarcacion.
  */
 class ClaveDeDispositivo
 {

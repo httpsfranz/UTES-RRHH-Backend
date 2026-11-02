@@ -24,6 +24,7 @@ class JustificacionFaltaResource extends JsonResource
             'fecha_registro' => optional($this->JustificacionFaltaFechaRegistro)->format('Y-m-d H:i:s'),
             'fecha_resolucion' => optional($this->JustificacionFaltaFechaResolucion)->format('Y-m-d H:i:s'),
             'estado' => $this->JustificacionFaltaEstado,
+            'es_extemporanea' => (bool) $this->JustificacionFaltaEsExtemporanea,
             // Anulada = "inactiva": el listado la muestra apagada.
             'activo' => ! in_array($this->JustificacionFaltaEstado, ['ANULADO', 'ANULADA'], true),
             'trabajador' => $this->whenLoaded('vinculoLaboral', fn () => $this->vinculoLaboral?->relationLoaded('trabajador') && $this->vinculoLaboral->trabajador ? [

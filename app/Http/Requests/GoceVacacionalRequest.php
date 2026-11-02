@@ -4,10 +4,15 @@ namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\ReglasDeNegocio;
 use App\Http\Requests\Concerns\ReglasDeVacaciones;
+use App\Models\Personal\VinculoLaboral;
 use App\Models\Solicitudes\DescansoMedico;
 use App\Models\Soporte\DocumentoSustento;
 use App\Models\Vacaciones\GoceVacacional;
 use App\Models\Vacaciones\RolVacacional;
+use App\Support\DiasHabiles;
+use App\Support\HoraLocal;
+use App\Support\ReglasDeSolicitud;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Validator;
 
 /**
@@ -18,6 +23,14 @@ use Illuminate\Validation\Validator;
  */
 class GoceVacacionalRequest extends CatalogoRequest
 {
+    /** Anticipacion del fraccionamiento y del adelanto (RIT, Art. 73 y 74). */
+    public const DIAS_HABILES_DE_ANTICIPACION = 5;
+
+    /** Dias de labor efectiva para adelantar vacaciones: jornada de 6 y de 5 dias a la semana (RIT, Art. 74). */
+    public const DIAS_MINIMOS_LABOR_6_DIAS = 260;
+
+    public const DIAS_MINIMOS_LABOR_5_DIAS = 210;
+
     use ReglasDeNegocio;
     use ReglasDeVacaciones;
 
@@ -32,6 +45,7 @@ class GoceVacacionalRequest extends CatalogoRequest
             'GoceVacacionalFechaInicio' => [$this->obligatorio(), 'date_format:Y-m-d'],
             'GoceVacacionalFechaFin' => [$this->obligatorio(), 'date_format:Y-m-d'],
             'GoceVacacionalDias' => ['nullable', 'integer', 'min:1'],
+            'GoceVacacionalEsAdelanto' => $this->booleano(),
         ];
     }
 
@@ -104,6 +118,16 @@ class GoceVacacionalRequest extends CatalogoRequest
             }
 
             $this->rechazaPeriodoCerrado($validator, 'GoceVacacionalFechaInicio', $inicio, $fin);
+            $vinculoId = (int) $periodo->VinculoLaboralId;
+            if (ReglasDeSolicitud::tienePadEnCurso($vinculoId)) {
+                $validator->errors()->add('RolVacacionalId', 'Con un procedimiento disciplinario en curso el servidor no hace uso de sus vacaciones (RIT, Art. 107).');
+            }
+            if ($this->esCreacion() && ReglasDeSolicitud::controlDePlazos() && $dias < self::DIAS_MINIMOS_SIN_FRACCIONAR && DiasHabiles::entre(HoraLocal::hoy()->addDay()->toDateString(), $inicio) < self::DIAS_HABILES_DE_ANTICIPACION) {
+                $validator->errors()->add('GoceVacacionalFechaInicio', 'El fraccionamiento se solicita hasta el quinto día hábil anterior (RIT, Art. 73).');
+            }
+            if ($this->booleanoEfectivo('GoceVacacionalEsAdelanto', false)) {
+                $this->reglasDelAdelanto($validator, $vinculoId, $dias, $inicio);
+            }
             $incapacitado = DescansoMedico::query()
                 ->where('VinculoLaboralId', $periodo->VinculoLaboralId)
                 ->where('DescansoMedicoEstado', 'APROBADO')
@@ -117,6 +141,28 @@ class GoceVacacionalRequest extends CatalogoRequest
                 $validator->errors()->add('DocumentoSustentoId', 'Un goce menor de '.self::DIAS_MINIMOS_SIN_FRACCIONAR.' días es un fraccionamiento y se solicita por escrito: adjunta el documento (RIT, Art. 72 y 73).');
             }
         });
+    }
+
+    /** Adelanto: solo dias ya generados, 5 dias habiles antes y sin medida cautelar (RIT, Art. 74 y 75). */
+    private function reglasDelAdelanto(Validator $validator, int $vinculoId, int $dias, string $inicio): void
+    {
+        $vinculo = VinculoLaboral::query()->find($vinculoId);
+        $trabajados = $vinculo->VinculoLaboralFechaInicio->diffInDays(HoraLocal::hoy());
+        $generados = (int) floor($trabajados / 365 * 30);
+        $minimo = DiasHabiles::esSede($vinculoId) ? self::DIAS_MINIMOS_LABOR_5_DIAS : self::DIAS_MINIMOS_LABOR_6_DIAS;
+
+        if ($dias > $generados) {
+            $validator->errors()->add('GoceVacacionalFechaFin', "El adelanto no supera los días generados: lleva {$generados} (RIT, Art. 75).");
+        }
+        if (DiasHabiles::entre($vinculo->VinculoLaboralFechaInicio->toDateString(), HoraLocal::hoy()->toDateString()) < $minimo) {
+            $validator->errors()->add('GoceVacacionalEsAdelanto', "El adelanto exige al menos {$minimo} días de labor efectiva (RIT, Art. 74).");
+        }
+        if (DiasHabiles::entre(HoraLocal::hoy()->addDay()->toDateString(), $inicio) < self::DIAS_HABILES_DE_ANTICIPACION) {
+            $validator->errors()->add('GoceVacacionalFechaInicio', 'El adelanto se solicita hasta el quinto día hábil anterior (RIT, Art. 74).');
+        }
+        if (DB::table('Disciplina.ExpedientePad')->where('VinculoLaboralId', $vinculoId)->where('ExpedientePadMedidaCautelar', 1)->whereIn('ExpedientePadEstado', ['INICIADO', 'EN_PROCESO'])->exists()) {
+            $validator->errors()->add('GoceVacacionalEsAdelanto', 'No procede el adelanto con medida cautelar (RIT, Art. 75).');
+        }
     }
 
     public function datos(): array

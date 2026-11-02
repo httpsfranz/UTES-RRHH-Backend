@@ -15,6 +15,11 @@ class TipoLicenciaRequest extends CatalogoRequest
             'TipoLicenciaConGoce' => $this->booleano(),
             'TipoLicenciaMaximoDias' => ['nullable', 'integer', 'between:1,3650'],
             'TipoLicenciaBaseLegal' => $this->texto(200),
+            'TipoLicenciaSexo' => ['nullable', 'in:M,F'],
+            'TipoLicenciaMaximoDiasCas' => ['nullable', 'integer', 'between:1,3650'],
+            'TipoLicenciaMaximoDiasAnio' => ['nullable', 'integer', 'between:1,3650'],
+            'TipoLicenciaACuentaVacaciones' => $this->booleano(),
+            'TipoLicenciaExigeAnticipacion' => $this->booleano(),
             'TipoLicenciaEstado' => $this->booleano(),
         ];
     }

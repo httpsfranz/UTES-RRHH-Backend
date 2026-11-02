@@ -22,6 +22,7 @@ class JustificacionFalta extends Model
     public $timestamps = false;
 
     protected $fillable = [
+        'JustificacionFaltaEsExtemporanea',
         'VinculoLaboralId',
         'ConceptoJustificacionId',
         'DocumentoSustentoId',
@@ -38,6 +39,7 @@ class JustificacionFalta extends Model
     ];
 
     protected $casts = [
+        'JustificacionFaltaEsExtemporanea' => 'boolean',
         'JustificacionFaltaId' => 'integer',
         'VinculoLaboralId' => 'integer',
         'ConceptoJustificacionId' => 'integer',

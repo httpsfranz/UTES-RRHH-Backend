@@ -9,18 +9,33 @@ use App\Models\Solicitudes\MotivoPapeleta;
 use App\Models\Solicitudes\Papeleta;
 use App\Models\Solicitudes\TipoPapeleta;
 use App\Models\Soporte\DocumentoSustento;
+use App\Support\HoraLocal;
+use App\Support\ReglasDeSolicitud;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Validator;
 
 /**
- * Papeleta de permiso o salida (RIT, Art. 14 y 57 a 63). Nace PENDIENTE; la autoriza el jefe con la accion aprobar.
+ * Papeleta de permiso o salida (RIT, Art. 16 y 57 a 63). Nace PENDIENTE; la autoriza el jefe con la accion aprobar.
  * RIT: la papeleta de comision de servicios vale como maximo 3 horas; el exceso se justifica con documento.
  */
 class PapeletaRequest extends CatalogoRequest
 {
     use ReglasDeNegocio;
 
-    /** Horas maximas de una papeleta de comision de servicios (RIT, Art. 14). */
+    /** Horas maximas de una papeleta de comision de servicios (RIT, Art. 16). */
     public const MAXIMO_COMISION_MINUTOS = 180;
+
+    /** Lactancia: una hora diaria, dos en parto multiple, hasta el primer anio (RIT, Art. 60). */
+    public const MINUTOS_LACTANCIA = 60;
+
+    /** Permiso por docencia o estudios: seis horas semanales, compensables (RIT, Art. 63). */
+    public const MINUTOS_SEMANALES_ESTUDIOS = 360;
+
+    /** Anticipacion del permiso, en horas (RIT, Art. 57). */
+    public const HORAS_DE_ANTICIPACION = 24;
+
+    /** Tipos que no se piden: los registra el sistema o tienen fecha fija. */
+    private const SIN_ANTICIPACION = ['COMISION', 'LACTANCIA', 'ONOMASTICO', 'SINDICAL'];
 
     public function rules(): array
     {
@@ -38,6 +53,11 @@ class PapeletaRequest extends CatalogoRequest
             'PapeletaMinutosUtilizados' => ['nullable', 'integer', 'between:0,1440'],
             'PapeletaMotivo' => $this->texto(1000),
             'PapeletaObservacion' => $this->texto(1000),
+            'PapeletaEsUrgente' => $this->booleano(),
+            'PapeletaPartoMultiple' => $this->booleano(),
+            'PapeletaFechaNacimientoHijo' => ['nullable', 'date_format:Y-m-d'],
+            'PapeletaUnidadDestino' => $this->texto(200),
+            'PapeletaConformeDestino' => $this->texto(150),
         ];
     }
 
@@ -54,7 +74,8 @@ class PapeletaRequest extends CatalogoRequest
     /**
      * - El vinculo vigente ese dia y el periodo de asistencia no cerrado.
      * - Dia completo = sin horas; si no, hora de salida obligatoria y retorno no anterior a la salida.
-     * - La comision de servicios no pasa de 3 horas (RIT, Art. 14).
+     * - La comision de servicios no pasa de 3 horas e indica la unidad de destino (RIT, Art. 16).
+     * - El permiso se pide con 24 horas, salvo urgencia (Art. 57); lactancia, estudios y docencia tienen tope (Art. 60 y 63).
      * - El motivo debe pertenecer al tipo (FK compuesta de la tabla).
      * - Sin superposicion con otra papeleta (pendiente o aprobada) del mismo trabajador ese dia.
      * - Solo se modifica pendiente; el estado y quien autoriza no se envian.
@@ -89,8 +110,10 @@ class PapeletaRequest extends CatalogoRequest
             $tipo = TipoPapeleta::query()->find($this->valorEfectivo('TipoPapeletaId'));
             if ($tipo?->TipoPapeletaCodigo === 'COMISION' && $salida && $retorno
                 && (strtotime("1970-01-01 {$retorno}") - strtotime("1970-01-01 {$salida}")) / 60 > self::MAXIMO_COMISION_MINUTOS) {
-                $validator->errors()->add('PapeletaHoraRetorno', 'La papeleta de comisión de servicios vale como máximo 3 horas (RIT, Art. 14); el exceso se justifica con documento.');
+                $validator->errors()->add('PapeletaHoraRetorno', 'La papeleta de comisión de servicios vale como máximo 3 horas (RIT, Art. 16); el exceso se justifica con documento.');
             }
+
+            $this->reglasDelTipo($validator, $tipo?->TipoPapeletaCodigo, $fecha, $salida, $retorno, $diaCompleto);
 
             $motivoId = $this->valorEfectivo('MotivoPapeletaId');
             if ($motivoId && MotivoPapeleta::query()->whereKey($motivoId)->where('TipoPapeletaId', $this->valorEfectivo('TipoPapeletaId'))->doesntExist()) {
@@ -113,6 +136,72 @@ class PapeletaRequest extends CatalogoRequest
                 $validator->errors()->add('PapeletaFecha', 'El trabajador ya tiene una papeleta pendiente o aprobada que se superpone ese día.');
             }
         });
+    }
+
+    /** Reglas propias de cada tipo de permiso (RIT, Art. 16, 44, 57, 60 y 63). */
+    private function reglasDelTipo(Validator $validator, ?string $codigo, string $fecha, ?string $salida, ?string $retorno, bool $diaCompleto): void
+    {
+        $vinculo = VinculoLaboral::query()->find($this->valorEfectivo('VinculoLaboralId'));
+        $minutos = $salida && $retorno ? (int) ((strtotime("1970-01-01 {$retorno}") - strtotime("1970-01-01 {$salida}")) / 60) : 0;
+
+        if ($this->esCreacion() && ReglasDeSolicitud::controlDePlazos() && ! in_array($codigo, self::SIN_ANTICIPACION, true) && ! $this->booleanoEfectivo('PapeletaEsUrgente', false)) {
+            $momento = strtotime($fecha.' '.($salida ?? '07:30:00'));
+            if ($momento - HoraLocal::ahora()->getTimestamp() < self::HORAS_DE_ANTICIPACION * 3600) {
+                $validator->errors()->add('PapeletaFecha', 'El permiso se solicita con 24 horas de anticipación; si es urgente, márcalo como tal e indica el motivo (RIT, Art. 57).');
+            }
+        }
+        if ($this->booleanoEfectivo('PapeletaEsUrgente', false) && blank($this->valorEfectivo('PapeletaMotivo'))) {
+            $validator->errors()->add('PapeletaMotivo', 'Indica el motivo de la urgencia (RIT, Art. 57).');
+        }
+
+        if ($codigo === 'COMISION' && blank($this->valorEfectivo('PapeletaUnidadDestino'))) {
+            $validator->errors()->add('PapeletaUnidadDestino', 'Indica la unidad de destino, que firma la papeleta (RIT, Art. 16).');
+        }
+        if ($codigo === 'LACTANCIA') {
+            if (ReglasDeSolicitud::sexoDe($vinculo) === 'M') {
+                $validator->errors()->add('VinculoLaboralId', 'El permiso por lactancia corresponde a la servidora (RIT, Art. 60).');
+            }
+            $tope = self::MINUTOS_LACTANCIA * ($this->booleanoEfectivo('PapeletaPartoMultiple', false) ? 2 : 1);
+            if ($diaCompleto || $minutos > $tope) {
+                $validator->errors()->add('PapeletaHoraRetorno', 'El permiso por lactancia es de '.($tope / 60).' hora(s) diaria(s) (RIT, Art. 60).');
+            }
+            $nacimiento = $this->valorEfectivo('PapeletaFechaNacimientoHijo');
+            if (blank($nacimiento)) {
+                $validator->errors()->add('PapeletaFechaNacimientoHijo', 'Indica la fecha de nacimiento: el permiso rige hasta el primer año (RIT, Art. 60).');
+            } elseif (strtotime($fecha) > strtotime(substr((string) $nacimiento, 0, 10).' +1 year')) {
+                $validator->errors()->add('PapeletaFecha', 'El hijo ya cumplió un año: el permiso por lactancia terminó (RIT, Art. 60).');
+            }
+        }
+        if (in_array($codigo, ['ESTUDIOS', 'DOCENCIA'], true)) {
+            $lunes = date('Y-m-d', strtotime($fecha.' -'.(((int) date('N', strtotime($fecha))) - 1).' days'));
+            $domingo = date('Y-m-d', strtotime($lunes.' +6 days'));
+            $usados = (int) Papeleta::query()->where('VinculoLaboralId', $this->valorEfectivo('VinculoLaboralId'))->where('TipoPapeletaId', $this->valorEfectivo('TipoPapeletaId'))
+                ->whereNotIn('PapeletaEstado', ['RECHAZADO', 'ANULADO'])->whereDate('PapeletaFecha', '>=', $lunes)->whereDate('PapeletaFecha', '<=', $domingo)
+                ->when($this->registroId(), fn ($q, $id) => $q->whereKeyNot($id))->sum('PapeletaMinutosUtilizados');
+            if ($usados + $minutos > self::MINUTOS_SEMANALES_ESTUDIOS) {
+                $validator->errors()->add('PapeletaHoraRetorno', 'El permiso por docencia o estudios llega hasta 6 horas semanales (RIT, Art. 63).');
+            }
+        }
+        if ($codigo === 'ONOMASTICO') {
+            $nacimiento = DB::table('Personal.Trabajador')->where('TrabajadorId', $vinculo->TrabajadorId)->value('TrabajadorFechaNacimiento');
+            if ($nacimiento !== null && ! $this->esDiaDeOnomastico(substr((string) $nacimiento, 5, 5), $fecha)) {
+                $validator->errors()->add('PapeletaFecha', 'La licencia por onomástico se toma el día del cumpleaños o, si cae en día no hábil, el primer día hábil siguiente (RIT, Art. 44).');
+            }
+        }
+        if ($codigo === 'CAPACITACION' && ReglasDeSolicitud::tienePadEnCurso((int) $vinculo->VinculoLaboralId)) {
+            $validator->errors()->add('TipoPapeletaId', 'Con un procedimiento disciplinario en curso no se reciben capacitaciones de la Entidad (RIT, Art. 120).');
+        }
+    }
+
+    /** El cumpleaños (MM-DD), o el primer dia habil siguiente si cae en sabado, domingo o feriado. */
+    private function esDiaDeOnomastico(string $mesDia, string $fecha): bool
+    {
+        $dia = substr($fecha, 0, 4).'-'.$mesDia;
+        while (date('N', strtotime($dia)) >= 6 || DB::table('Soporte.CalendarioNoLaborable')->where('CalendarioNoLaborableEstado', 1)->whereDate('CalendarioNoLaborableFecha', $dia)->exists()) {
+            $dia = date('Y-m-d', strtotime($dia.' +1 day'));
+        }
+
+        return $dia === $fecha;
     }
 
     /** "HH:MM:SS" de la hora que quedara guardada (null si no hay). */

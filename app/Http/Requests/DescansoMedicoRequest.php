@@ -6,6 +6,7 @@ use App\Http\Requests\Concerns\ReglasDeNegocio;
 use App\Models\Personal\VinculoLaboral;
 use App\Models\Solicitudes\DescansoMedico;
 use App\Models\Soporte\DocumentoSustento;
+use App\Support\ReglasDeSolicitud;
 use Illuminate\Validation\Validator;
 
 /**
@@ -46,6 +47,9 @@ class DescansoMedicoRequest extends CatalogoRequest
     public function withValidator(Validator $validator): void
     {
         $this->despuesDeValidar($validator, function (Validator $validator) {
+            if ($this->esCreacion()) {
+                $this->reglasDePresentacion($validator);
+            }
             $this->rechazaEstadoEnviado($validator, 'DescansoMedicoEstado');
             $this->soloSiPendiente($validator, 'DescansoMedicoEstado', 'DescansoMedicoEstado', 'El descanso médico');
             if ($validator->errors()->isNotEmpty()) {
@@ -77,5 +81,43 @@ class DescansoMedicoRequest extends CatalogoRequest
                 $validator->errors()->add('DescansoMedicoNumeroCitt', 'Ya existe un descanso médico con ese número de CITT.');
             }
         });
+    }
+
+    /**
+     * Se presenta con CITT o certificado dentro de 3 dias habiles; luego, hasta 7 dias habiles mas como extemporaneo
+     * justificado (Art. 32 y 64). Desde el dia 21 del anio se exige el CITT de EsSalud (Art. 32).
+     */
+    private function reglasDePresentacion(Validator $validator): void
+    {
+        $inicio = (string) $this->fechaEfectiva('DescansoMedicoFechaInicio');
+        $fin = (string) $this->fechaEfectiva('DescansoMedicoFechaFin');
+        $citt = $this->valorEfectivo('DescansoMedicoNumeroCitt');
+        if (blank($citt) && blank($this->valorEfectivo('DocumentoSustentoId'))) {
+            $validator->errors()->add('DocumentoSustentoId', 'Adjunta el certificado médico o indica el número de CITT (RIT, Art. 32).');
+        }
+
+        $plazo = ReglasDeSolicitud::situacionDelPlazo($inicio, ReglasDeSolicitud::DIAS_HABILES_DESCANSO_MEDICO);
+        if ($plazo === 'vencido') {
+            $validator->errors()->add('DescansoMedicoFechaInicio', 'El descanso médico se presenta en 3 días hábiles y su regularización vence a los 7 días hábiles siguientes (RIT, Art. 32 y 64).');
+        } elseif ($plazo === 'extemporaneo' && blank($this->valorEfectivo('DescansoMedicoObservacion'))) {
+            $validator->errors()->add('DescansoMedicoObservacion', 'Se presenta fuera de los 3 días hábiles: indica el motivo (RIT, Art. 32 y 64).');
+        }
+
+        $dias = (int) ((strtotime($fin) - strtotime($inicio)) / 86400) + 1;
+        $acumulados = ReglasDeSolicitud::diasDescansoEnElAnio((int) $this->valorEfectivo('VinculoLaboralId'), $inicio);
+        if ($acumulados + $dias > ReglasDeSolicitud::DIAS_A_CARGO_DE_LA_ENTIDAD && blank($citt)) {
+            $validator->errors()->add('DescansoMedicoNumeroCitt', 'El trabajador llegaría a '.($acumulados + $dias).' días en el año: desde el día 21 se exige el CITT de EsSalud (RIT, Art. 32).');
+        }
+    }
+
+    /** @return array<string,mixed> */
+    public function datos(): array
+    {
+        $datos = parent::datos();
+        if ($this->esCreacion()) {
+            $datos['DescansoMedicoEsExtemporaneo'] = ReglasDeSolicitud::situacionDelPlazo((string) $this->fechaEfectiva('DescansoMedicoFechaInicio'), ReglasDeSolicitud::DIAS_HABILES_DESCANSO_MEDICO) !== null;
+        }
+
+        return $datos;
     }
 }

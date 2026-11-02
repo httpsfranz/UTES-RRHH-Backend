@@ -33,6 +33,11 @@ class SesionActiva
             }
         }
 
+        // Clave asignada por el administrador: hasta cambiarla solo se usan las rutas de la propia sesion.
+        if ($request->user()?->UsuarioDebeCambiarPassword && ! $request->is('api/auth/*')) {
+            return response()->json(['message' => 'Debes cambiar tu contraseña para continuar.', 'motivo' => 'CAMBIAR_CLAVE'], 403);
+        }
+
         return $next($request);
     }
 }

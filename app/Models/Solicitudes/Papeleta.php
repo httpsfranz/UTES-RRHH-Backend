@@ -22,6 +22,13 @@ class Papeleta extends Model
     public $timestamps = false;
 
     protected $fillable = [
+        'PapeletaVistoBuenoPor',
+        'PapeletaFechaVistoBueno',
+        'PapeletaEsUrgente',
+        'PapeletaPartoMultiple',
+        'PapeletaFechaNacimientoHijo',
+        'PapeletaUnidadDestino',
+        'PapeletaConformeDestino',
         'VinculoLaboralId',
         'TipoPapeletaId',
         'MotivoPapeletaId',
@@ -42,6 +49,10 @@ class Papeleta extends Model
     ];
 
     protected $casts = [
+        'PapeletaFechaVistoBueno' => 'datetime',
+        'PapeletaEsUrgente' => 'boolean',
+        'PapeletaPartoMultiple' => 'boolean',
+        'PapeletaFechaNacimientoHijo' => 'date',
         'PapeletaId' => 'integer',
         'VinculoLaboralId' => 'integer',
         'TipoPapeletaId' => 'integer',

@@ -57,7 +57,7 @@ class MarcacionRequest extends CatalogoRequest
     }
 
     /**
-     * RIT Art. 21: la forma de registro es unicamente el reconocimiento facial; otro metodo solo con autorizacion
+     * RIT Art. 16: la forma de registro es unicamente el reconocimiento facial; otro metodo solo con autorizacion
      * de Recursos Humanos (AutorizacionMetodo vigente) o, donde no hay equipos, con el parte diario cargado.
      * Ademas: no futura, vinculo vigente ese dia, periodo no cerrado, sin duplicados, y la plantilla y la carga
      * deben ser coherentes con el trabajador y el metodo.
@@ -130,7 +130,7 @@ class MarcacionRequest extends CatalogoRequest
                     ->exists();
 
                 if (! $conParteDiario && ! $autorizado) {
-                    $validator->errors()->add('MetodoMarcacionId', 'El RIT (Art. 21) establece el reconocimiento facial como única forma de registro: el método "'.$metodo->MetodoMarcacionNombre.'" requiere una autorización vigente del trabajador o, si el establecimiento no tiene equipo, un parte diario cargado.');
+                    $validator->errors()->add('MetodoMarcacionId', 'El RIT (Art. 16) establece el reconocimiento facial como única forma de registro: el método "'.$metodo->MetodoMarcacionNombre.'" requiere una autorización vigente del trabajador o, si el establecimiento no tiene equipo, un parte diario cargado.');
                 }
             }
         });

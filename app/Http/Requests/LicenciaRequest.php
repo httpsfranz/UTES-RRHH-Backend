@@ -8,7 +8,9 @@ use App\Models\Seguridad\Usuario;
 use App\Models\Solicitudes\Licencia;
 use App\Models\Solicitudes\TipoLicencia;
 use App\Models\Soporte\DocumentoSustento;
+use App\Support\ReglasDeSolicitud;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 /**
@@ -32,6 +34,7 @@ class LicenciaRequest extends CatalogoRequest
             'LicenciaFechaInicio' => [$this->obligatorio(), 'date_format:Y-m-d'],
             'LicenciaFechaFin' => [$this->obligatorio(), 'date_format:Y-m-d'],
             'LicenciaMotivo' => $this->texto(1000),
+            'LicenciaCasoEspecial' => ['nullable', Rule::in(['PARTO_MULTIPLE', 'NINO_CON_DISCAPACIDAD', 'PREMATURO', 'ENFERMEDAD_CONGENITA', 'COMPLICACION_MADRE', 'OTRO_LUGAR'])],
         ];
     }
 
@@ -71,8 +74,19 @@ class LicenciaRequest extends CatalogoRequest
 
             $dias = (int) ((strtotime($fin) - strtotime($inicio)) / 86400) + 1;
             $tipo = TipoLicencia::query()->find($this->valorEfectivo('TipoLicenciaId'));
-            if ($tipo?->TipoLicenciaMaximoDias !== null && $dias > $tipo->TipoLicenciaMaximoDias) {
-                $validator->errors()->add('LicenciaFechaFin', "La licencia por \"{$tipo->TipoLicenciaNombre}\" admite como máximo {$tipo->TipoLicenciaMaximoDias} días corridos (se piden {$dias}).");
+            $vinculo = VinculoLaboral::query()->find($this->valorEfectivo('VinculoLaboralId'));
+            foreach (ReglasDeSolicitud::problemasDeLicencia($tipo, $vinculo, $inicio, $fin, $this->valorEfectivo('LicenciaCasoEspecial'), $this->registroId()) as $campo => $mensaje) {
+                $validator->errors()->add($campo, $mensaje);
+            }
+
+            // La licencia se pide por adelantado (Art. 30); tarde solo se regulariza dentro de 7 dias habiles (Art. 64).
+            if ($tipo->TipoLicenciaExigeAnticipacion && $this->esCreacion()) {
+                $plazo = ReglasDeSolicitud::situacionDelPlazo($inicio);
+                if ($plazo === 'vencido') {
+                    $validator->errors()->add('LicenciaFechaInicio', 'La licencia se solicita por adelantado y su regularización vence a los 7 días hábiles (RIT, Art. 30 y 64).');
+                } elseif ($plazo === 'extemporaneo' && blank($this->valorEfectivo('LicenciaMotivo'))) {
+                    $validator->errors()->add('LicenciaMotivo', 'Es una solicitud extemporánea: indica el motivo para que el jefe opine sobre ella (RIT, Art. 64).');
+                }
             }
 
             $solapa = $this->haySuperposicion(
@@ -88,5 +102,17 @@ class LicenciaRequest extends CatalogoRequest
                 $validator->errors()->add('TipoLicenciaId', 'El servidor tiene un procedimiento disciplinario en curso: no puede tomar licencia sin goce por motivos particulares de más de 5 días (RIT, Art. 107).');
             }
         });
+    }
+
+    /** @return array<string,mixed> */
+    public function datos(): array
+    {
+        $datos = parent::datos();
+        $tipo = TipoLicencia::query()->find($this->valorEfectivo('TipoLicenciaId'));
+        if ($this->esCreacion() && $tipo?->TipoLicenciaExigeAnticipacion) {
+            $datos['LicenciaEsExtemporanea'] = ReglasDeSolicitud::situacionDelPlazo($this->fechaEfectiva('LicenciaFechaInicio')) !== null;
+        }
+
+        return $datos;
     }
 }

@@ -18,14 +18,14 @@ class PermisosDeRuta
 {
     public const MODULOS = [
         'ORGANIZACION' => ['microredes', 'establecimientos', 'tipos-establecimiento', 'responsables-eess', 'tipos-responsabilidad'],
-        'PERSONAL' => ['trabajadores', 'vinculos-laborales', 'asignaciones-horario', 'cargos', 'grupos-ocupacionales', 'profesiones', 'colegiaturas', 'tipos-colegiatura', 'condiciones-laborales', 'regimenes-laborales', 'tipos-documento-identidad', 'consulta-dni'],
-        'ASISTENCIA' => ['marcaciones', 'asistencia-diaria', 'ajustes-marcacion', 'cargas-asistencia-manual', 'justificaciones-falta', 'conceptos-justificacion', 'estados-asistencia'],
+        'PERSONAL' => ['trabajadores', 'vinculos-laborales', 'asignaciones-horario', 'cargos', 'grupos-ocupacionales', 'profesiones', 'colegiaturas', 'tipos-colegiatura', 'condiciones-laborales', 'regimenes-laborales', 'tipos-documento-identidad', 'consulta-dni', 'fotochecks', 'legajo-documentos', 'entregas-cargo', 'desplazamientos-temporales'],
+        'ASISTENCIA' => ['marcaciones', 'asistencia-diaria', 'ajustes-marcacion', 'cargas-asistencia-manual', 'justificaciones-falta', 'conceptos-justificacion', 'estados-asistencia', 'avisos-ausencia', 'autorizaciones-ingreso', 'facilidades-horarias'],
         'PROGRAMACION' => ['programaciones-periodo', 'programaciones-trabajador', 'turnos-programados', 'cambios-turno', 'tipos-cambio-turno', 'tipos-periodo-programacion', 'cargas-programacion', 'informes-guardia-comunitaria', 'programacion-calendario', 'programacion-mensual'],
         'SOLICITUDES' => ['papeletas', 'tipos-papeleta', 'motivos-papeleta', 'licencias', 'tipos-licencia', 'descansos-medicos', 'constataciones-domiciliarias', 'ocurrencias-porteria', 'goces-vacacionales', 'periodos-vacacionales', 'roles-vacacionales', 'documentos-sustento'],
         'CONFIGURACION' => ['turnos', 'horarios', 'horarios-detalle', 'tipos-jornada', 'parametros-jornada', 'tablas-tolerancia', 'tramos-tolerancia', 'calendario-no-laborable',
-            'dispositivos-marcacion', 'metodos-marcacion', 'plantillas-biometricas', 'autorizaciones-metodo', 'consentimientos-biometricos'],
+            'dispositivos-marcacion', 'metodos-marcacion', 'plantillas-biometricas', 'autorizaciones-metodo', 'consentimientos-biometricos', 'contingencias-marcacion', 'tolerancias-extraordinarias'],
         'REPORTES' => ['periodos-asistencia', 'cierre-mes', 'consolidados-asistencia', 'detalles-consolidado', 'liquidaciones-descuento', 'detalles-liquidacion', 'compensaciones-horarias', 'tipos-compensacion', 'conceptos-descuento',
-            'expedientes-pad', 'supervisiones-inopinadas', 'tipos-falta-disciplinaria'],
+            'expedientes-pad', 'supervisiones-inopinadas', 'tipos-falta-disciplinaria', 'reconocimientos', 'reportes'],
         'SEGURIDAD' => ['usuarios', 'usuarios-roles', 'usuarios-ambitos', 'roles', 'roles-permisos', 'permisos', 'sesiones-acceso', 'tipos-notificacion'],
     ];
 
@@ -40,7 +40,7 @@ class PermisosDeRuta
     /** Recursos con informacion de personas que el rol TRABAJADOR (solo consulta lo propio) puede abrir; los listados se filtran a sus vinculos. */
     public const RECURSOS_PROPIOS = [
         'marcaciones', 'asistencia-diaria', 'justificaciones-falta', 'ajustes-marcacion', 'papeletas', 'licencias', 'descansos-medicos',
-        'constataciones-domiciliarias', 'periodos-vacacionales', 'roles-vacacionales', 'goces-vacacionales',
+        'constataciones-domiciliarias', 'periodos-vacacionales', 'roles-vacacionales', 'goces-vacacionales', 'fotochecks', 'legajo-documentos',
     ];
 
     /** Accion de flujo (ultimo segmento de la ruta) => permiso. 'recurso' restringe la accion a esos recursos. */
@@ -57,10 +57,11 @@ class PermisosDeRuta
         'cumplir' => ['*' => 'PROGRAMACION_EDITAR'],
         'remitir' => ['*' => 'REPORTES_EDITAR'],
         'devolver' => ['*' => 'REPORTES_EDITAR'],
-        'reprogramar' => ['*' => 'SOLICITUDES_EDITAR'],
+        'reprogramar' => ['programaciones-periodo' => 'PROGRAMACION_APROBAR', '*' => 'SOLICITUDES_EDITAR'],
         'generar' => ['*' => 'REPORTES_EDITAR'],
         'calcular' => ['*' => 'ASISTENCIA_EDITAR'],
         'marcar' => ['*' => 'ASISTENCIA_MARCAR'],
+        'importar' => ['marcaciones' => 'ASISTENCIA_EDITAR', 'trabajadores' => 'PERSONAL_EDITAR', 'programacion-mensual' => 'PROGRAMACION_EDITAR', '*' => 'ASISTENCIA_EDITAR'],
         'conformidad' => ['*' => 'ASISTENCIA_APROBAR'],
         'liquidaciones' => ['*' => 'REPORTES_EDITAR'],
     ];

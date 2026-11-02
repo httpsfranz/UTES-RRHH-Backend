@@ -228,6 +228,8 @@ class DatosPruebaNivel4Seeder extends Seeder
             return;
         }
         $vinculos = $this->ids('Personal.VinculoLaboral', 'VinculoLaboralCodigo', 'VinculoLaboralId');
+        // Casos historicos de prueba: se liquidan por minuto, aunque no lleguen a una hora.
+        DB::table('Configuracion.ParametroSistema')->where('ParametroSistemaCodigo', 'TARDANZA_MODO_DESCUENTO')->update(['ParametroSistemaValor' => 'PROPORCIONAL']);
         $servicio = app(LiquidacionDescuentoService::class);
         $consolidadoDe = fn (string $vinculo) => ConsolidadoAsistencia::query()
             ->where('VinculoLaboralId', $vinculos[$vinculo])->whereHas('periodo', fn ($p) => $p->where('PeriodoAsistenciaMes', 8))->firstOrFail();
@@ -246,6 +248,7 @@ class DatosPruebaNivel4Seeder extends Seeder
         $servicio->aprobar($aprobada->fresh());
 
         $servicio->generar($consolidadoDe('VL-0002'));   // GENERADA: las lineas esperan su importe
+        DB::table('Configuracion.ParametroSistema')->where('ParametroSistemaCodigo', 'TARDANZA_MODO_DESCUENTO')->update(['ParametroSistemaValor' => 'UMBRAL_MENSUAL']);
     }
 
     private function concepto(string $codigo): int

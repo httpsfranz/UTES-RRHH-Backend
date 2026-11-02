@@ -20,6 +20,8 @@ class GoceVacacional extends Model
     public $timestamps = false;
 
     protected $fillable = [
+        'GoceVacacionalEsAdelanto',
+        'GoceVacacionalFechaSolicitud',
         'RolVacacionalId',
         'DocumentoSustentoId',
         'GoceVacacionalFechaInicio',
@@ -29,6 +31,8 @@ class GoceVacacional extends Model
     ];
 
     protected $casts = [
+        'GoceVacacionalEsAdelanto' => 'boolean',
+        'GoceVacacionalFechaSolicitud' => 'datetime',
         'GoceVacacionalId' => 'integer',
         'RolVacacionalId' => 'integer',
         'DocumentoSustentoId' => 'integer',

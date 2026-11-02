@@ -21,6 +21,7 @@ class AsistenciaDiariaResource extends JsonResource
             'minutos_tardanza' => $this->AsistenciaDiariaMinutosTardanza,
             'minutos_falta' => $this->AsistenciaDiariaMinutosFalta,
             'minutos_extra' => $this->AsistenciaDiariaMinutosExtra,
+            'minutos_sin_goce' => (int) $this->AsistenciaDiariaMinutosSinGoce,
             'minutos_trabajados' => $this->AsistenciaDiariaMinutosTrabajados,
             'observacion' => $this->AsistenciaDiariaObservacion,
             'origen' => $this->AsistenciaDiariaOrigen,

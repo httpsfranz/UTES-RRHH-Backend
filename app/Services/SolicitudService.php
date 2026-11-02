@@ -7,11 +7,13 @@ use App\Models\Disciplina\SupervisionInopinada;
 use App\Models\Programacion\CambioTurno;
 use App\Models\Programacion\CargaProgramacion;
 use App\Models\Programacion\InformeGuardiaComunitaria;
+use App\Models\Seguridad\Usuario;
 use App\Models\Solicitudes\ConstatacionDomiciliaria;
 use App\Models\Solicitudes\DescansoMedico;
 use App\Models\Solicitudes\Licencia;
 use App\Models\Solicitudes\Papeleta;
 use App\Models\Vacaciones\GoceVacacional;
+use App\Support\AccesoUsuario;
 use DomainException;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -23,6 +25,9 @@ use Illuminate\Support\Facades\DB;
  * idempotente. Al resolverla se avisa a quien la registro (Soporte.Notificacion), en la misma transaccion.
  *
  * Cada modelo declara sus columnas: estado, quien resolvio, cuando, donde queda la nota/motivo, quien la registro.
+ *
+ * Licencias y papeletas pasan por dos pasos (RIT, Art. 16, 30 y 56): el jefe da su visto bueno y RRHH, con alcance sobre
+ * toda la Red, las oficializa. Sin jefe disponible RRHH puede autorizar directamente (Art. 57) y queda constancia.
  */
 class SolicitudService
 {
@@ -70,6 +75,12 @@ class SolicitudService
         ],
     ];
 
+    /** Columnas del visto bueno del jefe. */
+    private const VISTO_BUENO = [
+        Papeleta::class => ['PapeletaVistoBuenoPor', 'PapeletaFechaVistoBueno'],
+        Licencia::class => ['LicenciaVistoBuenoPor', 'LicenciaFechaVistoBueno'],
+    ];
+
     public function __construct(private readonly NotificacionService $notificaciones) {}
 
     public function aprobar(Model $solicitud, int $usuarioId, ?string $nota = null): Model
@@ -78,6 +89,27 @@ class SolicitudService
             $c = $this->config($solicitud);
             $this->exigirPendiente($solicitud, $c, 'aprobar');
             $this->exigirParaAprobar($solicitud);
+
+            if (isset(self::VISTO_BUENO[$solicitud::class])) {
+                [$vistoPor, $vistoFecha] = self::VISTO_BUENO[$solicitud::class];
+                $usuario = Usuario::query()->find($usuarioId);
+                $esDeLaRed = $usuario !== null && AccesoUsuario::de($usuario)->eessIds === null;
+                if (! $esDeLaRed) {
+                    if ($solicitud->getAttribute($vistoPor) !== null) {
+                        throw new DomainException('Ya tiene el visto bueno del jefe: falta que Recursos Humanos la oficialice.');
+                    }
+                    $solicitud->update([$vistoPor => $usuarioId, $vistoFecha => now()]);
+                    $this->avisar($solicitud, $c, 'APROBADA', "Tu {$c['nombre']} tiene el visto bueno del jefe y pasó a Recursos Humanos.");
+
+                    return $solicitud->fresh();
+                }
+                if ($solicitud->getAttribute($vistoPor) === null) {
+                    $nota = trim(($nota ?? '').' Autorizada por RRHH sin visto bueno previo del jefe (RIT, Art. 57).');
+                }
+            }
+            if ($solicitud instanceof Licencia) {
+                $this->descontarDeVacaciones($solicitud);
+            }
 
             $solicitud->update($this->cambios($c, 'APROBADO', $usuarioId, $solicitud, $nota ? "Aprobación: {$nota}" : null));
             $this->avisar($solicitud, $c, 'APROBADA', "Tu {$c['nombre']} fue aprobada.".($nota ? " {$nota}" : ''));
@@ -151,10 +183,40 @@ class SolicitudService
         if ($solicitud instanceof Papeleta && $solicitud->tipo?->TipoPapeletaRequiereSustento && $solicitud->DocumentoSustentoId === null) {
             throw new DomainException("No se puede aprobar: el tipo \"{$solicitud->tipo->TipoPapeletaNombre}\" exige el documento de sustento.");
         }
+        if ($solicitud instanceof Licencia) {
+            $dias = $solicitud->LicenciaFechaInicio->diffInDays($solicitud->LicenciaFechaFin) + 1;
+            if ($dias >= self::DIAS_CON_ENTREGA_DE_CARGO && ! self::tieneEntregaDeCargo((int) $solicitud->VinculoLaboralId, 'LICENCIA', $solicitud->LicenciaFechaInicio->toDateString())) {
+                throw new DomainException('Una licencia de 30 días o más exige registrar antes la entrega de cargo (RIT, Art. 56).');
+            }
+        }
         // El descanso medico nace de un CITT o certificado: sin ninguno no hay sustento.
         if ($solicitud instanceof DescansoMedico && blank($solicitud->DescansoMedicoNumeroCitt) && $solicitud->DocumentoSustentoId === null) {
             throw new DomainException('No se puede aprobar: el descanso médico no tiene número de CITT ni documento de sustento.');
         }
+    }
+
+    /** Ausencias de esta duracion exigen entrega de cargo (RIT, Art. 56 y 70 g). */
+    public const DIAS_CON_ENTREGA_DE_CARGO = 30;
+
+    public static function tieneEntregaDeCargo(int $vinculoId, string $motivo, string $hasta): bool
+    {
+        return DB::table('Personal.EntregaCargo')->where('VinculoLaboralId', $vinculoId)->where('EntregaCargoMotivo', $motivo)->where('EntregaCargoEstado', 'CONFORME')
+            ->whereDate('EntregaCargoFecha', '<=', $hasta)->whereDate('EntregaCargoFecha', '>=', date('Y-m-d', strtotime($hasta.' -60 days')))->exists();
+    }
+
+    /** Licencias a cuenta del periodo vacacional (RIT, Art. 33, 38 y 48): sus dias salen del periodo abierto mas antiguo. */
+    private function descontarDeVacaciones(Licencia $licencia): void
+    {
+        if (! $licencia->tipo?->TipoLicenciaACuentaVacaciones) {
+            return;
+        }
+        $dias = $licencia->LicenciaFechaInicio->diffInDays($licencia->LicenciaFechaFin) + 1;
+        $periodo = DB::table('Vacaciones.PeriodoVacacional')->where('VinculoLaboralId', $licencia->VinculoLaboralId)->where('PeriodoVacacionalEstado', 'ABIERTO')
+            ->where('PeriodoVacacionalDiasDisponibles', '>=', $dias)->orderBy('PeriodoVacacionalAnio')->first();
+        if ($periodo === null) {
+            throw new DomainException("No se puede aprobar: el trabajador no tiene {$dias} días disponibles en un período vacacional abierto (RIT, Art. 48).");
+        }
+        DB::table('Vacaciones.PeriodoVacacional')->where('PeriodoVacacionalId', $periodo->PeriodoVacacionalId)->update(['PeriodoVacacionalDiasDisponibles' => (float) $periodo->PeriodoVacacionalDiasDisponibles - $dias]);
     }
 
     /** @param  array<string,string|null>  $c */

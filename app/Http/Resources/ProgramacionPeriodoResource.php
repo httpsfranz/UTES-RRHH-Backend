@@ -24,6 +24,8 @@ class ProgramacionPeriodoResource extends JsonResource
             'fecha_registro' => optional($this->ProgramacionPeriodoFechaRegistro)->format('Y-m-d H:i:s'),
             'fecha_publicacion' => optional($this->ProgramacionPeriodoFechaPublicacion)->format('Y-m-d H:i:s'),
             'estado' => $this->ProgramacionPeriodoEstado,
+            'reprogramaciones' => (int) $this->ProgramacionPeriodoReprogramaciones,
+            'motivo_tardio' => $this->ProgramacionPeriodoMotivoTardio,
             // Anulada = "inactiva": el listado la muestra apagada.
             'activo' => ! in_array($this->ProgramacionPeriodoEstado, ['ANULADO', 'ANULADA'], true),
             'eess' => $this->whenLoaded('eess', fn () => $this->eess ? [

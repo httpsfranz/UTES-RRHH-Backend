@@ -138,6 +138,7 @@ class UsuariosYPermisosSeeder extends Seeder
                     ], 'TrabajadorId');
                 $usuarioId = DB::table('Seguridad.Usuario')->insertGetId([
                     'TrabajadorId' => $trabajadorId, 'UsuarioNombre' => $nombre, 'UsuarioPasswordHash' => Hash::make($clave), 'UsuarioCorreo' => str_replace('.', '', $nombre).'@redsalud-trujillo.gob.pe',
+                    'UsuarioDebeCambiarPassword' => app()->isProduction() ? 1 : 0,
                 ], 'UsuarioId');
             }
 

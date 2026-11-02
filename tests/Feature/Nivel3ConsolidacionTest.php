@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Support\HoraLocal;
 use Illuminate\Support\Facades\DB;
 use Tests\Support\Nivel3Modulos;
 
@@ -150,7 +149,7 @@ class Nivel3ConsolidacionTest extends CrudModulosTestCase
 
         // Fecha limite: hoy hasta el fin del mes siguiente (hoy es 2026-10-02 -> 2026-11-30).
         $hoy = now()->toDateString();
-        $finMesSiguiente = date('Y-m-t', strtotime(date('Y-m-01').' +1 month'));
+        $finMesSiguiente = now()->startOfMonth()->addMonth()->endOfMonth()->toDateString();
         $this->postJson('/api/compensaciones-horarias', $this->compensacion($vinculo, ['CompensacionHorariaFechaLimite' => date('Y-m-d', strtotime($finMesSiguiente.' +1 day'))]))->assertStatus(422)->assertJsonValidationErrors(['CompensacionHorariaFechaLimite']);
         $this->postJson('/api/compensaciones-horarias', $this->compensacion($vinculo, ['CompensacionHorariaFechaLimite' => date('Y-m-d', strtotime($hoy.' -1 day'))]))->assertStatus(422);
         $this->postJson('/api/compensaciones-horarias', $this->compensacion($vinculo, ['CompensacionHorariaFechaLimite' => $finMesSiguiente]))->assertCreated();
@@ -344,7 +343,7 @@ class Nivel3ConsolidacionTest extends CrudModulosTestCase
             ->assertCreated()->assertJsonPath('data.fecha_hora', '2026-09-21 10:30:00')->assertJsonPath('data.trabajador.id', (int) DB::table('Personal.VinculoLaboral')->where('VinculoLaboralId', $propio)->value('TrabajadorId'));
         // Supervision general del establecimiento (sin persona) y fecha por omision.
         $r = $this->postJson('/api/supervisiones-inopinadas', $base)->assertCreated()->assertJsonPath('data.estado', 'REGISTRADO');
-        $this->assertStringStartsWith(HoraLocal::hoy()->format('Y-m-d'), $r->json('data.fecha_hora'));
+        $this->assertStringStartsWith(date('Y-m-d'), $r->json('data.fecha_hora'));
     }
 
     public function test_estados_de_la_supervision(): void

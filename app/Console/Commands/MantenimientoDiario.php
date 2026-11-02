@@ -16,6 +16,12 @@ class MantenimientoDiario extends Command
         $this->info('Compensaciones vencidas: '.$automatizacion->vencerCompensaciones());
         $this->info('Turnos marcados como cumplidos: '.$automatizacion->cumplirTurnos());
         $this->info('Avisos de faltas reiteradas: '.$automatizacion->detectarFaltasReiteradas());
+        $this->info('Avisos de tardanza mensual: '.$automatizacion->detectarTardanzasAcumuladas());
+        $this->info('Avisos de colegiatura vencida: '.$automatizacion->detectarColegiaturasVencidas());
+        $this->info('Avisos de límite de edad: '.$automatizacion->detectarLimiteDeEdad());
+        $this->info('Avisos de no reincorporación: '.$automatizacion->detectarNoReincorporacion());
+        $this->info('Fraccionamientos aprobados por silencio: '.$automatizacion->aprobarFraccionamientosPorSilencio());
+        $this->info('Compensaciones de días no laborables: '.$automatizacion->programarCompensacionDeDiasNoLaborables());
 
         return self::SUCCESS;
     }

@@ -26,7 +26,7 @@ use OpenSpout\Writer\XLSX\Writer;
 class RevisionConsolidadoService
 {
     /** Dia del mes siguiente hasta el que se consolida cada condicion laboral (RIT, Art. 16). */
-    public const PLAZOS = ['INTERNO' => 1, 'SERUMS_EQUIV' => 1, 'SERUMS' => 1, 'DESTACADO' => 3];
+    public const PLAZOS = ['INTERNO' => 1, 'SERUMS_EQUIV' => 1, 'SERUMS_REM' => 1, 'DESTACADO' => 3];
 
     public const PLAZO_GENERAL = 5;
 

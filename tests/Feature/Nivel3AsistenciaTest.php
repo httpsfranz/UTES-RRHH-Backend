@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Support\HoraLocal;
 use Illuminate\Support\Facades\DB;
 use Tests\Support\Nivel3Modulos;
 
@@ -334,6 +333,7 @@ class Nivel3AsistenciaTest extends CrudModulosTestCase
         $falta2 = $this->asistencia($vinculo, '2026-09-22', 'FALTA');
         $asistio = $this->asistencia($vinculo, '2026-09-23', 'ASISTIO');
         $fuera = $this->asistencia($vinculo, '2026-09-25', 'FALTA');
+        $this->darAlcance('rvargas', $this->eessId());
         $this->actuarComo('rvargas');   // quien registra es el usuario de la sesion
         $id = $this->postJson('/api/justificaciones-falta', [
             'VinculoLaboralId' => $vinculo, 'ConceptoJustificacionId' => $this->id('Asistencia.ConceptoJustificacion', 'ConceptoJustificacionId', ['ConceptoJustificacionCodigo' => 'EMERGENCIA']),
@@ -465,7 +465,7 @@ class Nivel3AsistenciaTest extends CrudModulosTestCase
         $usuario = $this->usuario('gdangelo');
         $id = $this->postJson('/api/notificaciones', ['UsuarioId' => $usuario, 'NotificacionTipo' => 'GENERAL', 'NotificacionTitulo' => 'Hola', 'NotificacionMensaje' => 'Mundo'])
             ->assertCreated()->assertJsonPath('data.leida', false)->assertJsonPath('data.usuario.nombre', 'gdangelo')->json('data.id');
-        $this->assertStringStartsWith(HoraLocal::hoy()->format('Y-m-d'), $this->getJson("/api/notificaciones/{$id}")->json('data.fecha'));
+        $this->assertStringStartsWith(date('Y-m-d'), $this->getJson("/api/notificaciones/{$id}")->json('data.fecha'));
 
         $this->getJson("/api/notificaciones?usuario_id={$usuario}&leida=0&por_pagina=100")->assertOk()->assertJsonCount(2, 'data');
         $this->patchJson("/api/notificaciones/{$id}", ['NotificacionLeida' => true])->assertOk()->assertJsonPath('data.leida', true);

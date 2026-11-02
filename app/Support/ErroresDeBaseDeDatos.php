@@ -22,6 +22,8 @@ class ErroresDeBaseDeDatos
         $mensaje = $e->getMessage();
 
         return match (true) {
+            // Un id no numerico en la direccion (/recurso/abc): para quien consulta, ese registro no existe.
+            str_contains($mensaje, 'Conversion failed when converting'), str_contains($mensaje, 'Error converting data type') => self::json(404, 'El registro solicitado no existe.'),
             str_contains($mensaje, 'DELETE statement conflicted') => self::json(409, 'No se puede eliminar: el registro está siendo usado por otros datos. Desactívalo en su lugar.'),
             str_contains($mensaje, 'FOREIGN KEY constraint') => self::json(422, 'El registro relacionado indicado no existe.'),
             str_contains($mensaje, 'UNIQUE KEY constraint') || str_contains($mensaje, 'duplicate key') => self::json(409, 'Ya existe un registro con esos datos.'),

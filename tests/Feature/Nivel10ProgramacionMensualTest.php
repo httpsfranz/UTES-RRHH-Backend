@@ -65,8 +65,11 @@ class Nivel10ProgramacionMensualTest extends TestCase
         $v = $this->nuevoVinculo();
         $this->pintar($v, '2026-12-07', [$this->turnoId('M')])->assertOk();
 
-        $grilla = $this->pintar($v, '2026-12-07', [$this->turnoId('M'), $this->turnoId('T')])->assertOk()->json();
-        $this->assertSame(['M', 'T'], $this->codigos($this->fila($grilla, $v), '2026-12-07'));
+        // La jornada es de 6 horas: dos turnos el mismo dia no se programan (RIT, Art. 16).
+        $this->pintar($v, '2026-12-07', [$this->turnoId('M'), $this->turnoId('T')])->assertStatus(422);
+
+        $grilla = $this->pintar($v, '2026-12-07', [$this->turnoId('T')])->assertOk()->json();
+        $this->assertSame(['T'], $this->codigos($this->fila($grilla, $v), '2026-12-07'));
 
         $grilla = $this->pintar($v, '2026-12-07', [])->assertOk()->json();
         $this->assertSame([], $this->codigos($this->fila($grilla, $v), '2026-12-07'));

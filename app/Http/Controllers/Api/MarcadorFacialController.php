@@ -8,19 +8,19 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
- * API del marcador facial (kiosco). Se autentica con su codigo y clave de dispositivo (middleware `dispositivo`), no con
+ * API del marcador facial. Se autentica con su codigo y clave de dispositivo (middleware `dispositivo`), no con
  * una cuenta de usuario.
  */
 class MarcadorFacialController extends Controller
 {
-    // GET /api/marcador-facial/estado  ->  el dispositivo, su establecimiento y la hora del servidor (el reloj del kiosco)
+    // GET /api/marcador-facial/estado  ->  el dispositivo, su establecimiento y la hora del servidor (el reloj del marcador facial)
     public function estado(Request $request): JsonResponse
     {
         $dispositivo = $request->attributes->get('dispositivo');
 
         return response()->json([
             'dispositivo' => ['codigo' => $dispositivo->codigo, 'nombre' => $dispositivo->nombre, 'eess' => $dispositivo->eess],
-            // Instante real con zona (HoraLocal es reloj de pared sin zona): el kiosco lo muestra en hora de Lima.
+            // Instante real con zona (HoraLocal es reloj de pared sin zona): el marcador facial lo muestra en hora de Lima.
             'hora_servidor' => now()->toIso8601String(),
         ]);
     }

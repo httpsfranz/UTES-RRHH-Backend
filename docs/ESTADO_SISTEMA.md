@@ -18,7 +18,7 @@ El sistema controla la asistencia del personal de la red, aplicando el Reglament
 1. Organización: microredes y establecimientos (EESS).
 2. Personal y su vínculo laboral.
 3. Horarios y programación mensual de turnos.
-4. Marcación: manual con la hora del servidor, o facial desde un kiosco.
+4. Marcación: manual con la hora del servidor, o facial desde un marcador facial.
 5. Cálculo automático de la asistencia diaria con la escala del Art. 22.
 6. Solicitudes con aprobación en línea y documento adjunto: papeletas, licencias, descansos médicos, justificaciones y vacaciones.
 7. Consolidado mensual por condición laboral, revisión y cierre del período.
@@ -27,11 +27,11 @@ El sistema controla la asistencia del personal de la red, aplicando el Reglament
 | Dato | Valor | Evidencia |
 |---|---|---|
 | Avance global estimado | **≈ 70 %** (promedio de OE1–OE6; ver sección 15). Es una estimación del analista, no una medición. | Sección 15 |
-| Proyectos | 3 carpetas: backend (API), frontend (SPA) y kiosco facial | `C:\Proyectos` |
-| Repositorios git | `httpsfranz/UTES-RRHH-Backend`, `httpsfranz/UTES-RRHH-Frontend`. El kiosco **no tiene repositorio git**. | `git remote -v` |
+| Proyectos | 3 carpetas: backend (API), frontend (SPA) y marcador facial | `C:\Proyectos` |
+| Repositorios git | `httpsfranz/UTES-RRHH-Backend`, `httpsfranz/UTES-RRHH-Frontend`. El marcador facial **no tiene repositorio git**. | `git remote -v` |
 | Rama principal | Backend: `main` (remota por defecto `origin/HEAD -> origin/main`). Frontend: `master`. Se trabaja en `testing`, que es la rama actual en ambos. Ramas existentes: `main`/`master`, `develop`, `testing`. | `git branch -a` |
 | Último commit | Backend: `9a7920d` "API RENIEC", 2026-10-13 16:28 (-05). Frontend: `774e036` "API RENIEC", 2026-10-13 16:29 (-05). | `git log` |
-| Trabajo sin commit | Todo lo hecho entre el 13 y el 20 de octubre sigue sin commit: 82 archivos modificados y 48 nuevos en el backend; 113 modificados, 28 borrados y 72 nuevos en el frontend. Incluye V005, V006, el rediseño por tareas y el kiosco facial. | `git status --short` |
+| Trabajo sin commit | Todo lo hecho entre el 13 y el 20 de octubre sigue sin commit: 82 archivos modificados y 48 nuevos en el backend; 113 modificados, 28 borrados y 72 nuevos en el frontend. Incluye V005, V006, el rediseño por tareas y el marcador facial. | `git status --short` |
 | Pruebas automatizadas | 1143 pruebas PHPUnit, con 14 280 aserciones: 1132 pasan, 11 se omiten y ninguna falla. Ejecución del 2026-10-20 en 61 s. | `php artisan test` |
 | Base de datos | SQL Server 2025 Express (17.0.1000.7). 13 esquemas de negocio, 79 tablas de negocio y 11 tablas de Laravel en `dbo`. | Consulta a `sys.tables` |
 
@@ -64,7 +64,7 @@ El sistema controla la asistencia del personal de la red, aplicando el Reglament
 | 4 | 6 oct | Motor de cálculo de asistencia (V004) y calendario mensual con PDF | memoria de sesión; `BE/tests/Feature/Nivel3CalculoAsistenciaTest.php` |
 | 5 | 12–13 oct | Login, roles y alcance; automatización; importación por Excel; consulta de DNI | `4a25753`, `3dc914f`, `9a7920d`; `AUDITORIA_PENDIENTES.md` |
 | 6 | 19–20 oct (sin commit) | Rediseño tras la revisión del docente y el *tester*: menú por tarea, marcación con hora del servidor, V005 y V006, bandeja única, cierre del mes, programación en grilla | `BE/tests/Feature/Nivel9*`, `Nivel10*` |
-| 7 | 20 oct (sin commit) | Kiosco de marcación facial (proyecto aparte) | `KF/`, `BE/tests/Feature/Nivel11MarcadorFacialTest.php` |
+| 7 | 20 oct (sin commit) | Marcador facial (proyecto aparte) | `KF/`, `BE/tests/Feature/Nivel11MarcadorFacialTest.php` |
 
 **Cronograma planificado del informe** (fechas de cada fase y Gantt): **NO DISPONIBLE**.
 
@@ -100,7 +100,7 @@ Las versiones son las instaladas según `composer.lock` y `package-lock.json`. E
 | vite | 8.3.1 |
 | @vitejs/plugin-react | 6.1.1 |
 
-### 3.3 Kiosco facial (`KF/package.json`)
+### 3.3 Marcador facial (`KF/package.json`)
 
 | Componente | Versión |
 |---|---|
@@ -140,7 +140,7 @@ Las versiones son las instaladas según `composer.lock` y `package-lock.json`. E
 C:\Proyectos
 ├── UTES-RRHH-Backend/                API REST (Laravel)
 │   ├── app/
-│   │   ├── Console/Commands/          7 comandos artisan (cálculo, consolidado, mantenimiento, correos, claves de kiosco…)
+│   │   ├── Console/Commands/          7 comandos artisan (cálculo, consolidado, mantenimiento, correos, claves de marcador facial…)
 │   │   ├── Http/Controllers/Api/      91 controladores
 │   │   ├── Http/Middleware/           SesionActiva, VerificarPermiso, DispositivoDeMarcacion
 │   │   ├── Http/Requests/             86 Form Requests (validación y reglas del RIT)
@@ -168,7 +168,7 @@ C:\Proyectos
 │       ├── nav/                       menu.js, acceso.js, permisosDeApi.js (espejo de permisos)
 │       ├── pages/<modulo>/            156 archivos de pantallas y formularios, en 13 módulos
 │       └── routes.jsx                 rutas (carga diferida) y redirecciones de rutas antiguas
-├── UTES-RRHH-Marcador-Facial/         kiosco de marcación facial
+├── UTES-RRHH-Marcador-Facial/         marcador facial
 │   ├── src/                           main.js, rostro.js (face-api), api.js, config.js, estilos.css
 │   └── scripts/copiar-modelos.mjs     copia los modelos de face-api a public/models
 ├── AUDITORIA_PENDIENTES.md            auditoría de pendientes (12 y 13 oct)
@@ -197,7 +197,7 @@ No hay un documento formal de requerimientos (ERS) aprobado por el área usuaria
 | RF07 | Elaborar la programación mensual en una grilla trabajador × día, copiar la del mes anterior, y publicarla o cerrarla | Programación | IMPLEMENTADO | `BE/app/Services/ProgramacionMensualService.php`; `FE/src/pages/programacion/ProgramacionMensualPage.jsx` |
 | RF08 | Cambios de turno (reprogramación, permuta, reemplazo, anulación) con aprobación | Programación | IMPLEMENTADO | `BE/app/Services/CambioTurnoService.php` |
 | RF09 | Marcación manual de entrada y salida con la hora del servidor, sin digitar la hora | Asistencia | IMPLEMENTADO | `BE/app/Services/MarcacionManualService.php`; `POST /api/asistencia-diaria/marcar` |
-| RF10 | Marcación por reconocimiento facial desde un kiosco con cámara | Asistencia / Biometría | IMPLEMENTADO (prototipo funcional, sin prueba de vida) | `KF/`; `BE/app/Services/MarcacionFacialService.php` |
+| RF10 | Marcación por reconocimiento facial desde un marcador facial con cámara | Asistencia / Biometría | IMPLEMENTADO (prototipo funcional, sin prueba de vida) | `KF/`; `BE/app/Services/MarcacionFacialService.php` |
 | RF11 | Importar marcaciones desde el archivo de un reloj biométrico comercial | Asistencia | **PENDIENTE**: `CargaAsistenciaManual` guarda la cabecera de la carga pero no importa filas | `BE/app/Services/CargaAsistenciaManualService.php` (solo `anular`) |
 | RF12 | Calcular automáticamente la asistencia diaria: tardanza según escala, falta, omisión de marca, salida anticipada, guardia | Asistencia | IMPLEMENTADO | `BE/app/Services/CalculoAsistenciaService.php`; `Nivel3CalculoAsistenciaTest.php` (24 pruebas) |
 | RF13 | Calendario de asistencia por EESS en vista día, semana y mes, con exportación a PDF | Asistencia | IMPLEMENTADO | `BE/app/Services/CalendarioAsistenciaService.php`, `CalendarioAsistenciaPdf.php`; `FE/src/pages/asistencia/AsistenciaDiariaPage.jsx` |
@@ -231,7 +231,7 @@ No hay un documento formal de requerimientos (ERS) aprobado por el área usuaria
 
 | Tipo | Requerimiento | Estado | Evidencia |
 |---|---|---|---|
-| Seguridad | Toda la API exige token, salvo el login y las rutas del kiosco | IMPLEMENTADO | 451 de 454 rutas con `auth:sanctum` + `SesionActiva`; 448 además con `VerificarPermiso` |
+| Seguridad | Toda la API exige token, salvo el login y las rutas del marcador facial | IMPLEMENTADO | 451 de 454 rutas con `auth:sanctum` + `SesionActiva`; 448 además con `VerificarPermiso` |
 | Seguridad | La sesión expira tras 30 min sin actividad; el token vence a las 12 h | IMPLEMENTADO | `SESION_INACTIVIDAD_MIN=30`; `config/sanctum.php` `expiration` 720 |
 | Seguridad | La cuenta se bloquea 15 min tras 5 intentos fallidos; login limitado a 10 intentos por minuto | IMPLEMENTADO | `LOGIN_INTENTOS_MAX`, `LOGIN_BLOQUEO_MIN`; `routes/api.php:116` |
 | Seguridad | La auditoría no se puede modificar | IMPLEMENTADO | trigger `Seguridad.TR_Auditoria_Inmutable` (V005) |
@@ -246,7 +246,7 @@ No hay un documento formal de requerimientos (ERS) aprobado por el área usuaria
 | Mantenibilidad | Contrato de API fijo: sale en snake_case y entra con los nombres de columna | IMPLEMENTADO | `BE/app/Http/Resources`, `Requests` |
 | Mantenibilidad | Estilos solo en componentes; las páginas no llevan `className` | EN PROGRESO: 5 archivos de `pages` aún usan `className` (`ImportarTrabajadoresModal`, `NuevoTrabajadorAsistente`, `FichaTrabajadorModal`, `CierreDelMesPage`, `OrganizacionPage`) | `grep -rn className FE/src/pages` |
 | Disponibilidad | Servidor de producción, alta disponibilidad, monitoreo | **PENDIENTE / NO DISPONIBLE** | Sección 11 |
-| Privacidad | Los datos biométricos solo se guardan con consentimiento; el kiosco no envía fotos, solo el descriptor | IMPLEMENTADO | `MarcacionFacialService.php`, `KF/src/rostro.js` |
+| Privacidad | Los datos biométricos solo se guardan con consentimiento; el marcador facial no envía fotos, solo el descriptor | IMPLEMENTADO | `MarcacionFacialService.php`, `KF/src/rostro.js` |
 
 ### 5.3 Roles, permisos y ámbito
 
@@ -311,7 +311,7 @@ flowchart TD
     B -- Sí --> C[Horario fijo o programación mensual<br/>publicada por el jefe del EESS · Art. 16]
     C --> D[Marcación del día]
     D --> D1[Manual: RESP_EESS/RRHH<br/>hora del servidor]
-    D --> D2[Facial: kiosco del EESS<br/>descriptor 128-D]
+    D --> D2[Facial: marcador facial del EESS<br/>descriptor 128-D]
     D1 --> E[Motor de cálculo<br/>CalculoAsistenciaService]
     D2 --> E
     S[Solicitudes: papeleta, licencia,<br/>descanso médico, vacaciones, justificación] --> S1{Bandeja: aprobar / rechazar}
@@ -360,7 +360,7 @@ flowchart LR
     PO([Portería]) --> SYS
     AD([Administrador]) --> SYS
     SYS[[UTES-RRHH<br/>Control de Asistencia]]
-    KIO[Kiosco facial<br/>PC + cámara en el EESS] -- descriptor facial / marca --> SYS
+    KIO[Marcador facial<br/>PC + cámara en el EESS] -- descriptor facial / marca --> SYS
     SYS -- consulta DNI --> DEC[(Decolecta<br/>datos RENIEC)]
     SYS -- correo de avisos --> MAIL[(Servidor de correo<br/>hoy: log)]
     SYS -. Excel de consolidado / liquidación .-> REM([Remuneraciones / Planilla])
@@ -373,7 +373,7 @@ flowchart LR
 flowchart TB
     subgraph Cliente
         FE[SPA React 19<br/>UTES-RRHH-Frontend :5173]
-        KF[Kiosco facial JS + face-api<br/>UTES-RRHH-Marcador-Facial :5180]
+        KF[Marcador facial JS + face-api<br/>UTES-RRHH-Marcador-Facial :5180]
     end
     subgraph API[Backend Laravel 13 :8000]
         MW[Middleware<br/>auth:sanctum · SesionActiva · VerificarPermiso · dispositivo · throttle]
@@ -404,7 +404,7 @@ flowchart TB
 | Resources | 79 | `BE/app/Http/Resources/` |
 | Modelos | 80, en 13 carpetas por esquema | `BE/app/Models/` |
 | Servicios | `CalculoAsistenciaService`, `CalendarioAsistenciaService`/`Pdf`, `CalendarioProgramacionService`, `ProgramacionMensualService`, `ProgramacionPeriodoService`, `ProgramacionTrabajadorService`, `TurnoProgramadoService`, `CambioTurnoService`, `MarcacionManualService`, `MarcacionFacialService`, `AjusteMarcacionService`, `CargaAsistenciaManualService`, `JustificacionFaltaService`, `SolicitudService`, `BandejaDeSolicitudesService`, `RolVacacionalService`, `GoceVacacionalService`, `CompensacionHorariaService`, `ConsolidadoAsistenciaService`, `DetalleConsolidadoService`, `RevisionConsolidadoService`, `CierreDelMesService`, `LiquidacionDescuentoService`, `ExpedientePadService`, `TrabajadorService`, `ImportacionTrabajadoresService`, `PersonalSinHorarioService`, `ConsultaDni/*`, `PlantillaBiometricaService`, `ConsentimientoBiometricoService`, `HorarioDetalleService`, `CalendarioNoLaborableService`, `NotificacionService`, `AutomatizacionService`, `SeguridadDeCuentaService`, `RolPermisoService`, `Dashboard/DashboardService` | `BE/app/Services/` |
-| Middleware | `SesionActiva` (inactividad, vencimiento, revocación), `VerificarPermiso` (aplica `PermisosDeRuta`), `DispositivoDeMarcacion` (clave HMAC del kiosco) | `BE/app/Http/Middleware/` |
+| Middleware | `SesionActiva` (inactividad, vencimiento, revocación), `VerificarPermiso` (aplica `PermisosDeRuta`), `DispositivoDeMarcacion` (clave HMAC del marcador facial) | `BE/app/Http/Middleware/` |
 | Colas | `QUEUE_CONNECTION=database`; el correo se envía con `dispatch(...)->afterResponse()` y también con el comando `notificaciones:enviar` | `BE/app/Services/NotificacionService.php:51` |
 | Jobs | No hay clases Job: se usan closures y comandos | — |
 | Comandos | `asistencia:calcular`, `consolidado:actualizar`, `sistema:mantenimiento`, `notificaciones:enviar`, `biometria:clave-dispositivo`, `pruebas:preparar`, `sql:estado` (`EstadoEsquema`) | `BE/app/Console/Commands/` |
@@ -414,7 +414,7 @@ flowchart TB
 
 Totales:
 - **454 rutas** con **528 combinaciones** de método y ruta, sobre **89 recursos**.
-- 3 rutas no usan sesión: `POST /api/auth/login` y las 2 del kiosco.
+- 3 rutas no usan sesión: `POST /api/auth/login` y las 2 del marcador facial.
 - Todas están IMPLEMENTADAS y pasan las pruebas Feature.
 
 **Regla de permisos** (`BE/app/Support/PermisosDeRuta.php`):
@@ -437,7 +437,7 @@ La tabla completa, generada desde `route:list` y `PermisosDeRuta`, está en el *
 | CONFIGURACION | `turnos`, `horarios` (+ `detalle`), `tipos-jornada`, `parametros-jornada`, `tablas-tolerancia`, `tramos-tolerancia`, `calendario-no-laborable`, `dispositivos-marcacion`, `metodos-marcacion`, `plantillas-biometricas`, `consentimientos-biometricos`, `autorizaciones-metodo` (+ `resumen`) | CRUD |
 | REPORTES | `periodos-asistencia`, `cierre-mes` (+ `conformidad`, `liquidaciones`), `consolidados-asistencia` (+ `generar`, `incidencias`, `observar`, `aprobar`, `exportar`), `liquidaciones-descuento` (+ `aprobar`, `remitir`), `compensaciones-horarias` (+ `candidatas`, `aprobar`, `devolver`), `expedientes-pad`, `supervisiones-inopinadas` (+ `iniciar-pad`) | Flujo de fin de mes |
 | SEGURIDAD | `usuarios` (+ `bloquear`, `desbloquear`), `roles` (+ `permisos`), `usuarios-roles`, `usuarios-ambitos`, `permisos`, `sesiones-acceso` (+ `revocar`), `auditoria` (+ `exportar`), `logs-integracion`, `parametros-sistema`, `tipos-notificacion` | Administración |
-| Kiosco (clave de dispositivo) | `GET marcador-facial/estado`, `POST marcador-facial/marcar` | Marcación facial |
+| Marcador facial (clave de dispositivo) | `GET marcador-facial/estado`, `POST marcador-facial/marcar` | Marcación facial |
 
 ### 7.5 Frontend: pantallas
 
@@ -462,7 +462,7 @@ Las rutas están en `FE/src/routes.jsx` y el menú en `FE/src/nav/menu.js`. Los 
 | `/configuracion/panel` | Configuración | Tarjetas por área que abren modales con 31 catálogos o paneles: jornada y tolerancias, turnos, horarios, parámetros, cargos, profesiones, condición y régimen, estados de asistencia, tipos de papeleta y licencia, biometría, dispositivos, calendario no laborable, documentos, logs de integración… | IMPLEMENTADO |
 | `/seguridad/panel` | Seguridad | Usuarios, roles de cada usuario, alcance de datos, roles, permisos, sesiones de acceso, auditoría | IMPLEMENTADO |
 | `/soporte/notificaciones` | Notificaciones | Historial de la bandeja (se abre desde la campana) | IMPLEMENTADO |
-| Kiosco `http://localhost:5180` | Marcador facial | Pantallas: Configurar, Marcar y Registrar rostro (RRHH) | IMPLEMENTADO (prototipo) |
+| Marcador facial `http://localhost:5180` | Marcador facial | Pantallas: Configurar, Marcar y Registrar rostro (RRHH) | IMPLEMENTADO (prototipo) |
 
 ---
 
@@ -537,7 +537,7 @@ La consulta a `sys.tables` de `DB_ControlAsistencia` (2026-10-20) devuelve 79 ta
 | Asistencia | AjusteMarcacion | AjusteMarcacionId | Corrección de una marca con sustento | 19 |
 | Asistencia | CargaAsistenciaManual | CargaAsistenciaManualId | Cabecera de una carga de marcas (archivo) | 32 |
 | Biometria | MetodoMarcacion | MetodoMarcacionId | ROSTRO y MANUAL activos | 6 |
-| Biometria | DispositivoMarcacion | DispositivoMarcacionId | Reloj o kiosco por EESS | 13 |
+| Biometria | DispositivoMarcacion | DispositivoMarcacionId | Reloj o marcador facial por EESS | 13 |
 | Biometria | PlantillaBiometrica | PlantillaBiometricaId | Descriptor facial (VARBINARY) | 173 |
 | Biometria | ConsentimientoBiometrico | ConsentimientoBiometricoId | Consentimiento del trabajador | 208 |
 | Biometria | AutorizacionMetodo | AutorizacionMetodoId | Autorización de marcación manual (Art. 21) | 19 |
@@ -575,7 +575,7 @@ La consulta a `sys.tables` de `DB_ControlAsistencia` (2026-10-20) devuelve 79 ta
 | Soporte | CalendarioNoLaborable | CalendarioNoLaborableId | Feriados y días no laborables | 20 |
 | Soporte | Notificacion | NotificacionId | Bandeja y correo | 134 |
 | Soporte | TipoNotificacion | TipoNotificacionId | Reglas de envío (V005) | 13 |
-| Soporte | LogIntegracion | LogIntegracionId | Llamadas a sistemas externos (kiosco facial) | 71 |
+| Soporte | LogIntegracion | LogIntegracionId | Llamadas a sistemas externos (marcador facial) | 71 |
 
 `dbo` contiene las tablas técnicas: `migrations`, `SqlScriptAplicado`, `personal_access_tokens`, `jobs`, `failed_jobs`, `job_batches`, `cache`, `cache_locks`, `sessions`, `users` y `password_reset_tokens`.
 
@@ -788,8 +788,8 @@ Turnos de los establecimientos, también **coinciden**:
 | Contraseñas | Hash bcrypt de Laravel (`Hash::make`); mínimo 8 caracteres con letras y números; cambio de contraseña propio; columna `UsuarioDebeCambiarPassword` | IMPLEMENTADO, salvo: los usuarios sembrados no están obligados a cambiar la clave (`Prueba2026*`) y no hay "olvidé mi contraseña" (PENDIENTE) |
 | Auditoría | `RegistroAuditoria` guarda quién, cuándo, qué entidad, los valores de antes y después, el resultado y eventos de seguridad (accesos denegados, cambios de permisos, motivo de baja). La tabla está protegida por el trigger `TR_Auditoria_Inmutable`. Se puede consultar y exportar con `SEGURIDAD_AUDITORIA`. | IMPLEMENTADO; no registra lecturas (PENDIENTE) |
 | Documentos adjuntos | Disco privado `storage/app/private` (no público). Tipos permitidos: pdf, jpg, png, doc, docx, xls, xlsx. Tamaño máximo `MAX_ADJUNTO_MB=5`. Se calcula el hash del archivo. La descarga exige `SOLICITUDES_VER` (`DocumentoSustentoController`, `DocumentoSustentoRequest:30`). | IMPLEMENTADO |
-| Datos biométricos | Primero se registra el consentimiento (`ConsentimientoBiometrico`). Revocarlo desactiva las plantillas en la misma transacción (`ConsentimientoBiometricoService`). La plantilla es un descriptor numérico de 128 valores, no una foto. El kiosco no envía ni guarda imágenes, solo compara contra el personal con consentimiento vigente y vínculo en el EESS del dispositivo. Cada intento queda en `Soporte.LogIntegracion`. | IMPLEMENTADO |
-| Kiosco | Clave por dispositivo (HMAC de `APP_KEY` y el código); solo dispositivos activos de tipo Facial; `throttle:60,1`; sin prueba de vida (una foto podría marcar) | IMPLEMENTADO / limitación conocida |
+| Datos biométricos | Primero se registra el consentimiento (`ConsentimientoBiometrico`). Revocarlo desactiva las plantillas en la misma transacción (`ConsentimientoBiometricoService`). La plantilla es un descriptor numérico de 128 valores, no una foto. El marcador facial no envía ni guarda imágenes, solo compara contra el personal con consentimiento vigente y vínculo en el EESS del dispositivo. Cada intento queda en `Soporte.LogIntegracion`. | IMPLEMENTADO |
+| Marcador facial | Clave por dispositivo (HMAC de `APP_KEY` y el código); solo dispositivos activos de tipo Facial; `throttle:60,1`; sin prueba de vida (una foto podría marcar) | IMPLEMENTADO / limitación conocida |
 | Credenciales en el repositorio | `BE/.env.example` contiene un `APP_KEY` y un `DECOLECTA_TOKEN` que parecen reales | **Riesgo**: reemplazarlos por valores de ejemplo y renovar el token |
 | Respaldos de la base de datos | **NO DISPONIBLE**: no hay script, tarea ni política de respaldo | PENDIENTE |
 | HTTPS | **NO DISPONIBLE** en desarrollo, que funciona por HTTP en localhost | PENDIENTE para producción |
@@ -800,17 +800,17 @@ Turnos de los establecimientos, también **coinciden**:
 
 | Entorno | Estado | Detalle |
 |---|---|---|
-| Local (desarrollo) | IMPLEMENTADO | Windows 11, PHP 8.3 con `php artisan serve` (:8000), Vite (:5173 SPA, :5180 kiosco), SQL Server Express local |
+| Local (desarrollo) | IMPLEMENTADO | Windows 11, PHP 8.3 con `php artisan serve` (:8000), Vite (:5173 SPA, :5180 marcador facial), SQL Server Express local |
 | Pruebas | IMPLEMENTADO (local) | Base separada `DB_ControlAsistencia_Test` (`phpunit.xml`), que se prepara con `php artisan pruebas:preparar` |
 | Integración / staging | **NO DISPONIBLE** (`V001` dice que ya se aplicó en un "ambiente de integración", pero no hay datos de ese servidor) | — |
 | Producción | **PENDIENTE / NO DISPONIBLE**: servidor, sistema operativo, dominio, HTTPS, cron del planificador y SMTP | — |
 | Contenedores | No se usan | — |
-| Despliegue | Manual: `npm run build` genera `dist/` en el frontend y en el kiosco; en el backend hacen falta `composer install`, `php artisan migrate`, el seed de catálogos y un cron `* * * * * php artisan schedule:run` (`BE/routes/console.php`) | Documentado, sin automatizar |
+| Despliegue | Manual: `npm run build` genera `dist/` en el frontend y en el marcador facial; en el backend hacen falta `composer install`, `php artisan migrate`, el seed de catálogos y un cron `* * * * * php artisan schedule:run` (`BE/routes/console.php`) | Documentado, sin automatizar |
 
 **Equipos biométricos:**
 - Marca, modelo y formato de archivo de los relojes reales de la red: **NO DISPONIBLE**.
 - La base tiene 13 dispositivos sembrados con IP de ejemplo, que son datos de prueba.
-- La integración real es el **kiosco propio** (`KF/`): una PC con cámara web y navegador.
+- La integración real es el **marcador facial propio** (`KF/`): una PC con cámara web y navegador.
   - Usa `GET /api/marcador-facial/estado` y `POST /api/marcador-facial/marcar`.
   - Envía JSON `{ descriptor: [128 números] }` con las cabeceras `X-Dispositivo` y `X-Clave-Dispositivo`.
 - La cámara solo funciona en `localhost` o `https`.
@@ -819,13 +819,13 @@ Turnos de los establecimientos, también **coinciden**:
 ```mermaid
 flowchart LR
     subgraph EESS[Establecimiento de salud]
-        PC[PC kiosco + cámara<br/>navegador · UTES-RRHH-Marcador-Facial]
+        PC[PC marcador facial + cámara<br/>navegador · UTES-RRHH-Marcador-Facial]
     end
     subgraph Oficinas[RRHH / Jefaturas]
         NAV[Navegador<br/>SPA UTES-RRHH-Frontend]
     end
     subgraph Servidor[Servidor de aplicación · hoy: PC de desarrollo]
-        WEB[Servidor web estático<br/>dist/ de frontend y kiosco]
+        WEB[Servidor web estático<br/>dist/ de frontend y marcador facial]
         PHP[PHP 8.3 + Laravel 13<br/>API REST :8000]
         CRON[Cron: schedule:run<br/>cálculo, consolidado, correos]
         STO[(storage/app/private<br/>adjuntos)]
@@ -856,8 +856,8 @@ Para capturar, entra a `http://localhost:5173` con el usuario indicado (clave de
 | ★ | Control de asistencia, vista Hoy | Misma ruta, vista Día | `resp.eess` | Tarjetas para marcar entrada y salida con la hora del servidor |
 | ★ | Detalle de una celda | Clic en una celda con tardanza | `rrhh` | Turno, entrada, salida, observación con el Art. 22 y acciones Justificar / Ajuste |
 | | Calendario en PDF | Botón de exportar PDF en la misma pantalla | `rrhh` | Reporte imprimible |
-| ★ | Kiosco facial | `http://localhost:5180` | Dispositivo DISP-LE-02 | Resultado "Entrada · HH:MM" (marcación biométrica) |
-| | Registro de rostro | Kiosco › Registrar rostro (RRHH) | `rrhh` | Captura de 5 muestras con consentimiento |
+| ★ | Marcador facial | `http://localhost:5180` | Dispositivo DISP-LE-02 | Resultado "Entrada · HH:MM" (marcación biométrica) |
+| | Registro de rostro | Marcador facial › Registrar rostro (RRHH) | `rrhh` | Captura de 5 muestras con consentimiento |
 | ★ | Programación del mes | `/programacion/mensual` | `resp.eess` | Grilla de turnos con paleta |
 | ★ | Bandeja de solicitudes | `/solicitudes/bandeja` | `resp.eess` | Aprobación en línea (evidencia de OE4) |
 | ★ | Formulario de papeleta o licencia con adjunto | `/solicitudes/registro?pestana=papeletas` › Nuevo | `rrhh` | Documento de sustento adjunto |
@@ -883,7 +883,7 @@ Hay capturas previas de las pruebas E2E en el *scratchpad* de la sesión (`contr
 | Unitarias, backend | 2 archivos (`ReglasDeValidacionTest`, `ExampleTest`) | Incluidas en el total | `BE/tests/Unit/` |
 | Reglas del motor | `Nivel3CalculoAsistenciaTest` (24), `Nivel3CalendarioAsistenciaTest` (14), `Nivel9MarcacionManualTest` (8) | Pasan | — |
 | Seguridad | `Nivel7AccesoTest` (17), `Nivel9SeguridadYFlujosTest` (14), `Nivel10ResguardoDeAdministracionTest` (4) | Pasan | — |
-| Kiosco facial | `Nivel11MarcadorFacialTest` (5) y E2E `marcador.mjs` con cámara simulada (video y4m) | Pasan | — |
+| Marcador facial | `Nivel11MarcadorFacialTest` (5) y E2E `marcador.mjs` con cámara simulada (video y4m) | Pasan | — |
 | E2E de navegador (puppeteer + Edge) | 23 scripts: `menu`, `sidebar`, `paso1` a `paso6`, `ajustes`, `rediseno` (52 chequeos), `roles` (13), `marcador`, `control-vistas`, `movil`… | Los de flujo (`menu`, `sidebar`, `paso1` a `paso6`, `ajustes`, `rediseno`, `roles`, `marcador`) dieron OK en su última ejecución (19 y 20 oct); los demás son de diagnóstico o medición. Todos están **fuera del repositorio**, en el *scratchpad* de la sesión. | — |
 | Análisis estático del frontend | `npm run lint` (ESLint) | Sin errores en la última ejecución | — |
 | Cobertura de código | **NO DISPONIBLE**: no se mide | — | — |
@@ -893,7 +893,7 @@ Hay capturas previas de las pruebas E2E en el *scratchpad* de la sesión (`contr
 - AUD-022: alcance por registro.
 - AUD-018: umbral mensual de descuento.
 - Parámetros que el código no lee: `DIAS_JUSTIFICAR_FALTA`, `DIAS_ANTICIPO_PROG`, `DIAS_CIERRE_PERIODO`, `TOLERANCIA_GLOBAL_MIN` (AUD-026, parcial).
-- El kiosco no tiene prueba de vida.
+- El marcador facial no tiene prueba de vida.
 - Algunos listados paginan en el cliente.
 - 5 archivos de `pages` usan `className` (ver 5.2).
 
@@ -910,7 +910,7 @@ Hay capturas previas de las pruebas E2E en el *scratchpad* de la sesión (`contr
 | Tamaño de la solución | Backend: 408 archivos PHP en `app/`, 454 rutas. Frontend: 307 archivos JS/JSX. 79 tablas. | Conteo de archivos |
 | Reducción del menú | De 76 entradas a 14 (5 grupos) | Memoria del rediseño; `FE/src/nav/menu.js` |
 | Tiempo de una petición API (local) | 0,2–0,3 s con `artisan serve` (sin carga) | `AUDITORIA_PENDIENTES.md` |
-| Lectura facial en el kiosco | ~60 ms por cuadro tras el calentamiento; ~12 s la primera detección sin él | Medición en la prueba E2E del kiosco |
+| Lectura facial en el marcador facial | ~60 ms por cuadro tras el calentamiento; ~12 s la primera detección sin él | Medición en la prueba E2E del marcador facial |
 | Recálculo de la base de prueba completa | `db:seed` en ~45 s, incluido el motor sobre ~190 trabajadores | Contexto de traspaso |
 | **OE6: tiempo de elaboración del consolidado ANTES del sistema** | **NO DISPONIBLE** | — |
 | **OE6: tiempo DESPUÉS del sistema** | **NO DISPONIBLE** (no hay medición con usuarios) | — |
@@ -924,7 +924,7 @@ Hay capturas previas de las pruebas E2E en el *scratchpad* de la sesión (`contr
 |---|---|---|---|
 | **OE1** Analizar el proceso actual y el RIT 2025 para definir requerimientos | **75 %** | RIT en `BE/docs/`; reglas citadas por artículo en servicios y requests; auditorías contra el RIT (`AUDITORIA_PENDIENTES.md`); observaciones del *tester* analizadas | Documento formal de requerimientos validado con el área usuaria; modelado del proceso actual (AS-IS) con evidencias de entrevistas (**NO DISPONIBLE**); confirmar los supuestos AUD-008 y AUD-018 con RRHH |
 | **OE2** Arquitectura y modelo de datos en SQL Server (microredes y EESS, condiciones, roles) | **90 %** | V001–V006, 13 esquemas, 79 tablas, 139 FK, 73 CHECK, 6 vistas, 1 trigger; roles y ámbitos; arquitectura en capas (secciones 7 y 8) | Diagramas formales en el informe (este documento los provee en Mermaid); decisión sobre la asignación temporal entre EESS (RF38); infraestructura de producción |
-| **OE3** Marcaciones: carga desde biométricos y registro manual; cálculo automático según la escala del RIT | **80 %** | Motor (`CalculoAsistenciaService`) con escala del Art. 22, omisiones y guardias; marcación manual con hora del servidor; kiosco facial integrado; 24 + 14 + 8 + 5 pruebas | Importar archivos de relojes biométricos comerciales (RF11); prueba de vida en el kiosco; validar con RRHH los márgenes de 3 y 4 h |
+| **OE3** Marcaciones: carga desde biométricos y registro manual; cálculo automático según la escala del RIT | **80 %** | Motor (`CalculoAsistenciaService`) con escala del Art. 22, omisiones y guardias; marcación manual con hora del servidor; marcador facial integrado; 24 + 14 + 8 + 5 pruebas | Importar archivos de relojes biométricos comerciales (RF11); prueba de vida en el marcador facial; validar con RRHH los márgenes de 3 y 4 h |
 | **OE4** Solicitudes con aprobación en línea y documento adjunto | **80 %** | Papeletas, licencias, descansos médicos, justificaciones, ajustes, vacaciones; bandeja única; adjuntos reales; notificaciones | Aprobación en dos pasos (RF37); topes de papeletas y plazo para justificar; catálogo de licencias completo según el RIT (AUD-007/009); guardar quién aprueba licencias y descansos médicos |
 | **OE5** Consolidado mensual por período y condición, cierre y auditoría | **80 %** | Consolidado con foto diaria; revisión; Excel con una hoja por condición; cierre del mes en 5 pasos; período inmutable; auditoría con trigger | Anexos 12 a 17 en formato oficial (RF36); umbral mensual de tardanza (AUD-018); importes de liquidación (sin remuneración); cierre automático por plazo |
 | **OE6** Validar con el área y comparar el tiempo del consolidado antes y después | **10 %** | Solo hay pruebas automatizadas y la revisión del docente y del *tester* | Despliegue piloto; capacitación; medición de tiempos antes y después con el área de Control de Asistencia; encuesta de satisfacción (**NO DISPONIBLE**) |
@@ -947,7 +947,7 @@ Hay capturas previas de las pruebas E2E en el *scratchpad* de la sesión (`contr
 | 9 | Ingresar la hora a mano permitía manipular la asistencia | La marca manual usa la hora del servidor; solo el día actual; no se digita | Observación del *tester* y Art. 21 |
 | 10 | Sin login, cualquiera podía aprobar a nombre de otro (AUD-001 a AUD-005) | Sanctum, el middleware `permiso` con `PermisosDeRuta`, aprobador igual al usuario de la sesión, auditoría | Trazabilidad |
 | 11 | Pantallas de 8 a 10 s de carga | Peticiones en paralelo, caché de opciones, carga diferida, CORS `max_age`, OPcache | Rendimiento (`AUDITORIA_PENDIENTES.md`, sección 4) |
-| 12 | El RIT pide reconocimiento facial, pero no había equipo integrado | Kiosco **en un proyecto aparte**, sin cambios de esquema; autenticación por clave de dispositivo y no por sesión de usuario (la sesión caería a los 30 min) | "Lo menos invasivo posible, que no se rompa nada" |
+| 12 | El RIT pide reconocimiento facial, pero no había equipo integrado | Marcador facial **en un proyecto aparte**, sin cambios de esquema; autenticación por clave de dispositivo y no por sesión de usuario (la sesión caería a los 30 min) | "Lo menos invasivo posible, que no se rompa nada" |
 | 13 | La primera detección facial tardaba ~12 s | Calentamiento de la GPU (WebGL) al cargar los modelos | Experiencia en la puerta del EESS |
 | 14 | El alta exigía un horario que lo define el jefe del EESS, no RRHH | Horario opcional en el alta y aviso "Personal sin horario" | RIT, Art. 8 (ingreso por RRHH) y Art. 16 (horario aprobado por la jefatura) |
 | 15 | El sistema no tiene la remuneración de cada trabajador | La liquidación calcula cantidades y deja los importes en manos de quien liquida | Decisión del equipo; dato fuera del alcance |
@@ -958,10 +958,10 @@ Hay capturas previas de las pruebas E2E en el *scratchpad* de la sesión (`contr
 ## 17. Pendientes y trabajo futuro
 
 **Prioridad alta:**
-1. **Hacer commit y push** del trabajo del 13 al 20 de octubre (V005, V006, el rediseño y el kiosco). Crear el repositorio git del kiosco.
+1. **Hacer commit y push** del trabajo del 13 al 20 de octubre (V005, V006, el rediseño y el marcador facial). Crear el repositorio git del marcador facial.
 2. Validar con el área de Control de Asistencia y **medir OE6**: tiempo del consolidado antes y después.
 3. Reportes oficiales: anexos 12 a 17, tardanzas por trabajador, planilla de descuentos (AUD-011).
-4. Importar marcaciones desde archivos de relojes comerciales, o confirmar que el kiosco facial reemplaza al reloj (RF11).
+4. Importar marcaciones desde archivos de relojes comerciales, o confirmar que el marcador facial reemplaza al reloj (RF11).
 5. Quitar credenciales reales de `BE/.env.example` y obligar a cambiar las claves predeterminadas.
 6. Verificar el alcance por registro en las operaciones de abrir, editar y borrar (AUD-022).
 
@@ -973,7 +973,7 @@ Hay capturas previas de las pruebas E2E en el *scratchpad* de la sesión (`contr
 - Faltas reiteradas que abran un PAD en borrador (AUD-006/019).
 - Asignación temporal de personal entre EESS (requiere aprobar un cambio de esquema).
 - Paginación en el servidor para tablas grandes.
-- Prueba de vida en el kiosco facial.
+- Prueba de vida en el marcador facial.
 
 **Prioridad baja:**
 - Compensación de días no laborables decretados (Art. 18, AUD-020).
@@ -997,7 +997,7 @@ Hay capturas previas de las pruebas E2E en el *scratchpad* de la sesión (`contr
 5. ¿Cómo se hacía **antes** el consolidado (Excel, sistema anterior, papel)? ¿Cuánto tiempo tomaba por mes y por establecimiento? (dato de línea base de OE6)
 6. ¿Se probó el sistema **con usuarios reales**? ¿Con cuántos y en qué EESS? ¿Cuánto tomó el consolidado con el sistema? ¿Hay encuesta de satisfacción?
 7. ¿Qué **comentarios** dio el docente asesor, además de los registrados, y en qué fecha fue la revisión?
-8. ¿Qué **relojes biométricos** usa hoy la red (marca, modelo, formato de exportación)? ¿Se reemplazarán por el kiosco facial?
+8. ¿Qué **relojes biométricos** usa hoy la red (marca, modelo, formato de exportación)? ¿Se reemplazarán por el marcador facial?
 9. ¿Los 17 establecimientos y 10 microredes sembrados son la **red real completa** de la UTES N.° 6, o son una muestra?
 10. ¿Dónde se **desplegará** (servidor de la Red, nube)? ¿Quién lo administra? ¿Hay dominio, HTTPS y SMTP institucional?
 11. ¿Cuál es la **política de respaldos** de la base de datos?
@@ -1261,8 +1261,8 @@ Se generó el 2026-10-20 recorriendo `Route::getRoutes()` y `App\Support\Permiso
 | PATCH | `/api/marcaciones/{marcacion}` | MarcacionController@Editar | ASISTENCIA_EDITAR | ADMIN, RESP_EESS, RRHH_RED |
 | POST | `/api/marcaciones` | MarcacionController@Crear | ASISTENCIA_EDITAR | ADMIN, RESP_EESS, RRHH_RED |
 | PUT | `/api/marcaciones/{marcacion}` | MarcacionController@Editar | ASISTENCIA_EDITAR | ADMIN, RESP_EESS, RRHH_RED |
-| GET | `/api/marcador-facial/estado` | MarcadorFacialController@estado | Clave de dispositivo | Kiosco facial |
-| POST | `/api/marcador-facial/marcar` | MarcadorFacialController@marcar | Clave de dispositivo | Kiosco facial |
+| GET | `/api/marcador-facial/estado` | MarcadorFacialController@estado | Clave de dispositivo | Marcador facial |
+| POST | `/api/marcador-facial/marcar` | MarcadorFacialController@marcar | Clave de dispositivo | Marcador facial |
 | GET | `/api/menu-pendientes` | ContadoresDelMenuController@App\Http\Controllers\Api\ContadoresDelMenuController | Autenticado | Todos los roles |
 | DELETE | `/api/metodos-marcacion/{metodo}` | MetodoMarcacionController@Desactivar / eliminar | CONFIGURACION_EDITAR | ADMIN, RRHH_RED |
 | GET | `/api/metodos-marcacion/{metodo}` | MetodoMarcacionController@Ver detalle | Autenticado | Todos los roles |

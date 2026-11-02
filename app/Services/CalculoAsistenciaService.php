@@ -61,6 +61,15 @@ class CalculoAsistenciaService
 
     private bool $refrigerioDescuenta = false;
 
+    /** @var Collection<int,Collection<int,object>> tolerancias extraordinarias por establecimiento (RIT, Art. 16 y 27) */
+    private Collection $tolerancias;
+
+    /** @var Collection<int,Collection<int,object>> facilidades horarias por vinculo (RIT, Art. 23 d) */
+    private Collection $facilidades;
+
+    /** @var Collection<string,int> salidas sin autorizacion que informo porteria, por "vinculo|fecha" (RIT, Art. 16) */
+    private Collection $abandonos;
+
     /**
      * Calcula la asistencia diaria del rango. Las fechas futuras se ignoran; la de hoy solo se evalua en lo que ya termino.
      *
@@ -88,7 +97,7 @@ class CalculoAsistenciaService
             ->where(fn ($q) => $q->whereNull('vl.VinculoLaboralFechaFin')->orWhereDate('vl.VinculoLaboralFechaFin', '>=', $inicio->toDateString()))
             ->when($vinculoId, fn ($q) => $q->where('vl.VinculoLaboralId', $vinculoId))
             ->when($eessId, fn ($q) => $q->where('vl.EessId', $eessId))
-            ->get(['vl.VinculoLaboralId as id', 'vl.VinculoLaboralFechaInicio as inicio', 'vl.VinculoLaboralFechaFin as fin', 'e.MicroredId as microred', 'c.CondicionLaboralCodigo as condicion']);
+            ->get(['vl.VinculoLaboralId as id', 'vl.EessId as eess', 'vl.VinculoLaboralFechaInicio as inicio', 'vl.VinculoLaboralFechaFin as fin', 'e.MicroredId as microred', 'c.CondicionLaboralCodigo as condicion']);
 
         foreach ($vinculos->chunk(150) as $lote) {
             DB::transaction(function () use ($lote, $inicio, $fin, $ahora, $sobrescribirManuales, &$resumen) {
@@ -234,6 +243,16 @@ class CalculoAsistenciaService
             ->whereIn('c.AsistenciaDiariaId', $existentes->pluck('AsistenciaDiariaId')->all() ?: [0])
             ->where('t.TipoCompensacionCodigo', 'HORA_EXTRA')->whereIn('c.CompensacionHorariaEstado', ['APROBADO', 'CONSUMIDO'])
             ->get(['c.AsistenciaDiariaId as dia', 'c.CompensacionHorariaHorasGeneradas as horas'])->groupBy('dia');
+
+        $this->tolerancias = DB::table('Asistencia.ToleranciaExtraordinaria')->where('ToleranciaExtraordinariaEstado', 1)
+            ->whereDate('ToleranciaExtraordinariaFechaInicio', '<=', $h)->whereDate('ToleranciaExtraordinariaFechaFin', '>=', $d)
+            ->get(['EessId as eess', 'ToleranciaExtraordinariaFechaInicio as ini', 'ToleranciaExtraordinariaFechaFin as fin', 'ToleranciaExtraordinariaMinutos as minutos'])->groupBy('eess');
+        $this->facilidades = DB::table('Asistencia.FacilidadHoraria')->where('FacilidadHorariaEstado', 1)->whereIn('VinculoLaboralId', $ids)
+            ->whereDate('FacilidadHorariaFechaInicio', '<=', $h)->whereDate('FacilidadHorariaFechaFin', '>=', $d)
+            ->get(['VinculoLaboralId as vinculo', 'FacilidadHorariaFechaInicio as ini', 'FacilidadHorariaFechaFin as fin', 'FacilidadHorariaMomento as momento', 'FacilidadHorariaMinutos as minutos'])->groupBy('vinculo');
+        $this->abandonos = DB::table('Solicitudes.OcurrenciaPorteria')->whereIn('VinculoLaboralId', $ids)->where('OcurrenciaPorteriaTipo', 'SALIDA_SIN_AUTORIZACION')->where('OcurrenciaPorteriaEstado', '<>', 'ANULADO')
+            ->whereDate('OcurrenciaPorteriaFechaHora', '>=', $d)->whereDate('OcurrenciaPorteriaFechaHora', '<=', $h)
+            ->get(['VinculoLaboralId as vinculo', 'OcurrenciaPorteriaFechaHora as fecha'])->countBy(fn ($o) => $o->vinculo.'|'.substr((string) $o->fecha, 0, 10));
 
         $ahoraTexto = $ahora->toDateTimeString();
 
@@ -414,7 +433,7 @@ class CalculoAsistenciaService
         $duracion = (int) collect($turnos)->sum(fn ($t) => $t['inicio']->diffInMinutes($t['fin']));
         $turnoId = $primero['id'];
         $dia = ['TurnoProgramadoId' => $turnoId, 'JustificacionFaltaId' => null, 'AsistenciaDiariaHoraEntrada' => null, 'AsistenciaDiariaHoraSalida' => null,
-            'AsistenciaDiariaMinutosTardanza' => 0, 'AsistenciaDiariaMinutosFalta' => 0, 'AsistenciaDiariaMinutosExtra' => 0, 'AsistenciaDiariaMinutosTrabajados' => 0, 'AsistenciaDiariaObservacion' => null];
+            'AsistenciaDiariaMinutosTardanza' => 0, 'AsistenciaDiariaMinutosFalta' => 0, 'AsistenciaDiariaMinutosExtra' => 0, 'AsistenciaDiariaMinutosTrabajados' => 0, 'AsistenciaDiariaMinutosSinGoce' => 0, 'AsistenciaDiariaObservacion' => null];
 
         // Por referencia: las horas de entrada y salida se asignan a $dia despues de armar esta funcion.
         $resultado = function (string $codigo, array $extra = []) use (&$dia) {
@@ -439,7 +458,9 @@ class CalculoAsistenciaService
         }
 
         if ($cobertura !== null) {
-            return $resultado($cobertura, ['AsistenciaDiariaObservacion' => 'Cubierto por una solicitud aprobada ('.strtolower(str_replace('_', ' ', $cobertura)).').']);
+            $sinGoce = $papeletas->contains(fn ($p) => (bool) $p->dia_completo && $p->tipo === 'PERM_PARTIC') ? $duracion : 0;
+
+            return $resultado($cobertura, ['AsistenciaDiariaMinutosSinGoce' => $sinGoce, 'AsistenciaDiariaObservacion' => 'Cubierto por una solicitud aprobada ('.strtolower(str_replace('_', ' ', $cobertura)).').'.($sinGoce > 0 ? ' Permiso sin goce: se descuenta (RIT, Art. 62).' : '')]);
         }
 
         $terminado = $ahora >= $fin->addMinutes(self::MARGEN_CIERRE_MINUTOS);
@@ -477,6 +498,17 @@ class CalculoAsistenciaService
 
         // Entrada: minutos de reloj de atraso (se truncan: 07:35:59 sigue siendo tolerancia).
         $atraso = $entrada > $inicio ? intdiv($inicio->diffInSeconds($entrada), 60) : 0;
+        $facilidadIngreso = $this->minutosDeFacilidad((int) $v->id, $fecha, 'INGRESO');
+        $facilidadSalida = $this->minutosDeFacilidad((int) $v->id, $fecha, 'SALIDA');
+        if ($facilidadIngreso > 0 && $atraso > 0) {
+            $notas[] = "Facilidad horaria de {$facilidadIngreso} min al ingreso (RIT, Art. 23 d).";
+            $atraso = max(0, $atraso - $facilidadIngreso);
+        }
+        $extraordinaria = $this->toleranciaExtraordinaria((int) $v->eess, $fecha);
+        if ($atraso > 0 && $atraso <= $extraordinaria) {
+            $notas[] = "Ingresó {$atraso} min tarde, dentro de la tolerancia extraordinaria autorizada (RIT, Art. 16 y 27).";
+            $atraso = 0;
+        }
         if ($atraso > 0 && $this->papeletaCubreAtraso($papeletas, $fecha, $inicio, $entrada)) {
             $notas[] = "Ingresó {$atraso} min después de la hora, cubierto por papeleta autorizada.";
         } elseif ($atraso > 0 && $sinTolerancia) {
@@ -496,7 +528,7 @@ class CalculoAsistenciaService
         }
 
         // Salida anticipada sin papeleta que la autorice (Art. 23 b).
-        $anticipo = $salida < $fin ? intdiv($salida->diffInSeconds($fin), 60) - $primero['tol_salida'] : 0;
+        $anticipo = $salida < $fin ? intdiv($salida->diffInSeconds($fin), 60) - $primero['tol_salida'] - $facilidadSalida : 0;
         $salidaAnticipada = false;
         if ($anticipo > 0 && ! $this->papeletaCubreSalida($papeletas, $fecha, $salida, $fin)) {
             $tramo = $this->tramoPara($tramos['SALIDA_ANTICIPADA'] ?? [], $anticipo, 0);
@@ -530,7 +562,15 @@ class CalculoAsistenciaService
             }
         }
 
-        $comunes = ['AsistenciaDiariaMinutosTrabajados' => $trabajados, 'AsistenciaDiariaMinutosExtra' => $extra, 'AsistenciaDiariaObservacion' => $notas === [] ? null : implode(' ', $notas)];
+        $sinGoce = $this->minutosSinGoce($papeletas, $fecha, $inicio, $fin);
+        if ($sinGoce > 0) {
+            $notas[] = "Permiso particular sin goce: se descuentan {$sinGoce} min (RIT, Art. 62).";
+        }
+        if (($this->abandonos[$v->id.'|'.$fecha] ?? 0) > 0) {
+            $notas[] = 'Portería informó una salida sin autorización ese día: revisar (RIT, Art. 16 y 65).';
+        }
+
+        $comunes = ['AsistenciaDiariaMinutosTrabajados' => $trabajados, 'AsistenciaDiariaMinutosExtra' => $extra, 'AsistenciaDiariaMinutosSinGoce' => $sinGoce, 'AsistenciaDiariaObservacion' => $notas === [] ? null : implode(' ', $notas)];
 
         if ($esFalta) {
             return $this->conJustificacion($resultado('FALTA', $comunes + ['AsistenciaDiariaMinutosFalta' => $duracion]), $justificacionId);
@@ -540,6 +580,36 @@ class CalculoAsistenciaService
         }
 
         return $resultado($descuento > 0 ? 'TARDANZA' : 'ASISTIO', $comunes + ['AsistenciaDiariaMinutosTardanza' => $descuento]);
+    }
+
+    private function minutosDeFacilidad(int $vinculo, string $fecha, string $momento): int
+    {
+        return (int) ($this->facilidades->get($vinculo, collect())
+            ->first(fn ($f) => $f->momento === $momento && $fecha >= substr((string) $f->ini, 0, 10) && $fecha <= substr((string) $f->fin, 0, 10))?->minutos ?? 0);
+    }
+
+    private function toleranciaExtraordinaria(int $eess, string $fecha): int
+    {
+        return (int) $this->tolerancias->get($eess, collect())
+            ->filter(fn ($t) => $fecha >= substr((string) $t->ini, 0, 10) && $fecha <= substr((string) $t->fin, 0, 10))->max('minutos');
+    }
+
+    /** Minutos del turno cubiertos por permisos particulares aprobados: son sin goce y se descuentan (RIT, Art. 62). */
+    private function minutosSinGoce(Collection $papeletas, string $fecha, CarbonImmutable $inicio, CarbonImmutable $fin): int
+    {
+        $total = 0;
+        foreach ($papeletas as $p) {
+            if ($p->tipo !== 'PERM_PARTIC' || $p->salida === null) {
+                continue;
+            }
+            $sale = max($inicio, CarbonImmutable::parse($fecha.' '.substr((string) $p->salida, 0, 8)));
+            $vuelve = min($fin, $p->retorno === null ? $fin : CarbonImmutable::parse($fecha.' '.substr((string) $p->retorno, 0, 8)));
+            if ($vuelve > $sale) {
+                $total += intdiv($sale->diffInSeconds($vuelve), 60);
+            }
+        }
+
+        return $total;
     }
 
     /** Una falta con justificacion aprobada que cubre la fecha pasa a FALTA_JUST y queda enlazada (Art. 23). */

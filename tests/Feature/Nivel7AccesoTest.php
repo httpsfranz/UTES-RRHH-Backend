@@ -118,13 +118,21 @@ class Nivel7AccesoTest extends TestCase
     public function test_el_responsable_del_establecimiento_aprueba_solicitudes_y_el_aprobador_es_el_de_la_sesion(): void
     {
         $vinculo = $this->nuevoVinculo();
+        $this->darAlcance('rvargas', $this->eessId());
+        $this->darAlcance('crojas', $this->eessId());
         $this->actuarComo('rvargas');
         $id = $this->postJson('/api/papeletas', $this->papeleta($vinculo))->assertCreated()->json('data.id');
         $this->actuarComo('crojas');
 
-        // Aunque el cuerpo diga que aprueba otro usuario, queda registrado quien tiene la sesion.
+        // El jefe da su visto bueno; la papeleta sigue pendiente de Recursos Humanos (RIT, Art. 16).
         $this->postJson("/api/papeletas/{$id}/aprobar", ['UsuarioId' => $this->usuarioId('pgutierrez')])->assertOk()
-            ->assertJsonPath('data.estado', 'APROBADO')->assertJsonPath('data.usuario_autorizacion.nombre', 'crojas');
+            ->assertJsonPath('data.estado', 'PENDIENTE')->assertJsonPath('data.visto_bueno', true);
+        $this->postJson("/api/papeletas/{$id}/aprobar")->assertStatus(422);
+
+        // Aunque el cuerpo diga que aprueba otro usuario, queda registrado quien tiene la sesion.
+        $this->actuarComo('gdangelo');
+        $this->postJson("/api/papeletas/{$id}/aprobar", ['UsuarioId' => $this->usuarioId('pgutierrez')])->assertOk()
+            ->assertJsonPath('data.estado', 'APROBADO')->assertJsonPath('data.usuario_autorizacion.nombre', 'gdangelo');
         $this->assertSame($this->usuarioId('rvargas'), (int) DB::table('Solicitudes.Papeleta')->where('PapeletaId', $id)->value('UsuarioRegistroId'));
     }
 
@@ -173,6 +181,7 @@ class Nivel7AccesoTest extends TestCase
 
     public function test_lo_que_se_crea_o_modifica_queda_en_la_auditoria_con_el_usuario(): void
     {
+        $this->darAlcance('crojas', $this->eessId());
         $this->actuarComo('crojas');
         $antes = DB::table('Seguridad.Auditoria')->count();
 

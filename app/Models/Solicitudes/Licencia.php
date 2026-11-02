@@ -22,6 +22,10 @@ class Licencia extends Model
     public $timestamps = false;
 
     protected $fillable = [
+        'LicenciaCasoEspecial',
+        'LicenciaVistoBuenoPor',
+        'LicenciaFechaVistoBueno',
+        'LicenciaEsExtemporanea',
         'VinculoLaboralId',
         'TipoLicenciaId',
         'DocumentoSustentoId',
@@ -35,6 +39,8 @@ class Licencia extends Model
     ];
 
     protected $casts = [
+        'LicenciaFechaVistoBueno' => 'datetime',
+        'LicenciaEsExtemporanea' => 'boolean',
         'LicenciaId' => 'integer',
         'VinculoLaboralId' => 'integer',
         'TipoLicenciaId' => 'integer',

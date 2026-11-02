@@ -19,6 +19,8 @@ class ExpedientePadResource extends JsonResource
             'fecha_fin' => optional($this->ExpedientePadFechaFin)->format('Y-m-d'),
             'descripcion' => $this->ExpedientePadDescripcion,
             'sancion' => $this->ExpedientePadSancion,
+            'medida_cautelar' => (bool) $this->ExpedientePadMedidaCautelar,
+            'autoridades' => self::autoridades($this->ExpedientePadSancion),
             'estado' => $this->ExpedientePadEstado,
             // Anulada = "inactiva": el listado la muestra apagada.
             'activo' => ! in_array($this->ExpedientePadEstado, ['ANULADO', 'ANULADA'], true),
@@ -44,5 +46,23 @@ class ExpedientePadResource extends JsonResource
                 'nombre' => $this->documento->DocumentoSustentoNombre,
             ] : null),
         ];
+    }
+
+    /**
+     * Autoridades del procedimiento segun la sancion (RIT, Art. 103).
+     *
+     * @return array{instructor:string,sancionador:string,oficializa:string}
+     */
+    public static function autoridades(?string $sancion): array
+    {
+        $texto = mb_strtolower((string) $sancion);
+        if (str_contains($texto, 'destituc')) {
+            return ['instructor' => 'Jefe de Recursos Humanos', 'sancionador' => 'Director Ejecutivo', 'oficializa' => 'Director Ejecutivo'];
+        }
+        if (str_contains($texto, 'suspens')) {
+            return ['instructor' => 'Jefe inmediato', 'sancionador' => 'Jefe de Recursos Humanos', 'oficializa' => 'Jefe de Recursos Humanos'];
+        }
+
+        return ['instructor' => 'Jefe inmediato', 'sancionador' => 'Jefe inmediato', 'oficializa' => 'Jefe de Recursos Humanos'];
     }
 }

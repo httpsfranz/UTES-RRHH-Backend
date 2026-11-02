@@ -47,7 +47,10 @@ class VolumenSeederTest extends TestCase
     {
         $volumen = DB::table('Personal.VinculoLaboral')->where('VinculoLaboralCodigo', 'like', 'VL-1%')->count();
         $this->assertGreaterThanOrEqual(150, $volumen);
-        $this->assertSame($volumen, DB::table('Personal.Trabajador')->where('TrabajadorNumeroDocumento', 'like', '46%')->count());
+        $this->assertSame($volumen, DB::table('Personal.VinculoLaboral')->where('VinculoLaboralCodigo', 'like', 'VL-1%')->distinct()->count('TrabajadorId'));
+        // DNI verosimiles: 8 digitos, sin series de prueba (700000NN) ni ceros de relleno.
+        $this->assertSame(0, DB::table('Personal.Trabajador as t')->join('Personal.VinculoLaboral as v', 'v.TrabajadorId', '=', 't.TrabajadorId')->where('v.VinculoLaboralCodigo', 'like', 'VL-1%')
+            ->where(fn ($q) => $q->whereRaw('LEN(t.TrabajadorNumeroDocumento) <> 8')->orWhere('t.TrabajadorNumeroDocumento', 'like', '%0000%'))->count());
 
         // Todo establecimiento activo tiene su plantilla (un C.S. I-4 mas que un P.S. I-1) y Florencia de Mora, mas de diez.
         $porEess = DB::table('Personal.VinculoLaboral as v')->join('Organizacion.EstablecimientoSalud as e', 'e.EessId', '=', 'v.EessId')
@@ -58,7 +61,7 @@ class VolumenSeederTest extends TestCase
         // Quien lleva el establecimiento tiene usuario, rol y ambito.
         $this->assertGreaterThanOrEqual(16, DB::table('Organizacion.ResponsableEess')->where('ResponsableEessEstado', 1)->whereNull('ResponsableEessFechaFin')->count());
         $this->assertSame(0, DB::table('Seguridad.Usuario as u')->join('Personal.Trabajador as t', 't.TrabajadorId', '=', 'u.TrabajadorId')
-            ->where('t.TrabajadorNumeroDocumento', 'like', '46%')->whereNotExists(fn ($q) => $q->from('Seguridad.UsuarioAmbito as a')->whereColumn('a.UsuarioId', 'u.UsuarioId'))->count());
+            ->whereIn('t.TrabajadorId', DB::table('Personal.VinculoLaboral')->where('VinculoLaboralCodigo', 'like', 'VL-1%')->select('TrabajadorId'))->whereNotExists(fn ($q) => $q->from('Seguridad.UsuarioAmbito as a')->whereColumn('a.UsuarioId', 'u.UsuarioId'))->count());
     }
 
     private function asistenciaCalculadaConTodosSusEstados(): void

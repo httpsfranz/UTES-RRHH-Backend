@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Rutas del marcador facial: en vez de sesion de usuario, el kiosco envia su codigo (X-Dispositivo) y su clave
+ * Rutas del marcador facial: en vez de sesion de usuario, el marcador facial envia su codigo (X-Dispositivo) y su clave
  * (X-Clave-Dispositivo, ver ClaveDeDispositivo). Solo pasan dispositivos activos de tipo facial; el dispositivo queda en
  * el request (atributo `dispositivo`) para saber su establecimiento.
  */
